@@ -1,0 +1,3473 @@
+<!DOCTYPE html>
+<html lang="ko" class="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>알터휴먼 라운지 — 테리안 · 아더킨 실시간 커뮤니티</title>
+  <script src="https://www.gstatic.com/antigravity/web/dev/tailwindcss.min.js"></script>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    * { box-sizing: border-box; }
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: rgba(130, 142, 158, 0.35); border-radius: 9999px; }
+    ::-webkit-scrollbar-thumb:hover { background: rgba(130, 142, 158, 0.55); }
+    .line-clamp-2 {
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+    }
+
+    /* ==========================================================================
+       Multi-Tone Low-Saturation Calm Palette (다양한 저채도 뮤트 색감 시스템)
+       - 애쉬 블루 (Ash Blue)
+       - 애쉬 세이지 (Ash Sage / Muted Green)
+       - 더스티 로즈 (Dusty Rose / Ash Pink)
+       - 애쉬 라벤더 (Ash Lavender / Mauve)
+       - 웜 샌드 (Warm Sand / Ash Ochre)
+       - 애쉬 테라코타 (Ash Terracotta / Muted Coral)
+       - 애쉬 민트 (Ash Mint / Muted Teal)
+       ========================================================================== */
+    :root {
+      --app-canvas: #f1f0ec;
+      --app-surface: #faf9f6;
+      --app-subtle: #f3f1ed;
+      --app-muted: #e6e4df;
+      --app-border: #dad6ce;
+      --app-text: #2c3138;
+      --app-text-muted: #6b727d;
+
+      --ash-primary: #577087;
+      --ash-primary-hover: #496075;
+
+      /* 1. Ash Blue (애쉬 블루) */
+      --ash-bg: #e3ebf2;
+      --ash-text: #3a5269;
+      --ash-border: #c5d5e3;
+
+      /* 2. Ash Sage (애쉬 세이지 - 회녹색) */
+      --sage-bg: #e2eee9;
+      --sage-text: #38574e;
+      --sage-border: #c1d8cf;
+
+      /* 3. Dusty Rose (더스티 로즈 - 회분홍) */
+      --rose-bg: #f2e4e7;
+      --rose-text: #6b424c;
+      --rose-border: #dfc5cb;
+
+      /* 4. Ash Lavender (애쉬 라벤더 - 회보라) */
+      --mauve-bg: #eae6f2;
+      --mauve-text: #4d4666;
+      --mauve-border: #cfc9df;
+
+      /* 5. Warm Sand (웜 샌드 - 애쉬 베이지/오크) */
+      --sand-bg: #f1eae0;
+      --sand-text: #63513b;
+      --sand-border: #dfd1be;
+
+      /* 6. Ash Terracotta (애쉬 테라코타 - 뮤트 코랄) */
+      --terra-bg: #f3e6e1;
+      --terra-text: #6b483d;
+      --terra-border: #e1c9c0;
+
+      /* 7. Ash Mint (애쉬 민트 - 회청록) */
+      --mint-bg: #e0eef0;
+      --mint-text: #35585c;
+      --mint-border: #bed8dc;
+    }
+
+    html.dark {
+      --app-canvas: #161920;
+      --app-surface: #1e232c;
+      --app-subtle: #252b36;
+      --app-muted: #2e3644;
+      --app-border: #343d4c;
+      --app-text: #e8ecf1;
+      --app-text-muted: #98a2b0;
+
+      --ash-primary: #5c7893;
+      --ash-primary-hover: #6c89a6;
+
+      /* 1. Ash Blue */
+      --ash-bg: rgba(102, 134, 166, 0.19);
+      --ash-text: #bfd4e8;
+      --ash-border: rgba(122, 155, 188, 0.32);
+
+      /* 2. Ash Sage */
+      --sage-bg: rgba(96, 138, 125, 0.19);
+      --sage-text: #b7d8ce;
+      --sage-border: rgba(114, 156, 143, 0.32);
+
+      /* 3. Dusty Rose */
+      --rose-bg: rgba(162, 110, 123, 0.21);
+      --rose-text: #e3bfc8;
+      --rose-border: rgba(180, 128, 141, 0.34);
+
+      /* 4. Ash Lavender */
+      --mauve-bg: rgba(128, 118, 162, 0.21);
+      --mauve-text: #cfc9e6;
+      --mauve-border: rgba(146, 136, 180, 0.34);
+
+      /* 5. Warm Sand */
+      --sand-bg: rgba(158, 134, 102, 0.21);
+      --sand-text: #e2d1b8;
+      --sand-border: rgba(176, 152, 118, 0.34);
+
+      /* 6. Ash Terracotta */
+      --terra-bg: rgba(166, 120, 104, 0.21);
+      --terra-text: #e6c6bb;
+      --terra-border: rgba(184, 138, 122, 0.34);
+
+      /* 7. Ash Mint */
+      --mint-bg: rgba(92, 138, 144, 0.21);
+      --mint-text: #b8dce0;
+      --mint-border: rgba(112, 158, 164, 0.34);
+    }
+
+    .bg-app-canvas { background-color: var(--app-canvas); color: var(--app-text); }
+    .bg-app-surface { background-color: var(--app-surface); color: var(--app-text); }
+    .bg-app-subtle { background-color: var(--app-subtle); }
+    .bg-app-muted { background-color: var(--app-muted); }
+    .border-app { border-color: var(--app-border); }
+    .text-app-main { color: var(--app-text); }
+    .text-app-muted { color: var(--app-text-muted); }
+
+    .btn-ash {
+      background-color: var(--ash-primary);
+      color: #ffffff;
+      transition: all 0.18s ease;
+    }
+    .btn-ash:hover {
+      background-color: var(--ash-primary-hover);
+    }
+
+    .btn-sage {
+      background-color: #5a7a70;
+      color: #ffffff;
+      transition: all 0.18s ease;
+    }
+    .btn-sage:hover {
+      background-color: #698b80;
+    }
+
+    .btn-rose {
+      background-color: #87606b;
+      color: #ffffff;
+      transition: all 0.18s ease;
+    }
+    .btn-rose:hover {
+      background-color: #986f7b;
+    }
+
+    .badge-ash {
+      background-color: var(--ash-bg);
+      color: var(--ash-text);
+      border: 1px solid var(--ash-border);
+    }
+    .badge-sage {
+      background-color: var(--sage-bg);
+      color: var(--sage-text);
+      border: 1px solid var(--sage-border);
+    }
+    .badge-rose {
+      background-color: var(--rose-bg);
+      color: var(--rose-text);
+      border: 1px solid var(--rose-border);
+    }
+    .badge-mauve {
+      background-color: var(--mauve-bg);
+      color: var(--mauve-text);
+      border: 1px solid var(--mauve-border);
+    }
+    .badge-sand {
+      background-color: var(--sand-bg);
+      color: var(--sand-text);
+      border: 1px solid var(--sand-border);
+    }
+    .badge-terra {
+      background-color: var(--terra-bg);
+      color: var(--terra-text);
+      border: 1px solid var(--terra-border);
+    }
+    .badge-mint {
+      background-color: var(--mint-bg);
+      color: var(--mint-text);
+      border: 1px solid var(--mint-border);
+    }
+
+    .hero-multitone-card {
+      background: linear-gradient(135deg, #324252 0%, #44425a 48%, #415752 100%);
+      border: 1px solid rgba(175, 188, 204, 0.24);
+      color: #f4f6f9;
+    }
+
+    .input-ash {
+      background-color: var(--app-surface);
+      border: 1px solid var(--app-border);
+      color: var(--app-text);
+      transition: border-color 0.15s ease, box-shadow 0.15s ease;
+    }
+    .input-ash:focus {
+      outline: none;
+      border-color: #78899c;
+      box-shadow: 0 0 0 2px rgba(120, 137, 156, 0.18);
+    }
+  </style>
+</head>
+<body class="bg-app-canvas antialiased selection:bg-[#5c7893] selection:text-white m-0 p-0 overflow-hidden h-screen w-screen">
+  <div id="app" class="h-screen w-screen overflow-hidden flex flex-col"></div>
+
+  <script>
+    // ============================================================================
+    // 1. 24 Diverse Low-Saturation Illustrated Profile Avatars & 12 Banners
+    //    (애쉬블루, 애쉬세이지, 더스티로즈, 애쉬라벤더, 웜샌드, 테라코타, 애쉬민트 등)
+    // ============================================================================
+    function makeIllustratedAvatar(bg, fg, accent, innerSvg) {
+      const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="120" height="120" viewBox="0 0 120 120">
+        <rect width="120" height="120" rx="26" fill="${bg}"/>
+        <circle cx="96" cy="24" r="36" fill="${accent}" fill-opacity="0.18"/>
+        <circle cx="22" cy="98" r="28" fill="${fg}" fill-opacity="0.08"/>
+        <rect x="6" y="6" width="108" height="108" rx="20" fill="none" stroke="${fg}" stroke-opacity="0.22" stroke-width="1.5"/>
+        <g fill="${fg}" stroke="${fg}" stroke-linecap="round" stroke-linejoin="round">
+          ${innerSvg}
+        </g>
+      </svg>`;
+      return "data:image/svg+xml;utf8," + encodeURIComponent(svg);
+    }
+
+    const AVATAR_PRESETS_INFO = [
+      {
+        label: "늑대 (애쉬 블루)",
+        url: makeIllustratedAvatar("#4d667d", "#eef4f9", "#89a7c2",
+          `<polygon points="34,48 28,22 50,38" fill-opacity="0.9"/>
+           <polygon points="86,48 92,22 70,38" fill-opacity="0.9"/>
+           <polygon points="32,46 88,46 94,72 60,96 26,72" fill-opacity="0.85"/>
+           <polygon points="48,72 72,72 60,94" fill="#324557" stroke="none"/>
+           <circle cx="46" cy="60" r="3.2" fill="#233240" stroke="none"/>
+           <circle cx="74" cy="60" r="3.2" fill="#233240" stroke="none"/>
+           <polygon points="56,82 64,82 60,88" fill="#eef4f9" stroke="none"/>`)
+      },
+      {
+        label: "여우 (애쉬 테라코타)",
+        url: makeIllustratedAvatar("#8a6256", "#faf0ed", "#c99b8e",
+          `<polygon points="30,50 22,20 52,38" fill-opacity="0.92"/>
+           <polygon points="90,50 98,20 68,38" fill-opacity="0.92"/>
+           <polygon points="28,48 92,48 60,96" fill-opacity="0.88"/>
+           <polygon points="28,48 48,76 60,96" fill="#f5e6e1" fill-opacity="0.5" stroke="none"/>
+           <polygon points="92,48 72,76 60,96" fill="#f5e6e1" fill-opacity="0.5" stroke="none"/>
+           <circle cx="46" cy="60" r="3" fill="#473029" stroke="none"/>
+           <circle cx="74" cy="60" r="3" fill="#473029" stroke="none"/>
+           <circle cx="60" cy="91" r="3.5" fill="#473029" stroke="none"/>`)
+      },
+      {
+        label: "고양이 (더스티 로즈)",
+        url: makeIllustratedAvatar("#825b66", "#f9eef1", "#ba8e9a",
+          `<polygon points="34,50 30,24 52,40" fill-opacity="0.9"/>
+           <polygon points="86,50 90,24 68,40" fill-opacity="0.9"/>
+           <ellipse cx="60" cy="66" rx="28" ry="23" fill-opacity="0.88"/>
+           <circle cx="48" cy="62" r="3.2" fill="#3d272d" stroke="none"/>
+           <circle cx="72" cy="62" r="3.2" fill="#3d272d" stroke="none"/>
+           <polygon points="57,70 63,70 60,74" fill="#593a43" stroke="none"/>
+           <line x1="22" y1="66" x2="38" y2="68" stroke-width="2"/>
+           <line x1="22" y1="73" x2="38" y2="73" stroke-width="2"/>
+           <line x1="98" y1="66" x2="82" y2="68" stroke-width="2"/>
+           <line x1="98" y1="73" x2="82" y2="73" stroke-width="2"/>`)
+      },
+      {
+        label: "눈표범 (애쉬 라벤더)",
+        url: makeIllustratedAvatar("#6b6382", "#f2f0f7", "#9e96b8",
+          `<circle cx="36" cy="36" r="10" fill-opacity="0.85"/>
+           <circle cx="84" cy="36" r="10" fill-opacity="0.85"/>
+           <ellipse cx="60" cy="64" rx="28" ry="24" fill-opacity="0.9"/>
+           <circle cx="48" cy="50" r="2.2" fill="#464057" stroke="none"/>
+           <circle cx="72" cy="50" r="2.2" fill="#464057" stroke="none"/>
+           <circle cx="60" cy="45" r="2.2" fill="#464057" stroke="none"/>
+           <circle cx="47" cy="61" r="3.2" fill="#2e2a3b" stroke="none"/>
+           <circle cx="73" cy="61" r="3.2" fill="#2e2a3b" stroke="none"/>
+           <polygon points="56,70 64,70 60,75" fill="#464057" stroke="none"/>`)
+      },
+      {
+        label: "사슴 (웜 샌드)",
+        url: makeIllustratedAvatar("#827059", "#f7f2ec", "#b5a086",
+          `<path d="M46,44 L36,22 M36,22 L28,26 M36,22 L38,14 M41,33 L32,34" fill="none" stroke-width="3"/>
+           <path d="M74,44 L84,22 M84,22 L92,26 M84,22 L82,14 M79,33 L88,34" fill="none" stroke-width="3"/>
+           <polygon points="44,46 76,46 70,88 60,96 50,88" fill-opacity="0.88"/>
+           <ellipse cx="36" cy="50" rx="8" ry="4" transform="rotate(-20 36 50)" fill-opacity="0.85"/>
+           <ellipse cx="84" cy="50" rx="8" ry="4" transform="rotate(20 84 50)" fill-opacity="0.85"/>
+           <circle cx="51" cy="62" r="2.8" fill="#3b3126" stroke="none"/>
+           <circle cx="69" cy="62" r="2.8" fill="#3b3126" stroke="none"/>`)
+      },
+      {
+        label: "조류·까마귀 (애쉬 민트)",
+        url: makeIllustratedAvatar("#4d7278", "#ebf5f6", "#80aeb5",
+          `<path d="M22,68 Q44,38 62,56 Q78,34 98,52 Q78,66 64,74 Q44,82 22,68 Z" fill-opacity="0.9"/>
+           <circle cx="66" cy="54" r="2.5" fill="#223639" stroke="none"/>
+           <polygon points="75,54 88,50 77,60" fill-opacity="0.95"/>`)
+      },
+      {
+        label: "드래곤 (애쉬 플럼)",
+        url: makeIllustratedAvatar("#755670", "#f6eef5", "#ab86a5",
+          `<path d="M38,44 L24,18 L48,36 Z" fill-opacity="0.9"/>
+           <path d="M82,44 L96,18 L72,36 Z" fill-opacity="0.9"/>
+           <polygon points="40,42 80,42 86,68 60,96 34,68" fill-opacity="0.86"/>
+           <polygon points="60,34 65,48 55,48" fill="#463143" stroke="none"/>
+           <polygon points="46,60 54,63 46,65" fill="#382535" stroke="none"/>
+           <polygon points="74,60 66,63 74,65" fill="#382535" stroke="none"/>`)
+      },
+      {
+        label: "침엽수 숲 (애쉬 세이지)",
+        url: makeIllustratedAvatar("#53736a", "#edf5f2", "#85ab9f",
+          `<polygon points="60,22 38,54 82,54" fill-opacity="0.9"/>
+           <polygon points="60,38 32,74 88,74" fill-opacity="0.85"/>
+           <polygon points="60,54 26,92 94,92" fill-opacity="0.8"/>
+           <rect x="55" y="92" width="10" height="10" fill-opacity="0.9"/>`)
+      },
+      {
+        label: "포우 발자국 (웜 오트밀)",
+        url: makeIllustratedAvatar("#7d746b", "#f6f3f0", "#ada398",
+          `<ellipse cx="60" cy="72" rx="18" ry="15" fill-opacity="0.9"/>
+           <ellipse cx="38" cy="52" rx="6.5" ry="8.5" transform="rotate(-18 38 52)" fill-opacity="0.9"/>
+           <ellipse cx="52" cy="43" rx="6.5" ry="9" transform="rotate(-6 52 43)" fill-opacity="0.9"/>
+           <ellipse cx="68" cy="43" rx="6.5" ry="9" transform="rotate(6 68 43)" fill-opacity="0.9"/>
+           <ellipse cx="82" cy="52" rx="6.5" ry="8.5" transform="rotate(18 82 52)" fill-opacity="0.9"/>`)
+      },
+      {
+        label: "달과 별밤 (트와일라잇 모브)",
+        url: makeIllustratedAvatar("#4b4e69", "#eef0f8", "#8488ab",
+          `<path d="M68,30 A26,26 0 1,0 90,72 A21,21 0 1,1 68,30 Z" fill-opacity="0.92"/>
+           <circle cx="40" cy="38" r="2.2" fill-opacity="0.9"/>
+           <circle cx="82" cy="36" r="3" fill-opacity="0.9"/>
+           <circle cx="76" cy="52" r="1.8" fill-opacity="0.8"/>`)
+      },
+      {
+        label: "세타-델타 (노르딕 슬레이트)",
+        url: makeIllustratedAvatar("#46596b", "#eef3f7", "#7c94ab",
+          `<circle cx="60" cy="62" r="26" fill="none" stroke-width="4.5" stroke-opacity="0.9"/>
+           <line x1="42" y1="62" x2="78" y2="62" stroke-width="4"/>
+           <polygon points="60,24 28,88 92,88" fill="none" stroke-width="4.2"/>`)
+      },
+      {
+        label: "부엉이 (애쉬 모카)",
+        url: makeIllustratedAvatar("#6b5c53", "#f5f0ed", "#9e8b80",
+          `<polygon points="34,34 46,42 36,48" fill-opacity="0.9"/>
+           <polygon points="86,34 74,42 84,48" fill-opacity="0.9"/>
+           <ellipse cx="60" cy="64" rx="26" ry="26" fill-opacity="0.88"/>
+           <circle cx="48" cy="58" r="9" fill="#423731" stroke="none"/>
+           <circle cx="72" cy="58" r="9" fill="#423731" stroke="none"/>
+           <circle cx="48" cy="58" r="4" fill="#f5f0ed" stroke="none"/>
+           <circle cx="72" cy="58" r="4" fill="#f5f0ed" stroke="none"/>
+           <polygon points="57,66 63,66 60,74" fill="#f5f0ed" stroke="none"/>`)
+      },
+      {
+        label: "토끼 (더스티 피치)",
+        url: makeIllustratedAvatar("#8c6d68", "#faf1ef", "#bf9c96",
+          `<ellipse cx="48" cy="36" rx="7" ry="20" transform="rotate(-8 48 36)" fill-opacity="0.9"/>
+           <ellipse cx="72" cy="36" rx="7" ry="20" transform="rotate(8 72 36)" fill-opacity="0.9"/>
+           <ellipse cx="60" cy="70" rx="23" ry="20" fill-opacity="0.9"/>
+           <circle cx="50" cy="66" r="2.8" fill="#473330" stroke="none"/>
+           <circle cx="70" cy="66" r="2.8" fill="#473330" stroke="none"/>
+           <polygon points="58,73 62,73 60,76" fill="#473330" stroke="none"/>`)
+      },
+      {
+        label: "북극여우 (프로스트 실버)",
+        url: makeIllustratedAvatar("#72808c", "#f7fafc", "#a3b2bf",
+          `<polygon points="34,48 26,22 52,38" fill-opacity="0.95"/>
+           <polygon points="86,48 94,22 68,38" fill-opacity="0.95"/>
+           <polygon points="30,46 90,46 60,94" fill-opacity="0.92"/>
+           <circle cx="47" cy="60" r="2.8" fill="#2f3840" stroke="none"/>
+           <circle cx="73" cy="60" r="2.8" fill="#2f3840" stroke="none"/>
+           <circle cx="60" cy="88" r="3.2" fill="#2f3840" stroke="none"/>`)
+      },
+      {
+        label: "요정·페어리 날개 (애쉬 아쿠아)",
+        url: makeIllustratedAvatar("#567a7e", "#eef7f8", "#89b2b7",
+          `<path d="M58,60 C30,22 18,46 38,64 C22,74 32,96 58,72 Z" fill-opacity="0.86"/>
+           <path d="M62,60 C90,22 102,46 82,64 C98,74 88,96 62,72 Z" fill-opacity="0.86"/>
+           <circle cx="60" cy="64" r="4" fill-opacity="0.95"/>`)
+      },
+      {
+        label: "산맥과 안개 (미스트 블루)",
+        url: makeIllustratedAvatar("#596c7d", "#f0f4f8", "#8ca2b5",
+          `<polygon points="16,92 46,42 76,92" fill-opacity="0.85"/>
+           <polygon points="48,92 78,34 106,92" fill-opacity="0.92"/>
+           <circle cx="38" cy="30" r="7" fill-opacity="0.85"/>`)
+      },
+      {
+        label: "하트타입 (로즈 베리)",
+        url: makeIllustratedAvatar("#875c6c", "#f9eef2", "#b88a9b",
+          `<path d="M60,88 C60,88 26,66 26,44 C26,32 36,24 47,24 C54,24 58,28 60,33 C62,28 66,24 73,24 C84,24 94,32 94,44 C94,66 60,88 60,88 Z" fill-opacity="0.88"/>
+           <circle cx="60" cy="56" r="8" fill="#593844" stroke="none"/>`)
+      },
+      {
+        label: "보태니컬 리프 (모스 그린)",
+        url: makeIllustratedAvatar("#5d755d", "#f0f6f0", "#8fa88f",
+          `<path d="M32,88 C32,50 56,26 88,26 C88,58 64,88 32,88 Z" fill-opacity="0.86"/>
+           <line x1="32" y1="88" x2="76" y2="38" stroke="#364736" stroke-width="3"/>
+           <line x1="50" y1="68" x2="50" y2="52" stroke="#364736" stroke-width="2.5"/>
+           <line x1="62" y1="54" x2="76" y2="54" stroke="#364736" stroke-width="2.5"/>`)
+      },
+      {
+        label: "크리스탈 원석 (애쉬 바이올렛)",
+        url: makeIllustratedAvatar("#685d80", "#f2eff7", "#9b8fb5",
+          `<polygon points="60,18 82,42 74,94 46,94 38,42" fill-opacity="0.86"/>
+           <polyline points="38,42 60,52 82,42" fill="none" stroke="#3f3752" stroke-width="2.2"/>
+           <line x1="60" y1="18" x2="60" y2="94" stroke="#3f3752" stroke-width="2.2"/>`)
+      },
+      {
+        label: "테리안 마스크 (샌드 오크)",
+        url: makeIllustratedAvatar("#7d6e57", "#f7f4ee", "#b09f84",
+          `<polygon points="28,46 34,24 50,38 70,38 86,24 92,46 86,74 60,88 34,74" fill-opacity="0.88"/>
+           <ellipse cx="46" cy="58" rx="7" ry="4.5" fill="#3d3427" stroke="none"/>
+           <ellipse cx="74" cy="58" rx="7" ry="4.5" fill="#3d3427" stroke="none"/>
+           <polygon points="56,74 64,74 60,81" fill="#3d3427" stroke="none"/>`)
+      },
+      {
+        label: "선테리안 태양 (뮤트 앰버)",
+        url: makeIllustratedAvatar("#8a7356", "#faf5ed", "#bfa584",
+          `<circle cx="60" cy="60" r="18" fill-opacity="0.9"/>
+           <line x1="60" y1="24" x2="60" y2="34" stroke-width="3.5"/>
+           <line x1="60" y1="86" x2="60" y2="96" stroke-width="3.5"/>
+           <line x1="24" y1="60" x2="34" y2="60" stroke-width="3.5"/>
+           <line x1="86" y1="60" x2="96" y2="60" stroke-width="3.5"/>
+           <line x1="35" y1="35" x2="42" y2="42" stroke-width="3.5"/>
+           <line x1="78" y1="78" x2="85" y2="85" stroke-width="3.5"/>
+           <line x1="85" y1="35" x2="78" y2="42" stroke-width="3.5"/>
+           <line x1="42" y1="78" x2="35" y2="85" stroke-width="3.5"/>`)
+      },
+      {
+        label: "수달·물결 (코스트 애쉬)",
+        url: makeIllustratedAvatar("#4f6f7d", "#edf5f8", "#82a6b5",
+          `<path d="M22,52 Q40,42 60,52 T98,52" fill="none" stroke-width="4.5"/>
+           <path d="M22,68 Q40,58 60,68 T98,68" fill="none" stroke-width="4.5"/>
+           <path d="M22,84 Q40,74 60,84 T98,84" fill="none" stroke-width="4.5"/>
+           <circle cx="60" cy="32" r="8" fill-opacity="0.9"/>`)
+      },
+      {
+        label: "나비 (애쉬 라일락)",
+        url: makeIllustratedAvatar("#75637d", "#f6f0f8", "#a894b0",
+          `<path d="M58,58 C34,26 20,40 34,60 C22,74 36,92 58,70 Z" fill-opacity="0.88"/>
+           <path d="M62,58 C86,26 100,40 86,60 C98,74 84,92 62,70 Z" fill-opacity="0.88"/>
+           <line x1="60" y1="38" x2="60" y2="84" stroke-width="3.5"/>`)
+      },
+      {
+        label: "하울링 문 (딥 애쉬 인디고)",
+        url: makeIllustratedAvatar("#3f4e66", "#edf1f7", "#7689a6",
+          `<circle cx="68" cy="44" r="22" fill-opacity="0.35" stroke="none"/>
+           <polygon points="28,94 42,56 54,40 62,42 56,52 64,62 62,94" fill-opacity="0.92"/>`)
+      }
+    ];
+
+    const AVATAR_PRESETS = AVATAR_PRESETS_INFO.map((a) => a.url);
+
+    const BANNER_PRESETS = [
+      { id: "ash-blue", label: "애쉬 블루", gradient: "linear-gradient(135deg, #3c5166 0%, #5b7894 100%)" },
+      { id: "ash-sage", label: "애쉬 세이지", gradient: "linear-gradient(135deg, #425952 0%, #68877e 100%)" },
+      { id: "dusty-rose", label: "더스티 로즈", gradient: "linear-gradient(135deg, #5e434b 0%, #8c6570 100%)" },
+      { id: "dusty-mauve", label: "애쉬 라벤더", gradient: "linear-gradient(135deg, #4c4861 0%, #757091 100%)" },
+      { id: "warm-sand", label: "웜 샌드 오크", gradient: "linear-gradient(135deg, #5c4f3e 0%, #8a775f 100%)" },
+      { id: "ash-terracotta", label: "애쉬 테라코타", gradient: "linear-gradient(135deg, #61463d 0%, #8f6a5d 100%)" },
+      { id: "ash-mint", label: "애쉬 민트", gradient: "linear-gradient(135deg, #3c585c 0%, #5f858a 100%)" },
+      { id: "ash-plum", label: "애쉬 플럼", gradient: "linear-gradient(135deg, #574153 0%, #80617a 100%)" },
+      { id: "forest-moss", label: "포레스트 모스", gradient: "linear-gradient(135deg, #465747 0%, #6d856e 100%)" },
+      { id: "nordic-fog", label: "노르딕 포그", gradient: "linear-gradient(135deg, #545f6b 0%, #7e8d9c 100%)" },
+      { id: "twilight-aurora", label: "트와일라잇 뮤트", gradient: "linear-gradient(135deg, #3d4e61 0%, #5e536b 52%, #4a635d 100%)" },
+      { id: "oat-mist", label: "오트밀 미스트", gradient: "linear-gradient(135deg, #635c54 0%, #8f867c 100%)" },
+    ];
+
+    const PRONOUN_PRESETS = [
+      "그들/그들의 (They/Them)",
+      "그/그의 (He/Him)",
+      "그녀/그녀의 (She/Her)",
+      "그것/그것의 (It/Its)",
+      "이름/킨타입으로만 지칭",
+      "직접 입력",
+    ];
+
+    const THERIOTYPE_PRESETS = [
+      "늑대 테리안 (Wolf Therian)",
+      "여우 테리안 (Fox Therian)",
+      "고양이과 테리안 (Feline Therian)",
+      "조류 테리안 (Avian Therian)",
+      "사슴/초식 테리안 (Cervid Therian)",
+      "드래곤 아더킨 (Dragonkin)",
+      "신화/엘프/페어리 (Mythkin / Faekin)",
+      "픽션킨 (Fictionkin)",
+      "아더하트 / 하트타입 (Otherhearted)",
+      "폴리테리안 / 클라도테리안 (Poly / Clado)",
+      "팔레오테리안 (Paleotherian)",
+      "퀘스처닝 / 탐색 중 (Questioning)",
+      "직접 입력",
+    ];
+
+    const ALTERHUMAN_CATEGORIES = [
+      "전체",
+      "테리안 (Therian)",
+      "아더킨 / 신화킨",
+      "픽션킨 / 멀티버스",
+      "아더하트 / 하트타입",
+      "쿼드러빅스 / 기어",
+      "시프트 / 팩(Pack) 친목",
+    ];
+
+    function getCategoryBadgeClass(cat) {
+      if (!cat) return "badge-ash";
+      if (cat.includes("테리안")) return "badge-sage";
+      if (cat.includes("아더킨")) return "badge-mauve";
+      if (cat.includes("픽션킨")) return "badge-mint";
+      if (cat.includes("아더하트")) return "badge-rose";
+      if (cat.includes("쿼드러빅스")) return "badge-sand";
+      if (cat.includes("시프트")) return "badge-terra";
+      return "badge-ash";
+    }
+
+    const ROOM_ICON_TEXT_PRESETS = ["ΘΔ", "TH", "OK", "FK", "OH", "QD", "PK", "AH"];
+
+    // ============================================================================
+    // 2. Alterhuman Wiki & Glossary Database (위키 기반 상세 백과사전)
+    // ============================================================================
+    const WIKI_CATEGORIES = [
+      "전체",
+      "정체성 · 상위 개념",
+      "시프트(Shift) · 감각",
+      "활동 · 기어 · 상징",
+      "오해와 진실 · 매너",
+    ];
+
+    const ALTERHUMAN_WIKI_ENTRIES = [
+      {
+        id: "alterhuman",
+        category: "정체성 · 상위 개념",
+        termKo: "알터휴먼",
+        termEn: "Alterhuman",
+        badge: "최상위 포괄 용어",
+        badgeClass: "badge-ash",
+        summary: "전통적인 '인간'의 범주나 규범을 넘어서는 내면적 정체성·자아 인식을 가진 모든 이들을 포괄하는 상위 개념(Umbrella Term)입니다.",
+        details: [
+          "테리안(Therian), 아더킨(Otherkin), 픽션킨(Fictionkin), 아더하트(Otherhearted), 다중정체성 등을 모두 아우르는 포용적 용어입니다.",
+          "신체적으로는 자신이 인간임을 명확히 인지하고 있으나, 심리적·영적·신경학적·내면적으로 비인간적 정체성을 경험합니다."
+        ]
+      },
+      {
+        id: "therian",
+        category: "정체성 · 상위 개념",
+        termKo: "테리안 / 테리안스로프",
+        termEn: "Therian / Therianthrope",
+        badge: "지구 동물 정체성",
+        badgeClass: "badge-sage",
+        summary: "지구상에 현존하거나 실존했던 '비인간 동물(늑대, 여우, 고양이, 눈표범, 까마귀 등)'과 비육체적으로 자신을 동일시하는 알터휴먼입니다.",
+        details: [
+          "자신이 정체화하는 특정 동물 종을 '테리오타입(Theriotype)'이라고 부릅니다.",
+          "의도적으로 선택한 역할극(Roleplay)이 아니라, 내면에서 자연스럽고 비자발적으로 느껴지는 정체성입니다."
+        ]
+      },
+      {
+        id: "otherkin",
+        category: "정체성 · 상위 개념",
+        termKo: "아더킨",
+        termEn: "Otherkin",
+        badge: "신화·환상·비인간 존재",
+        badgeClass: "badge-mauve",
+        summary: "드래곤, 엘프, 천사, 악마, 요정(Fae), 인어, 외계 존재 등 신화나 전설, 혹은 지구 외의 비인간 존재로 자신을 정체화하는 사람들을 뜻합니다.",
+        details: [
+          "자신이 동일시하는 대상이나 종족을 '킨타입(Kintype)'이라고 부릅니다.",
+          "역사적으로는 1990년대 엘프 커뮤니티에서 시작되어 다양한 신화적·비물질적 존재로 확장되었습니다."
+        ]
+      },
+      {
+        id: "fictionkin",
+        category: "정체성 · 상위 개념",
+        termKo: "픽션킨",
+        termEn: "Fictionkin",
+        badge: "창작물·멀티버스 정체성",
+        badgeClass: "badge-mint",
+        summary: "소설, 영화, 애니메이션, 게임 등 창작물 속 특정 캐릭터나 허구적 종족(Fictotype)과 내면적·영적·심리적으로 동일시하는 정체성입니다.",
+        details: [
+          "단순히 캐릭터를 좋아하는 팬심이나 코스프레를 넘어, 내면의 자아나 전생·평행우주 기억(Canon/Non-canon)으로 경험하기도 합니다."
+        ]
+      },
+      {
+        id: "otherhearted",
+        category: "정체성 · 상위 개념",
+        termKo: "아더하트 / 하트타입",
+        termEn: "Otherhearted / Hearttype",
+        badge: "깊은 유대와 동질감",
+        badgeClass: "badge-rose",
+        summary: "자신이 그 동물이나 존재 '자체'라고 느끼는 것(Identifying AS)은 아니지만, 특정 존재와 가족처럼 깊은 정서적·영적 유대감(Identifying WITH)을 느끼는 상태입니다.",
+        details: [
+          "유대감을 느끼는 대상을 '하트타입(Hearttype)'이라고 부릅니다.",
+          "테리안/아더킨이면서 동시에 별도의 하트타입을 함께 가지는 경우도 많습니다."
+        ]
+      },
+      {
+        id: "subtypes",
+        category: "정체성 · 상위 개념",
+        termKo: "폴리테리안 · 클라도테리안 · 팔레오테리안 · 콘테리안",
+        termEn: "Poly / Clado / Paleo / Contherian",
+        badge: "세부 정체성 분류",
+        badgeClass: "badge-sand",
+        summary: "테리오타입과 킨타입의 수, 생물학적 범위, 시프트 양상에 따른 세부 분류입니다.",
+        details: [
+          "폴리테리안 / 폴리킨 (Polytherian / Polykin): 두 가지 이상의 테리오타입이나 킨타입을 함께 가지는 경우입니다.",
+          "클라도테리안 (Cladotherian): 단일 종(예: 회색늑대)이 아니라 생물학적 분류군 전체(예: 개과 전체, 고양이과 전체, 조류 전체)로 정체화하는 경우입니다.",
+          "팔레오테리안 (Paleotherian): 벨로키랍토르, 매머드, 검치호 등 멸종된 고대 동물로 정체화하는 테리안입니다.",
+          "콘테리안 & 선테리안 (Contherian & Suntherian): 일시적인 시프트(Shift) 없이 인간과 동물적 감각이 늘 일정하게 통합된 상태(Contherian)이거나, 기본 의식 자체가 테리오타입에 뿌리를 두어 잔잔한 변화만 겪는 상태(Suntherian)를 뜻합니다."
+        ]
+      },
+      {
+        id: "awakening",
+        category: "시프트(Shift) · 감각",
+        termKo: "어웨이크닝 (각성)",
+        termEn: "Awakening",
+        badge: "자아 발견",
+        badgeClass: "badge-terra",
+        summary: "자신이 알터휴먼, 테리안, 혹은 아더킨임을 처음으로 자각하고 자신의 테리오타입/킨타입을 깨닫게 되는 시기와 과정입니다.",
+        details: [
+          "어린 시절부터 느껴온 비인간적 본능이나 팬텀 감각의 의미를 이해하게 되는 순간을 뜻합니다.",
+          "아직 자신의 정확한 테리오타입을 찾아가는 과정은 '퀘스처닝(Questioning)'이라고 부릅니다."
+        ]
+      },
+      {
+        id: "shift",
+        category: "시프트(Shift) · 감각",
+        termKo: "시프트 (멘탈 · 팬텀 · 센서리 · 드림 · 카메오)",
+        termEn: "Shift (M-Shift, P-Shift, Sensory, Dream, Cameo)",
+        badge: "내면 감각의 발현",
+        badgeClass: "badge-rose",
+        summary: "인간 중심의 일상 의식에서 테리오타입/킨타입의 본능, 감각, 신체 감각이 일시적으로 강하게 표면화되는 경험입니다.",
+        details: [
+          "멘탈 시프트 (Mental Shift / M-Shift): 사고방식, 반응, 본능이 테리오타입 동물이나 킨타입에 가까워지는 경험입니다.",
+          "팬텀 시프트 (Phantom Shift / P-Shift): 실제로는 존재하지 않는 꼬리, 동물 귀, 날개, 주둥이(Muzzle), 발바닥 패드나 발톱 등의 감각(팬텀 림)이 생생하게 느껴지는 현상입니다.",
+          "센서리 시프트 (Sensory Shift): 청각, 후각, 시야 등 오감이 테리오타입의 감각처럼 예민하게 조율되는 경험입니다.",
+          "드림 시프트 (Dream Shift): 꿈속에서 자신의 테리오타입이나 킨타입의 모습으로 달리거나 살아가는 경험입니다.",
+          "카메오 시프트 (Cameo Shift): 자신의 원래 테리오타입이 아닌 다른 동물/존재의 시프트를 일시적으로 겪는 현상입니다."
+        ]
+      },
+      {
+        id: "dysphoria-euphoria",
+        category: "시프트(Shift) · 감각",
+        termKo: "종 디스포리아 & 종 유포리아",
+        termEn: "Species Dysphoria & Species Euphoria",
+        badge: "신체 위화감과 충족감",
+        badgeClass: "badge-mauve",
+        summary: "물리적 인간 신체와 내면의 정체성 사이에서 겪는 위화감(Dysphoria)과, 정체성이 존중받고 표현될 때 느끼는 행복감(Euphoria)입니다.",
+        details: [
+          "종 디스포리아 (Species Dysphoria): 꼬리나 날개가 없다는 사실, 네 발로 자유롭게 달릴 수 없는 신체 구조 등으로 인해 겪는 답답함이나 소외감입니다.",
+          "종 유포리아 (Species Euphoria): 자연 속에서 시간을 보내거나, 기어(마스크·꼬리) 착용, 쿼드러빅스, 보컬라이제이션, 덴(Den) 꾸미기 등을 통해 내면의 자아와 일치감을 느끼는 긍정적 해방감입니다."
+        ]
+      },
+      {
+        id: "theta-delta",
+        category: "활동 · 기어 · 상징",
+        termKo: "세타-델타 심볼 (ΘΔ)",
+        termEn: "Theta-Delta Symbol (ΘΔ)",
+        badge: "세계 공통 상징",
+        badgeClass: "badge-ash",
+        summary: "그리스 문자 세타(Θ, Therian의 첫 글자)와 델타(Δ, 변화·Shift를 의미)를 겹쳐 만든 테리안 커뮤니티의 공식 상징입니다.",
+        details: [
+          "2003년경 테리안 커뮤니티에서 고안되어 전 세계 테리안과 알터휴먼들이 서로를 알아보고 연대하는 상징으로 사용됩니다."
+        ]
+      },
+      {
+        id: "quadrobics",
+        category: "활동 · 기어 · 상징",
+        termKo: "쿼드러빅스 (쿼드로빅스)",
+        termEn: "Quadrobics",
+        badge: "사족보행 스포츠·활동",
+        badgeClass: "badge-sand",
+        summary: "두 손과 두 발(네 발)을 땅에 딛고 걷기(Walk), 속보(Trot), 구보(Canter), 달리기(Gallop), 점프(Jump) 등 동물의 움직임을 구현하는 신체 활동입니다.",
+        details: [
+          "손목과 손가락 관절 보호를 위해 손가락을 살짝 구부리거나 장갑(Paws)을 착용하고 잔디나 매트 위에서 연습하는 것이 안전합니다.",
+          "중요: 쿼드러빅스를 하지 않아도 100% 유효한 테리안이며, 반대로 테리안이 아닌 일반인도 스포츠로 쿼드러빅스를 즐길 수 있습니다."
+        ]
+      },
+      {
+        id: "gear-den-vocal",
+        category: "활동 · 기어 · 상징",
+        termKo: "기어(Gear) · 보컬라이제이션 · 네스팅(Den)",
+        termEn: "Gear, Vocalization & Nesting/Den",
+        badge: "표현과 보금자리",
+        badgeClass: "badge-sage",
+        summary: "알터휴먼들이 자신의 정체성을 표현하고 종 유포리아를 느끼기 위해 즐기는 다양한 문화 활동입니다.",
+        details: [
+          "기어 (Gear): 펠트와 물감으로 직접 만든 테리안 마스크(가면), 인조 꼬리(Faux Fur 권장), 귀 머리띠, 발장갑(Paws), 날개 소품 등을 뜻합니다.",
+          "보컬라이제이션 (Vocalization): 하울링, 그르렁거림, 야옹, 지저귐, 여우 울음소리(Gekkering) 등 동물 소리를 연습하고 교감하는 활동입니다.",
+          "네스팅 / 덴 (Nesting / Den): 이불, 베개, 조명, 나뭇잎 소품 등으로 자신의 테리오타입 서식지 같은 아늑한 보금자리(Den)를 만드는 활동입니다.",
+          "팩 / 플록 (Pack / Flock): 함께 소통하고 의지하는 테리안·알터휴먼 친구 모임이나 공동체를 뜻합니다."
+        ]
+      },
+      {
+        id: "faq-etiquette",
+        category: "오해와 진실 · 매너",
+        termKo: "자주 묻는 오해와 커뮤니티 매너",
+        termEn: "Myths, Facts & Community Etiquette",
+        badge: "필수 커뮤니티 가이드",
+        badgeClass: "badge-terra",
+        summary: "알터휴먼에 대한 외부의 오해를 바로잡고, 모든 멤버가 안전하게 소통하기 위한 핵심 가이드입니다.",
+        details: [
+          "1. 망상이나 정신질환이 아닙니다: 알터휴먼은 자신의 육체가 인간임을 정확히 알고 있으며 일상생활을 영위합니다.",
+          "2. 퍼리(Furry)와 알터휴먼의 차이: 퍼리는 의인화된 동물 캐릭터를 좋아하는 창작·취미 팬덤이고, 테리안/알터휴먼은 내면적 정체성입니다.",
+          "3. 기어와 시프트는 필수가 아닙니다: 마스크나 꼬리가 없어도, 시프트를 겪지 않는 콘테리안이어도 모두 동등하고 소중한 알터휴먼입니다.",
+          "4. 타인의 킨타입/테리오타입 및 대명사 존중: 흔한 동물이든 희귀 생물·신화 속 존재든 타인의 정체성을 평가하거나 의심(Fakeclaiming)하지 않습니다."
+        ]
+      }
+    ];
+
+    // ============================================================================
+    // 3. Profanity Filter & AI Moderation Engine
+    // ============================================================================
+    const PROFANITY_PATTERNS = [
+      /바\s*보/gi, /멍\s*청\s*이/gi, /멍\s*청/gi, /병\s*[신씬]/gi, /븅\s*[신씬]/gi,
+      /등\s*신/gi, /ㅂ\s*ㅅ/gi, /ㅄ/gi, /[시씨]\s*[발벌빨]/gi, /ㅅ\s*ㅂ/gi, /ㅆ\s*ㅂ/gi,
+      /존\s*나/gi, /졸\s*라/gi, /ㅈ\s*ㄴ/gi, /지\s*랄/gi, /ㅈ\s*ㄹ/gi, /개\s*새\s*끼/gi,
+      /새\s*끼/gi, /미\s*친/gi, /닥\s*쳐/gi, /느\s*금\s*마/gi, /니\s*애\s*미/gi, /fuck/gi, /shit/gi, /bitch/gi
+    ];
+
+    function filterProfanity(text) {
+      if (!text) return "";
+      let out = text;
+      for (const p of PROFANITY_PATTERNS) {
+        out = out.replace(p, "얍");
+      }
+      return out;
+    }
+
+    function analyzeMessageForReport(content, userReason) {
+      const raw = content || "";
+      if (/느금|니애미|죽어|자살|패드립/i.test(raw) || (userReason && userReason.includes("패드립"))) {
+        return {
+          isViolation: true,
+          severity: 3,
+          severityLabel: "3단계 (패드립 / 심한 혐오 및 중대 인격 모독)",
+          bannedDays: 45,
+          reason: "중대 규정 위반: 패드립 및 심한 비난/폭력성 발언",
+          detectedKeywords: ["중대 모욕/패드립"],
+          explanation: "AI 분석 결과 중대한 혐오 표현이 확인되어 1달 2주(45일) 계정 활동 정지 처분이 집행됩니다."
+        };
+      }
+      if (/병신|ㅂㅅ|미친|닥쳐|꺼져|쓰레기|비난|조롱/i.test(raw) || (userReason && userReason.includes("인격 모독"))) {
+        return {
+          isViolation: true,
+          severity: 2,
+          severityLabel: "2단계 (비난 / 정체성 조롱 / 인격 모독)",
+          bannedDays: 30,
+          reason: "규정 위반: 타인 정체성 조롱 및 인격 모독",
+          detectedKeywords: ["인격 모독/조롱"],
+          explanation: "AI 분석 결과 타인을 조롱하거나 인격을 훼손하는 표현이 확인되어 1달(30일) 활동 정지 처분이 집행됩니다."
+        };
+      }
+      return {
+        isViolation: true,
+        severity: 1,
+        severityLabel: "1단계 (우회 비속어 / 커뮤니티 가이드라인 위반)",
+        bannedDays: 14,
+        reason: "규정 위반: 변형 비속어 및 가이드라인 위반",
+        detectedKeywords: ["비속어/매너위반"],
+        explanation: "AI 규정 심사 결과 부적절한 대화 내용이 감지되어 2주(14일) 활동 제한 처분이 내려졌습니다."
+      };
+    }
+
+    // ============================================================================
+    // 4. Permanent Account & Community Protection + Real-Time Multi-User Cloud Sync
+    // ============================================================================
+    const CLOUD_API_BASE = "https://kvdb.io/UJi5qrxjVL5oMcMYSXCvLC";
+    const CLOUD_KEYS = {
+      USERS: "alterhuman_cloud_users_v1",
+      COMMUNITIES: "alterhuman_cloud_comms_v1",
+      DELETED_COMMS: "alterhuman_cloud_deleted_comms_v1",
+      MESSAGES: "alterhuman_cloud_msgs_v1",
+      POSTS: "alterhuman_cloud_posts_v1",
+      FOLLOWS: "alterhuman_cloud_follows_v1",
+      DMS: "alterhuman_cloud_dms_v1"
+    };
+
+    const STORAGE_KEYS = {
+      USER: "alterhuman_standalone_user_v1",
+      USERS_DIR: "alterhuman_standalone_users_dir_v1",
+      COMMUNITIES: "alterhuman_standalone_comms_v1",
+      DELETED_COMMS: "alterhuman_standalone_deleted_comms_v1",
+      MESSAGES: "alterhuman_standalone_msgs_v1",
+      JOINED: "alterhuman_standalone_joined_v1",
+      POSTS: "alterhuman_standalone_posts_v1",
+      FOLLOWS: "alterhuman_standalone_follows_v1",
+      DMS: "alterhuman_standalone_dms_v1",
+      THEME: "alterhuman_standalone_theme_v1"
+    };
+
+    const PERMANENT_LOON_ACCOUNT = {
+      id: "user-loon-admin",
+      username: "loon",
+      displayId: "Loon",
+      password: "1022",
+      name: "우엉김밥",
+      pronouns: "그들/그들의 · 테리안",
+      avatarUrl: AVATAR_PRESETS[0],
+      bannerUrl: "",
+      bannerColor: BANNER_PRESETS[0].gradient,
+      bio: "알터휴먼 라운지 최고 관리자 우엉김밥(Loon)입니다.",
+      statusMessage: "온라인",
+      status: "online",
+      createdAt: "2026-11-18"
+    };
+
+    function loadStorage(key, fallback) {
+      try {
+        const raw = localStorage.getItem(key);
+        return raw ? JSON.parse(raw) : fallback;
+      } catch (e) {
+        return fallback;
+      }
+    }
+
+    function saveStorage(key, val) {
+      try {
+        localStorage.setItem(key, JSON.stringify(val));
+      } catch (e) {}
+    }
+
+    function formatKoreanTime(dateObj = new Date()) {
+      const hours = dateObj.getHours();
+      const minutes = String(dateObj.getMinutes()).padStart(2, "0");
+      const period = hours >= 12 ? "오후" : "오전";
+      const displayHour = hours % 12 === 0 ? 12 : hours % 12;
+      return `${period} ${displayHour}:${minutes}`;
+    }
+
+    const SUPER_ADMIN_IDENTIFIERS = ["우엉김밥", "loon", "알터휴먼", "alterhuman", "참치김밥"];
+
+    function isSuperAdmin(user) {
+      if (!user) return false;
+      const u = (user.username || "").trim().toLowerCase();
+      const n = (user.name || "").trim().toLowerCase();
+      return SUPER_ADMIN_IDENTIFIERS.includes(u) || SUPER_ADMIN_IDENTIFIERS.includes(n);
+    }
+
+    function isUserBanned(user) {
+      if (!user || isSuperAdmin(user) || !user.bannedUntil) return false;
+      return new Date(user.bannedUntil).getTime() > Date.now();
+    }
+
+    function escapeHtml(str) {
+      return String(str || "")
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#39;");
+    }
+
+    const AI_SEED_COMM_IDS = ["comm-therian-den", "comm-quadrobics-gear", "comm-otherkin-sanctuary", "comm-otherhearted-forest"];
+    const AI_BOT_USER_IDS = ["system-alterhuman", "bot-redfox", "bot-dragon"];
+
+    // 기존에 만들어진 모든 유저 계정을 100% 복구·통합하고, 우엉김밥(ID: Loon, PW: 1022) 계정을 영구 보장합니다.
+    function loadAndRestoreUsersDirectory() {
+      const rawStandalone = loadStorage(STORAGE_KEYS.USERS_DIR, {});
+      const rawNextDir = loadStorage("alterhuman_users_directory", {});
+      const rawChamchiDir = loadStorage("chamchi_users_directory", {});
+
+      const merged = {};
+
+      for (const source of [rawChamchiDir, rawNextDir, rawStandalone]) {
+        if (source && typeof source === "object") {
+          for (const [k, u] of Object.entries(source)) {
+            if (u && typeof u === "object" && !AI_BOT_USER_IDS.includes(u.id)) {
+              const normKey = (u.username || k).trim().toLowerCase();
+              if (normKey) {
+                merged[normKey] = { ...merged[normKey], ...u, username: normKey };
+              }
+            }
+          }
+        }
+      }
+
+      try {
+        for (let i = 0; i < localStorage.length; i++) {
+          const k = localStorage.key(i);
+          if (k && (k.startsWith("alterhuman_user_vault_") || k.startsWith("chamchi_user_vault_"))) {
+            const u = loadStorage(k, null);
+            if (u && u.username && !AI_BOT_USER_IDS.includes(u.id)) {
+              const normKey = u.username.trim().toLowerCase();
+              merged[normKey] = { ...merged[normKey], ...u, username: normKey };
+            }
+          }
+        }
+      } catch (e) {}
+
+      const existingLoon = merged["loon"] || {};
+      const isOldBlackBanner = !existingLoon.bannerColor || existingLoon.bannerColor.includes("#09090b");
+      const isOldTextAvatar = !existingLoon.avatarUrl || existingLoon.avatarUrl.includes("%2318181b") || existingLoon.avatarUrl.includes("font-family");
+      merged["loon"] = {
+        ...PERMANENT_LOON_ACCOUNT,
+        ...existingLoon,
+        username: "loon",
+        password: existingLoon.password || "1022",
+        name: existingLoon.name || "우엉김밥",
+        avatarUrl: isOldTextAvatar ? AVATAR_PRESETS[0] : existingLoon.avatarUrl,
+        bannerColor: isOldBlackBanner ? BANNER_PRESETS[0].gradient : existingLoon.bannerColor,
+      };
+
+      saveStorage(STORAGE_KEYS.USERS_DIR, merged);
+      saveStorage("alterhuman_users_directory", merged);
+      saveStorage("alterhuman_user_vault_loon", merged["loon"]);
+      return merged;
+    }
+
+    function loadAndRestoreCurrentUser(usersDir) {
+      let cur = loadStorage(STORAGE_KEYS.USER, null) || loadStorage("alterhuman_site_user_v1", null);
+      if (cur && AI_BOT_USER_IDS.includes(cur.id)) {
+        cur = null;
+      }
+      if (cur && cur.username) {
+        const key = cur.username.trim().toLowerCase();
+        if (usersDir[key]) {
+          cur = usersDir[key];
+          saveStorage(STORAGE_KEYS.USER, cur);
+          saveStorage("alterhuman_site_user_v1", cur);
+        }
+      }
+      if (!cur && usersDir["loon"]) {
+        cur = usersDir["loon"];
+        saveStorage(STORAGE_KEYS.USER, cur);
+        saveStorage("alterhuman_site_user_v1", cur);
+      }
+      return cur;
+    }
+
+    function loadCleanCommunities() {
+      const rawStandalone = loadStorage(STORAGE_KEYS.COMMUNITIES, []);
+      const rawNext = loadStorage("alterhuman_custom_communities", []);
+      const deletedIds = loadStorage(STORAGE_KEYS.DELETED_COMMS, []);
+      const map = new Map();
+      for (const list of [rawNext, rawStandalone]) {
+        if (Array.isArray(list)) {
+          for (const c of list) {
+            if (c && c.id && !AI_SEED_COMM_IDS.includes(c.id) && !deletedIds.includes(c.id)) {
+              map.set(c.id, c);
+            }
+          }
+        }
+      }
+      const cleaned = Array.from(map.values());
+      saveStorage(STORAGE_KEYS.COMMUNITIES, cleaned);
+      return cleaned;
+    }
+
+    function loadCleanMessages() {
+      const raw = loadStorage(STORAGE_KEYS.MESSAGES, {});
+      const cleaned = {};
+      for (const [cid, list] of Object.entries(raw || {})) {
+        if (!AI_SEED_COMM_IDS.includes(cid)) {
+          cleaned[cid] = list;
+        }
+      }
+      saveStorage(STORAGE_KEYS.MESSAGES, cleaned);
+      return cleaned;
+    }
+
+    function loadCleanJoined() {
+      const raw = loadStorage(STORAGE_KEYS.JOINED, []);
+      const cleaned = (Array.isArray(raw) ? raw : []).filter((id) => !AI_SEED_COMM_IDS.includes(id));
+      saveStorage(STORAGE_KEYS.JOINED, cleaned);
+      return cleaned;
+    }
+
+    function loadCleanPosts() {
+      const raw = loadStorage(STORAGE_KEYS.POSTS, []);
+      const cleaned = (Array.isArray(raw) ? raw : []).filter((p) => p && p.id !== "seed-post-1" && !AI_BOT_USER_IDS.includes(p.authorId));
+      saveStorage(STORAGE_KEYS.POSTS, cleaned);
+      return cleaned;
+    }
+
+    function loadCleanFollows() {
+      const raw = loadStorage(STORAGE_KEYS.FOLLOWS, []);
+      const cleaned = (Array.isArray(raw) ? raw : []).filter((f) => f && !AI_BOT_USER_IDS.includes(f.followerId) && !AI_BOT_USER_IDS.includes(f.followingId));
+      saveStorage(STORAGE_KEYS.FOLLOWS, cleaned);
+      return cleaned;
+    }
+
+    const initialUsersDir = loadAndRestoreUsersDirectory();
+    const initialCurrentUser = loadAndRestoreCurrentUser(initialUsersDir);
+
+    const state = {
+      theme: loadStorage(STORAGE_KEYS.THEME, "dark"),
+      currentUser: initialCurrentUser,
+      usersDir: initialUsersDir,
+      communities: loadCleanCommunities(),
+      deletedCommIds: loadStorage(STORAGE_KEYS.DELETED_COMMS, []),
+      messagesByComm: loadCleanMessages(),
+      joinedCommunityIds: loadCleanJoined(),
+      posts: loadCleanPosts(),
+      follows: loadCleanFollows(),
+      dms: loadStorage(STORAGE_KEYS.DMS, {}),
+      cloudConnected: false,
+
+      // Auth onboarding state
+      authTab: "login",
+      authError: "",
+      signupUsername: "",
+      signupPassword: "",
+      signupName: "",
+      signupPronounPreset: PRONOUN_PRESETS[0],
+      signupPronounCustom: PRONOUN_PRESETS[0],
+      signupTheriotypePreset: THERIOTYPE_PRESETS[0],
+      signupTheriotypeCustom: THERIOTYPE_PRESETS[0].split(" (")[0],
+      signupPronounText: `${PRONOUN_PRESETS[0]} · ${THERIOTYPE_PRESETS[0].split(" (")[0]}`,
+      signupAvatar: AVATAR_PRESETS[0],
+      signupBannerColor: BANNER_PRESETS[0].gradient,
+      signupBannerUrl: "",
+      signupBio: "반갑습니다. 알터휴먼 라운지에서 소통해요.",
+      signupStatusMsg: "온라인",
+      loginUsername: "Loon",
+      loginPassword: "",
+
+      // Navigation & Active Views
+      activeCommunityId: null,
+      activeChannelId: "general",
+      activeDmUser: null,
+      lobbySearch: "",
+      lobbyCategory: "전체",
+      showQuickGuide: true,
+      showRulesPanel: true,
+      showMembersSidebar: true,
+      chatInputText: "",
+      chatPendingImage: "",
+
+      // Modals & Drawers
+      isDrawerOpen: false,
+      isWikiModalOpen: false,
+      wikiCategory: "전체",
+      wikiSearch: "",
+      isCreateModalOpen: false,
+      isProfileModalOpen: false,
+      isDmDrawerOpen: false,
+      isSupportModalOpen: false,
+      inspectedUser: null,
+      newPostContent: "",
+      newPostImage: "",
+      reportingMessage: null,
+      reportVerdict: null,
+      adminBanningUser: null,
+      lightboxImage: null,
+
+      // Create community form
+      newCommName: "",
+      newCommDesc: "",
+      newCommRules: "1. 모든 멤버의 테리오타입(Theriotype), 킨타입(Kintype), 하트타입 및 대명사(Pronouns)를 존중합니다.\n2. 타인의 정체성 진위를 의심(Fakeclaiming)하거나 기어·쿼드러빅스 유무로 차별하지 않습니다.\n3. 주제와 무관한 도배 및 비난·혐오 발언은 제한됩니다.",
+      newCommCategory: "테리안 (Therian)",
+      newCommEmoji: "ΘΔ",
+      newCommIconImage: "",
+      newCommBanner: BANNER_PRESETS[0].gradient,
+      newCommBannerImage: "",
+      newCommTags: "#알터휴먼 #테리안 #아더킨 #시프트 #쿼드러빅스"
+    };
+
+    // ============================================================================
+    // Real-Time Multi-User Cloud Sync (KVDB + BroadcastChannel)
+    // 다른 기기·브라우저 사용자들과 실시간으로 커뮤니티·채팅·계정·DM 공유 (데이터 삭제 절대 방지)
+    // ============================================================================
+    const bcChannel = typeof BroadcastChannel !== "undefined" ? new BroadcastChannel("alterhuman_lounge_realtime_v1") : null;
+    if (bcChannel) {
+      bcChannel.onmessage = () => {
+        state.usersDir = loadAndRestoreUsersDirectory();
+        state.communities = loadCleanCommunities();
+        state.messagesByComm = loadCleanMessages();
+        state.posts = loadCleanPosts();
+        state.follows = loadCleanFollows();
+        state.dms = loadStorage(STORAGE_KEYS.DMS, {});
+        safeReactiveRender();
+      };
+    }
+
+    function notifyRealtimePeers() {
+      if (bcChannel) {
+        try { bcChannel.postMessage({ t: Date.now() }); } catch (e) {}
+      }
+    }
+
+    async function cloudGet(key, fallback) {
+      try {
+        const res = await fetch(`${CLOUD_API_BASE}/${key}?_t=${Date.now()}`, { cache: "no-store" });
+        if (res.ok) {
+          state.cloudConnected = true;
+          return await res.json();
+        }
+      } catch (e) {}
+      return fallback;
+    }
+
+    async function cloudPut(key, data) {
+      try {
+        await fetch(`${CLOUD_API_BASE}/${key}`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(data)
+        });
+        state.cloudConnected = true;
+      } catch (e) {}
+      notifyRealtimePeers();
+    }
+
+    function isUserTypingInInput() {
+      const el = document.activeElement;
+      if (!el) return false;
+      const tag = (el.tagName || "").toUpperCase();
+      return tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT";
+    }
+
+    function safeReactiveRender() {
+      // 키보드 입력 중일 때는 포커스가 풀리지 않도록 채팅 스트림이나 로비 그리드만 부분 업데이트
+      if (isUserTypingInInput()) {
+        const activeId = document.activeElement ? document.activeElement.id : "";
+        if (activeId === "chat-msg-input" && state.activeCommunityId) {
+          const box = document.getElementById("chat-scroll-box");
+          if (box) {
+            const wasNearBottom = box.scrollHeight - box.scrollTop - box.clientHeight < 120;
+            box.innerHTML = renderChatMessagesInnerHtml();
+            if (wasNearBottom) box.scrollTop = box.scrollHeight;
+          }
+        }
+        return;
+      }
+      render();
+    }
+
+    async function syncWithCloud() {
+      try {
+        // 1. Deleted community tombstones
+        const cloudDeleted = await cloudGet(CLOUD_KEYS.DELETED_COMMS, []);
+        if (Array.isArray(cloudDeleted)) {
+          const mergedDeleted = Array.from(new Set([...state.deletedCommIds, ...cloudDeleted]));
+          state.deletedCommIds = mergedDeleted;
+          saveStorage(STORAGE_KEYS.DELETED_COMMS, mergedDeleted);
+        }
+
+        // 2. Users Directory (절대 기존 계정 삭제 없이 양방향 병합)
+        const cloudUsers = await cloudGet(CLOUD_KEYS.USERS, null);
+        let changed = false;
+        if (cloudUsers && typeof cloudUsers === "object") {
+          const prevCount = Object.keys(state.usersDir).length;
+          const mergedUsers = { ...cloudUsers, ...state.usersDir };
+          for (const [k, cu] of Object.entries(cloudUsers)) {
+            if (cu && cu.username && !AI_BOT_USER_IDS.includes(cu.id)) {
+              const nk = cu.username.trim().toLowerCase();
+              mergedUsers[nk] = { ...cu, ...(state.usersDir[nk] || {}), username: nk };
+            }
+          }
+          // Loon 최고 관리자 계정 보장
+          mergedUsers["loon"] = {
+            ...PERMANENT_LOON_ACCOUNT,
+            ...(mergedUsers["loon"] || {}),
+            username: "loon",
+            password: (mergedUsers["loon"] && mergedUsers["loon"].password) || "1022",
+            name: (mergedUsers["loon"] && mergedUsers["loon"].name) || "우엉김밥"
+          };
+          state.usersDir = mergedUsers;
+          saveStorage(STORAGE_KEYS.USERS_DIR, mergedUsers);
+          if (Object.keys(mergedUsers).length !== prevCount) changed = true;
+          if (Object.keys(mergedUsers).length > Object.keys(cloudUsers).length) {
+            cloudPut(CLOUD_KEYS.USERS, mergedUsers);
+          }
+        } else {
+          cloudPut(CLOUD_KEYS.USERS, state.usersDir);
+        }
+
+        // 3. Communities (절대 기존 커뮤니티 삭제 없이 병합)
+        const cloudComms = await cloudGet(CLOUD_KEYS.COMMUNITIES, null);
+        if (Array.isArray(cloudComms)) {
+          const commMap = new Map();
+          for (const c of [...cloudComms, ...state.communities]) {
+            if (c && c.id && !AI_SEED_COMM_IDS.includes(c.id) && !state.deletedCommIds.includes(c.id)) {
+              const existing = commMap.get(c.id);
+              if (existing) {
+                const memMap = new Map();
+                for (const m of [...(existing.members || []), ...(c.members || [])]) {
+                  if (m && m.userId) memMap.set(m.userId, m);
+                }
+                const mergedMembers = Array.from(memMap.values());
+                commMap.set(c.id, { ...existing, ...c, members: mergedMembers, memberCount: Math.max(1, mergedMembers.length) });
+              } else {
+                commMap.set(c.id, c);
+              }
+            }
+          }
+          const mergedComms = Array.from(commMap.values());
+          if (JSON.stringify(mergedComms) !== JSON.stringify(state.communities)) {
+            state.communities = mergedComms;
+            saveStorage(STORAGE_KEYS.COMMUNITIES, mergedComms);
+            changed = true;
+          }
+          if (mergedComms.length > cloudComms.length) {
+            cloudPut(CLOUD_KEYS.COMMUNITIES, mergedComms);
+          }
+        } else if (state.communities.length > 0) {
+          cloudPut(CLOUD_KEYS.COMMUNITIES, state.communities);
+        }
+
+        // 4. Messages
+        const cloudMsgs = await cloudGet(CLOUD_KEYS.MESSAGES, null);
+        if (cloudMsgs && typeof cloudMsgs === "object") {
+          const mergedMsgs = { ...state.messagesByComm };
+          for (const [cid, list] of Object.entries(cloudMsgs)) {
+            if (AI_SEED_COMM_IDS.includes(cid) || state.deletedCommIds.includes(cid)) continue;
+            const localList = mergedMsgs[cid] || [];
+            const msgMap = new Map();
+            for (const m of [...localList, ...(Array.isArray(list) ? list : [])]) {
+              if (m && m.id) msgMap.set(m.id, m);
+            }
+            mergedMsgs[cid] = Array.from(msgMap.values());
+          }
+          if (JSON.stringify(mergedMsgs) !== JSON.stringify(state.messagesByComm)) {
+            state.messagesByComm = mergedMsgs;
+            saveStorage(STORAGE_KEYS.MESSAGES, mergedMsgs);
+            changed = true;
+          }
+        }
+
+        // 5. Posts & DMs
+        const cloudPosts = await cloudGet(CLOUD_KEYS.POSTS, null);
+        if (Array.isArray(cloudPosts)) {
+          const postMap = new Map();
+          for (const p of [...cloudPosts, ...state.posts]) {
+            if (p && p.id && !AI_BOT_USER_IDS.includes(p.authorId)) postMap.set(p.id, p);
+          }
+          const mergedPosts = Array.from(postMap.values());
+          if (mergedPosts.length !== state.posts.length) {
+            state.posts = mergedPosts;
+            saveStorage(STORAGE_KEYS.POSTS, mergedPosts);
+            changed = true;
+          }
+        }
+
+        const cloudDms = await cloudGet(CLOUD_KEYS.DMS, null);
+        if (cloudDms && typeof cloudDms === "object") {
+          const mergedDms = { ...state.dms };
+          for (const [convId, list] of Object.entries(cloudDms)) {
+            const localList = mergedDms[convId] || [];
+            const dmMap = new Map();
+            for (const m of [...localList, ...(Array.isArray(list) ? list : [])]) {
+              if (m && m.id) dmMap.set(m.id, m);
+            }
+            mergedDms[convId] = Array.from(dmMap.values());
+          }
+          if (JSON.stringify(mergedDms) !== JSON.stringify(state.dms)) {
+            state.dms = mergedDms;
+            saveStorage(STORAGE_KEYS.DMS, mergedDms);
+            changed = true;
+          }
+        }
+
+        if (changed) {
+          safeReactiveRender();
+        }
+      } catch (e) {}
+    }
+
+    function applyTheme() {
+      if (state.theme === "dark") {
+        document.documentElement.classList.add("dark");
+      } else {
+        document.documentElement.classList.remove("dark");
+      }
+      saveStorage(STORAGE_KEYS.THEME, state.theme);
+    }
+    applyTheme();
+
+    function compressImageFromFile(file, maxW = 800, maxH = 800) {
+      return new Promise((resolve) => {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          const img = new Image();
+          img.onload = () => {
+            let w = img.width;
+            let h = img.height;
+            if (w > maxW || h > maxH) {
+              const r = Math.min(maxW / w, maxH / h);
+              w = Math.round(w * r);
+              h = Math.round(h * r);
+            }
+            const canvas = document.createElement("canvas");
+            canvas.width = w;
+            canvas.height = h;
+            const ctx = canvas.getContext("2d");
+            ctx.drawImage(img, 0, 0, w, h);
+            resolve(canvas.toDataURL("image/jpeg", 0.84));
+          };
+          img.src = e.target.result;
+        };
+        reader.readAsDataURL(file);
+      });
+    }
+
+    function getFollowCounts(userId) {
+      const followers = state.follows.filter((f) => f.followingId === userId).length;
+      const following = state.follows.filter((f) => f.followerId === userId).length;
+      return { followers, following };
+    }
+
+    function isFollowingUser(targetId) {
+      if (!state.currentUser) return false;
+      return state.follows.some((f) => f.followerId === state.currentUser.id && f.followingId === targetId);
+    }
+
+    function findUserById(userId) {
+      if (state.currentUser && state.currentUser.id === userId) return state.currentUser;
+      for (const u of Object.values(state.usersDir)) {
+        if (u.id === userId || u.username === userId) return u;
+      }
+      for (const c of state.communities) {
+        const m = (c.members || []).find((mem) => mem.userId === userId);
+        if (m) {
+          return {
+            id: m.userId,
+            username: m.username || m.name,
+            name: m.name,
+            pronouns: m.pronouns,
+            avatarUrl: m.avatarUrl || AVATAR_PRESETS[0],
+            bannerUrl: "",
+            bannerColor: BANNER_PRESETS[0].gradient,
+            bio: "알터휴먼 라운지 멤버",
+            statusMessage: "온라인",
+            status: "online"
+          };
+        }
+      }
+      return null;
+    }
+
+    function renderCommIcon(comm, sizeClass = "w-12 h-12", textClass = "text-sm") {
+      if (comm.iconImageUrl) {
+        return `<img src="${comm.iconImageUrl}" class="${sizeClass} rounded-xl object-cover bg-[#455a6e] border border-app shrink-0" />`;
+      }
+      return `<div class="${sizeClass} rounded-xl bg-[#4f687d] text-[#f2f6fa] border border-[#728ea8]/40 flex items-center justify-center font-bold ${textClass} shrink-0 shadow-sm">${escapeHtml(comm.iconEmoji || "ΘΔ")}</div>`;
+    }
+
+    function getCommBannerStyle(comm) {
+      if (comm.bannerImageUrl) {
+        return `background: url(${comm.bannerImageUrl}) center/cover no-repeat;`;
+      }
+      if (comm.bannerGradient && !comm.bannerGradient.includes("#09090b")) {
+        return `background: ${comm.bannerGradient};`;
+      }
+      return `background: ${BANNER_PRESETS[0].gradient};`;
+    }
+
+    // ============================================================================
+    // 5. Render Functions (다채로운 저채도 색감 & 24종 프로필 아바타 프리셋)
+    // ============================================================================
+    function renderAuthOnboarding() {
+      const savedAccounts = Object.values(state.usersDir);
+
+      return `
+        <div class="h-screen w-full overflow-y-auto bg-app-canvas">
+          <!-- Top Sticky Header Bar -->
+          <div class="sticky top-0 z-30 w-full px-5 py-3 bg-app-surface/95 border-b border-app backdrop-blur flex items-center justify-between">
+            <div class="flex items-center gap-2">
+              <div class="w-7 h-7 rounded-lg btn-ash flex items-center justify-center text-xs font-black shadow-sm">ΘΔ</div>
+              <span class="font-bold text-sm tracking-tight text-app-main">알터휴먼 라운지 (Alterhuman Lounge)</span>
+              <span class="hidden sm:inline-block px-2 py-0.5 rounded-md badge-sage text-[10px] font-semibold">테리안</span>
+              <span class="hidden md:inline-block px-2 py-0.5 rounded-md badge-mauve text-[10px] font-semibold">아더킨</span>
+              <span class="hidden md:inline-block px-2 py-0.5 rounded-md badge-rose text-[10px] font-semibold">아더하트</span>
+            </div>
+            <div class="flex items-center gap-2">
+              <button onclick="openWikiModal()" class="px-3 py-1.5 rounded-lg badge-sage hover:opacity-90 text-xs font-semibold transition">
+                알터휴먼 위키백과 / 용어 사전
+              </button>
+              <button onclick="toggleTheme()" class="px-3 py-1.5 rounded-lg badge-sand text-xs font-semibold">
+                ${state.theme === "dark" ? "라이트 모드" : "다크 모드"}
+              </button>
+            </div>
+          </div>
+
+          <!-- Main Scrollable Content -->
+          <div class="max-w-6xl mx-auto px-4 sm:px-6 py-6 sm:py-10 grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+            <!-- Left Panel: Multi-Tone Calm Hero & Live Profile Preview -->
+            <div class="lg:col-span-5 hero-multitone-card rounded-2xl p-6 sm:p-8 shadow-lg space-y-6">
+              <div class="space-y-3">
+                <div class="flex flex-wrap items-center gap-1.5">
+                  <span class="px-2.5 py-0.5 rounded-md bg-white/12 border border-white/20 text-[11px] font-semibold text-[#dce7f3]">ΘΔ ALTERHUMAN</span>
+                  <span class="px-2 py-0.5 rounded-md bg-[#73968a]/30 border border-[#9bc2b5]/30 text-[10px] font-semibold text-[#d4ebe3]">Therian</span>
+                  <span class="px-2 py-0.5 rounded-md bg-[#9c7884]/30 border border-[#c7a1ad]/30 text-[10px] font-semibold text-[#f0d8df]">Otherkin</span>
+                </div>
+                <h1 class="text-2xl sm:text-3xl font-extrabold tracking-tight leading-snug text-white">
+                  알터휴먼 라운지
+                </h1>
+                <p class="text-xs sm:text-sm text-[#d2dce6] leading-relaxed">
+                  테리안(Therian), 아더킨(Otherkin), 픽션킨(Fictionkin), 아더하트(Otherhearted) 및 퀘스처닝을 위한 독립 계정 기반 실시간 소통 공간입니다.
+                </p>
+              </div>
+
+              <!-- Saved Account Quick Restore Card -->
+              ${savedAccounts.length > 0 ? `
+                <div class="p-4 rounded-xl bg-[#1c222b]/75 border border-white/15 space-y-2.5">
+                  <div class="flex items-center justify-between">
+                    <span class="text-xs font-bold text-[#e6edf5]">보존된 내 계정 목록 (클릭 시 즉시 입장)</span>
+                    <span class="text-[10px] px-2 py-0.5 rounded bg-[#58786e]/50 text-[#d3ebe3] border border-[#82ab9e]/35">데이터 영구 보호됨</span>
+                  </div>
+                  <div class="space-y-1.5 max-h-48 overflow-y-auto">
+                    ${savedAccounts.map((acc) => `
+                      <button type="button" onclick="quickLoginSavedAccount('${escapeHtml(acc.username)}')" class="w-full p-2.5 rounded-xl bg-[#272f3b]/90 hover:bg-[#323c4b] border border-white/12 flex items-center justify-between text-left transition">
+                        <div class="flex items-center gap-2.5 min-w-0">
+                          <img src="${acc.avatarUrl || AVATAR_PRESETS[0]}" class="w-9 h-9 rounded-lg object-cover bg-[#3a4d61]" />
+                          <div class="min-w-0">
+                            <div class="flex items-center gap-1.5">
+                              <span class="font-bold text-xs text-white truncate">${escapeHtml(acc.name)}</span>
+                              <span class="text-[11px] text-[#b8c5d4]">(@${escapeHtml(acc.displayId || acc.username)})</span>
+                              ${isSuperAdmin(acc) ? `<span class="px-1.5 py-0.5 rounded text-[9px] font-bold bg-[#e6cfd5] text-[#4a2c34]">최고 관리자</span>` : ""}
+                            </div>
+                            <p class="text-[10px] text-[#c2cedb] truncate">${escapeHtml(acc.pronouns || "")}</p>
+                          </div>
+                        </div>
+                        <span class="px-2.5 py-1 rounded-lg bg-[#627e96] hover:bg-[#718fa8] text-white text-[11px] font-bold shrink-0">바로 입장</span>
+                      </button>
+                    `).join("")}
+                  </div>
+                </div>
+              ` : ""}
+
+              <!-- Live Profile Card Preview -->
+              <div>
+                <div class="text-xs font-bold text-[#ced9e6] uppercase tracking-wider mb-2">
+                  실시간 프로필 미리보기
+                </div>
+                <div class="rounded-2xl overflow-hidden bg-[#1d222b] border border-white/15 shadow-md">
+                  <div class="h-20 w-full bg-cover bg-center" style="background: ${state.signupBannerUrl ? `url(${state.signupBannerUrl}) center/cover no-repeat` : state.signupBannerColor}"></div>
+                  <div class="px-5 pb-5 pt-0 relative">
+                    <div class="relative -mt-8 mb-2.5 inline-block">
+                      <img src="${state.signupAvatar}" class="w-16 h-16 rounded-xl border-4 border-[#1d222b] bg-[#334457] object-cover" />
+                    </div>
+                    <div class="flex flex-wrap items-center gap-1.5">
+                      <h3 id="signup-preview-name" class="font-bold text-base text-white">${escapeHtml(state.signupName || state.signupUsername || "내 이름")}</h3>
+                      <span id="signup-preview-pronouns" class="px-2 py-0.5 rounded text-[11px] font-medium bg-[#353247] text-[#dad4eb] border border-[#7c749e]/40">
+                        ${escapeHtml(state.signupPronounText || "대명사 · 테리오타입")}
+                      </span>
+                    </div>
+                    <p id="signup-preview-status" class="text-xs text-[#a9b8c7] mt-1">${escapeHtml(state.signupStatusMsg || "상태 메시지")}</p>
+                    <p id="signup-preview-bio" class="text-xs text-[#d8e1eb] mt-2 line-clamp-2 bg-[#262c38] p-2.5 rounded-lg border border-white/10">
+                      ${escapeHtml(state.signupBio || "소개글 미리보기")}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Right Panel: Login / Signup Form -->
+            <div class="lg:col-span-7 bg-app-surface rounded-2xl border border-app p-6 sm:p-8 shadow-sm">
+              <div class="flex flex-col sm:flex-row sm:items-center justify-between border-b border-app pb-4 mb-5 gap-3">
+                <div>
+                  <h2 class="text-lg font-extrabold text-app-main">${state.authTab === "signup" ? "새 계정 만들기" : "계정 로그인"}</h2>
+                  <p class="text-xs text-app-muted mt-0.5">
+                    ${state.authTab === "signup" ? "아이디, 이름, 테리오타입/킨타입 및 24종 프로필 아바타를 설정하세요." : "기존에 만든 아이디와 비밀번호로 로그인합니다."}
+                  </p>
+                </div>
+                <div class="flex bg-app-subtle border border-app p-1 rounded-xl text-xs font-bold self-start">
+                  <button type="button" onclick="switchAuthTab('login')" class="px-3.5 py-1.5 rounded-lg transition ${state.authTab === 'login' ? 'btn-ash shadow-sm' : 'text-app-muted'}">로그인</button>
+                  <button type="button" onclick="switchAuthTab('signup')" class="px-3.5 py-1.5 rounded-lg transition ${state.authTab === 'signup' ? 'btn-sage shadow-sm' : 'text-app-muted'}">계정 만들기</button>
+                </div>
+              </div>
+
+              ${state.authError ? `<div class="mb-4 p-3 rounded-xl badge-rose text-xs font-bold">${escapeHtml(state.authError)}</div>` : ""}
+
+              ${state.authTab === "signup" ? `
+                <form onsubmit="handleSignup(event)" class="space-y-4">
+                  <div class="p-4 rounded-xl bg-app-subtle border border-app space-y-3">
+                    <span class="text-[11px] font-bold uppercase tracking-wider text-app-muted">1. 로그인 계정 정보</span>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      <div>
+                        <label class="block text-xs font-bold mb-1">아이디 (ID) *</label>
+                        <input type="text" required value="${escapeHtml(state.signupUsername)}" oninput="updateSignupField('signupUsername', this.value)" placeholder="로그인 아이디" class="w-full px-3 py-2 rounded-lg input-ash text-xs sm:text-sm" />
+                      </div>
+                      <div>
+                        <label class="block text-xs font-bold mb-1">비밀번호 * (4자 이상)</label>
+                        <input type="password" required value="${escapeHtml(state.signupPassword)}" oninput="updateSignupField('signupPassword', this.value)" placeholder="비밀번호 4자 이상" class="w-full px-3 py-2 rounded-lg input-ash text-xs sm:text-sm" />
+                      </div>
+                    </div>
+                  </div>
+
+                  <div class="p-4 rounded-xl bg-app-subtle border border-app space-y-3">
+                    <span class="text-[11px] font-bold uppercase tracking-wider text-app-muted">2. 정체성 & 커뮤니티 노출 정보</span>
+                    <div>
+                      <label class="block text-xs font-bold mb-1">이름 / 닉네임 (Name) *</label>
+                      <input type="text" required value="${escapeHtml(state.signupName)}" oninput="updateSignupField('signupName', this.value)" placeholder="채팅방에서 표시될 이름" class="w-full px-3 py-2 rounded-lg input-ash text-xs sm:text-sm" />
+                    </div>
+
+                    <div>
+                      <label class="block text-xs font-bold mb-1.5">
+                        테리오타입 / 킨타입 / 하트타입 (프리셋 선택 또는 직접 입력) *
+                      </label>
+                      <div class="flex flex-wrap gap-1.5 mb-2">
+                        ${THERIOTYPE_PRESETS.map((tp) => `
+                          <button type="button" onclick="selectSignupTheriotype('${tp.replace(/'/g, "\\'")}')" class="px-2.5 py-1 rounded-md text-[11px] font-medium border transition ${state.signupTheriotypePreset === tp ? 'btn-sage border-transparent' : 'bg-app-surface text-app-muted border-app hover:border-[#68877e]'}">
+                            ${escapeHtml(tp)}
+                          </button>
+                        `).join("")}
+                      </div>
+                      <input id="signup-theriotype-input" type="text" value="${escapeHtml(state.signupTheriotypeCustom)}" oninput="updateSignupTheriotypeCustom(this.value)" placeholder="테리오타입, 킨타입, 하트타입을 직접 입력하세요 (예: 북극늑대, 붉은여우, 드래곤킨)" class="w-full px-3 py-2 rounded-lg input-ash text-xs sm:text-sm" />
+                    </div>
+
+                    <div>
+                      <label class="block text-xs font-bold mb-1.5">
+                        대명사 (Pronouns · 선택 또는 직접 입력) *
+                      </label>
+                      <div class="flex flex-wrap gap-1.5 mb-2">
+                        ${PRONOUN_PRESETS.map((pr) => `
+                          <button type="button" onclick="selectSignupPronoun('${pr.replace(/'/g, "\\'")}')" class="px-2.5 py-1 rounded-md text-[11px] font-medium border transition ${state.signupPronounPreset === pr ? 'btn-ash border-transparent' : 'bg-app-surface text-app-muted border-app hover:border-[#6b88a6]'}">
+                            ${escapeHtml(pr)}
+                          </button>
+                        `).join("")}
+                      </div>
+                      <input id="signup-pronoun-input" type="text" required value="${escapeHtml(state.signupPronounCustom)}" oninput="updateSignupPronounCustom(this.value)" placeholder="대명사를 직접 입력하세요 (예: 그/그의, 그녀/그녀의, 그들/그들의)" class="w-full px-3 py-2 rounded-lg input-ash text-xs sm:text-sm" />
+                    </div>
+                  </div>
+
+                  <div class="p-4 rounded-xl bg-app-subtle border border-app space-y-3">
+                    <div class="flex flex-wrap items-center justify-between gap-2">
+                      <span class="text-[11px] font-bold uppercase tracking-wider text-app-muted">3. 기본 프로필 사진 (24종 저채도 일러스트) & 커버 설정</span>
+                      <div class="flex items-center gap-2">
+                        <label class="px-2.5 py-1 rounded-md badge-ash text-[11px] font-bold cursor-pointer">
+                          갤러리에서 프로필 사진 선택
+                          <input type="file" accept="image/*" onchange="handleSignupAvatarUpload(event)" class="hidden" />
+                        </label>
+                        <label class="px-2.5 py-1 rounded-md badge-mauve text-[11px] font-bold cursor-pointer">
+                          갤러리에서 배경 선택
+                          <input type="file" accept="image/*" onchange="handleSignupBannerUpload(event)" class="hidden" />
+                        </label>
+                      </div>
+                    </div>
+
+                    <!-- 24 Diverse Low-Saturation Avatar Presets -->
+                    <div class="grid grid-cols-6 sm:grid-cols-8 gap-2">
+                      ${AVATAR_PRESETS_INFO.map((av) => `
+                        <button type="button" onclick="selectSignupAvatar('${av.url}')" class="group relative rounded-xl overflow-hidden border-2 aspect-square transition ${state.signupAvatar === av.url ? 'border-[#5c7893] scale-105 shadow-md ring-2 ring-[#5c7893]/40' : 'border-transparent opacity-85 hover:opacity-100'}" title="${av.label}">
+                          <img src="${av.url}" class="w-full h-full object-cover" />
+                          <span class="
+                            absolute inset-x-0 bottom-0 bg-black/60 text-white text-[9px] py-0.5 px-1 truncate opacity-0 group-hover:opacity-100 transition text-center
+                          ">${av.label.split(" (")[0]}</span>
+                        </button>
+                      `).join("")}
+                    </div>
+
+                    <!-- 12 Multi-Tone Low-Saturation Banner Presets -->
+                    <div>
+                      <span class="block text-[11px] font-semibold text-app-muted mb-1">커버 배경 색상 (12종 저채도 테마)</span>
+                      <div class="grid grid-cols-4 sm:grid-cols-6 gap-1.5">
+                        ${BANNER_PRESETS.map((bp) => `
+                          <button type="button" onclick="selectSignupBanner('${bp.gradient}')" class="h-7 rounded-lg border text-[10px] text-white/90 font-semibold px-1 truncate ${state.signupBannerColor === bp.gradient && !state.signupBannerUrl ? 'border-white ring-2 ring-[#5c7893] shadow-sm' : 'border-transparent opacity-85 hover:opacity-100'}" style="background:${bp.gradient}" title="${bp.label}">${bp.label}</button>
+                        `).join("")}
+                      </div>
+                    </div>
+
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                      <input type="text" value="${escapeHtml(state.signupStatusMsg)}" oninput="updateSignupField('signupStatusMsg', this.value)" placeholder="상태 메시지" class="px-3 py-2 rounded-lg input-ash text-xs" />
+                      <input type="text" value="${escapeHtml(state.signupBio)}" oninput="updateSignupField('signupBio', this.value)" placeholder="한 줄 소개 (BIO)" class="px-3 py-2 rounded-lg input-ash text-xs" />
+                    </div>
+                  </div>
+
+                  <button type="submit" class="w-full py-3.5 px-5 rounded-xl btn-sage font-bold text-sm shadow-sm">
+                    계정 만들고 입장하기
+                  </button>
+                </form>
+              ` : `
+                <form onsubmit="handleLogin(event)" class="space-y-4">
+                  <div class="p-4 rounded-xl bg-app-subtle border border-app space-y-3">
+                    <div>
+                      <label class="block text-xs font-bold mb-1">아이디 (ID)</label>
+                      <input type="text" required value="${escapeHtml(state.loginUsername)}" oninput="state.loginUsername = this.value" placeholder="아이디 입력 (예: Loon)" class="w-full px-3.5 py-2.5 rounded-lg input-ash text-sm" />
+                    </div>
+                    <div>
+                      <label class="block text-xs font-bold mb-1">비밀번호</label>
+                      <input type="password" required value="${escapeHtml(state.loginPassword)}" oninput="state.loginPassword = this.value" placeholder="비밀번호 입력" class="w-full px-3.5 py-2.5 rounded-lg input-ash text-sm" />
+                    </div>
+                  </div>
+                  <button type="submit" class="w-full py-3.5 px-5 rounded-xl btn-ash font-bold text-sm shadow-sm">
+                    로그인하고 입장하기
+                  </button>
+                </form>
+              `}
+            </div>
+          </div>
+        </div>
+      `;
+    }
+
+    function renderTopNav() {
+      const u = state.currentUser;
+      const iAmAdmin = isSuperAdmin(u);
+      const joinedComms = state.communities.filter((c) => state.joinedCommunityIds.includes(c.id));
+
+      return `
+        <nav class="h-14 px-3 sm:px-5 bg-app-surface border-b border-app flex items-center justify-between gap-2 flex-shrink-0 z-20">
+          <div class="flex items-center gap-2 min-w-0">
+            <button onclick="toggleDrawer(true)" class="px-3 py-1.5 rounded-lg badge-ash hover:opacity-90 text-xs font-bold transition">
+              메뉴
+            </button>
+
+            <button onclick="goLobby()" class="flex items-center gap-2 px-2 py-1 rounded-lg hover:bg-app-subtle transition">
+              <div class="w-7 h-7 rounded-lg btn-ash flex items-center justify-center text-xs font-black shadow-sm">ΘΔ</div>
+              <div class="text-left hidden sm:block">
+                <div class="flex items-center gap-1.5">
+                  <span class="font-bold text-sm tracking-tight text-app-main">알터휴먼</span>
+                  ${iAmAdmin ? `<span class="px-1.5 py-0.5 rounded text-[10px] font-bold badge-rose">최고 관리자</span>` : ""}
+                </div>
+              </div>
+            </button>
+
+            <div class="h-4 w-px bg-app-muted hidden md:block mx-1"></div>
+
+            <div class="hidden md:flex items-center gap-1.5 overflow-x-auto py-1">
+              <button onclick="goLobby()" class="px-3 py-1.5 rounded-lg text-xs font-bold transition ${state.activeCommunityId === null && state.activeDmUser === null ? 'btn-ash shadow-sm' : 'bg-app-subtle text-app-muted border border-app'}">
+                커뮤니티 로비
+              </button>
+              ${joinedComms.map((c) => {
+                const isActive = state.activeCommunityId === c.id && !state.activeDmUser;
+                return `
+                  <button onclick="enterCommunity('${c.id}')" class="px-2.5 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 transition max-w-[160px] ${isActive ? 'btn-sage shadow-sm' : 'bg-app-subtle text-app-main border border-app'}">
+                    ${c.iconImageUrl ? `<img src="${c.iconImageUrl}" class="w-4 h-4 rounded object-cover" />` : `<span class="text-[10px] font-mono opacity-85">[${escapeHtml(c.iconEmoji || "ΘΔ")}]</span>`}
+                    <span class="truncate">${escapeHtml(c.name)}</span>
+                  </button>
+                `;
+              }).join("")}
+            </div>
+          </div>
+
+          <div class="flex items-center gap-1.5 sm:gap-2 flex-shrink-0">
+            <button onclick="openWikiModal()" class="px-2.5 py-1.5 rounded-lg text-xs font-bold badge-sage hover:opacity-90 transition">
+              알터휴먼 위키
+            </button>
+
+            <button onclick="state.isDmDrawerOpen = true; render()" class="px-2.5 py-1.5 rounded-lg text-xs font-bold badge-mauve hover:opacity-90 transition">
+              1:1 DM
+            </button>
+
+            <button onclick="state.isSupportModalOpen = true; render()" class="px-2.5 py-1.5 rounded-lg text-xs font-semibold hidden lg:inline-block badge-sand hover:opacity-90 transition">
+              문의/신고
+            </button>
+
+            <button onclick="state.isCreateModalOpen = true; render()" class="px-3 py-1.5 rounded-lg btn-ash font-bold text-xs shadow-sm">
+              + 커뮤니티 만들기
+            </button>
+
+            <button onclick="toggleTheme()" class="px-2.5 py-1.5 rounded-lg bg-app-subtle border border-app text-xs font-semibold">
+              ${state.theme === "dark" ? "라이트" : "다크"}
+            </button>
+
+            <button onclick="state.isProfileModalOpen = true; render()" class="pl-1.5 pr-2.5 py-1 rounded-lg bg-app-subtle border border-app flex items-center gap-2 transition hover:border-[#78899c]" title="프로필 및 아바타 변경">
+              <img src="${u.avatarUrl}" class="w-7 h-7 rounded-md object-cover bg-[#455b73]" />
+              <div class="text-left hidden sm:block max-w-[125px]">
+                <p class="text-xs font-bold leading-none truncate text-app-main">${escapeHtml(u.name)}</p>
+                <p class="text-[10px] text-app-muted truncate mt-0.5">${escapeHtml(u.pronouns)}</p>
+              </div>
+            </button>
+          </div>
+        </nav>
+      `;
+    }
+
+    function renderFilteredCommunityCards(msgCounts) {
+      const filtered = state.communities.filter((c) => {
+        const matchCat = state.lobbyCategory === "전체" || c.category === state.lobbyCategory;
+        const q = state.lobbySearch.trim().toLowerCase();
+        const matchQ = !q || c.name.toLowerCase().includes(q) || c.description.toLowerCase().includes(q) || (c.tags || []).some((t) => t.toLowerCase().includes(q));
+        return matchCat && matchQ;
+      });
+      if (filtered.length === 0) {
+        return {
+          count: 0,
+          html: `
+            <div class="col-span-1 md:col-span-2 rounded-2xl bg-app-surface border border-app p-12 text-center space-y-4 shadow-sm">
+              <div class="flex items-center justify-center gap-2">
+                <span class="w-10 h-10 rounded-xl badge-ash flex items-center justify-center font-bold text-xs">ΘΔ</span>
+                <span class="w-10 h-10 rounded-xl badge-sage flex items-center justify-center font-bold text-xs">TH</span>
+                <span class="w-10 h-10 rounded-xl badge-rose flex items-center justify-center font-bold text-xs">OK</span>
+              </div>
+              <div>
+                <h3 class="font-bold text-base text-app-main">
+                  아직 개설된 커뮤니티가 없습니다.
+                </h3>
+                <p class="text-xs text-app-muted mt-1 max-w-md mx-auto leading-relaxed">
+                  가장 먼저 방장이 되어 관심사로 첫 커뮤니티를 만들어보세요. 12종의 저채도 테마 배너 또는 내 갤러리 사진으로 방을 꾸밀 수 있습니다.
+                </p>
+              </div>
+              <button onclick="state.isCreateModalOpen = true; render()" class="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl btn-sage text-xs font-bold shadow-sm">
+                + 첫 커뮤니티 만들기
+              </button>
+            </div>
+          `
+        };
+      }
+      const tagBadgeClasses = ["badge-ash", "badge-sage", "badge-mauve", "badge-rose", "badge-sand", "badge-mint"];
+      return {
+        count: filtered.length,
+        html: filtered.map((comm) => {
+          const isJoined = state.joinedCommunityIds.includes(comm.id);
+          const cnt = msgCounts[comm.id] || 0;
+          const totalMem = Math.max((comm.members || []).length, comm.memberCount || 1, 1);
+          return `
+            <div onclick="enterCommunity('${comm.id}')" class="group cursor-pointer rounded-2xl overflow-hidden bg-app-surface border border-app hover:border-[#78899c] transition shadow-sm flex flex-col justify-between">
+              <div>
+                <div class="h-24 w-full p-4 flex items-start justify-between" style="${getCommBannerStyle(comm)}">
+                  <div class="flex items-center gap-1.5 flex-wrap">
+                    <span class="px-2.5 py-0.5 rounded-md text-[11px] font-semibold bg-[#1c222b]/75 text-[#eef3f8] backdrop-blur-sm border border-white/15">${escapeHtml(comm.category)}</span>
+                    <span class="px-2 py-0.5 rounded-md text-[10px] font-semibold bg-[#1c222b]/70 text-[#d5e0eb]">대화 ${cnt}개</span>
+                  </div>
+                  ${isJoined ? `<span class="px-2.5 py-0.5 rounded-md text-[10px] font-bold bg-[#e2eee9] text-[#2e4a42] shadow-sm">참여 중</span>` : ""}
+                </div>
+                <div class="p-5 pt-0 relative">
+                  <div class="flex items-end justify-between -mt-6 mb-3">
+                    <div class="rounded-xl border-4 border-[var(--app-surface)] overflow-hidden shadow-sm">
+                      ${renderCommIcon(comm, "w-12 h-12", "text-xs")}
+                    </div>
+                    <span class="text-[11px] text-app-muted">방장: <strong class="text-app-main">${escapeHtml(comm.createdBy)}</strong></span>
+                  </div>
+                  <h3 class="font-bold text-base text-app-main group-hover:text-[#5c7893] transition">${escapeHtml(comm.name)}</h3>
+                  <p class="text-xs text-app-muted mt-1.5 line-clamp-2 leading-relaxed">${escapeHtml(comm.description)}</p>
+                  <div class="mt-3 flex flex-wrap gap-1.5">
+                    ${(comm.tags || []).map((t, i) => `<span class="px-2 py-0.5 rounded-md text-[11px] ${tagBadgeClasses[i % tagBadgeClasses.length]}">${escapeHtml(t)}</span>`).join("")}
+                  </div>
+                </div>
+              </div>
+              <div class="px-5 py-3 bg-app-subtle border-t border-app flex items-center justify-between text-xs">
+                <div class="flex items-center gap-3 text-app-muted">
+                  <span class="font-semibold text-app-main">접속 ${totalMem}/${totalMem}명</span>
+                  <span>규칙 ${(comm.rules || []).length}개</span>
+                </div>
+                <span class="font-bold text-[#5c7893]">입장하기 →</span>
+              </div>
+            </div>
+          `;
+        }).join("")
+      };
+    }
+
+    function renderLobby() {
+      const msgCounts = {};
+      state.communities.forEach((c) => {
+        msgCounts[c.id] = (state.messagesByComm[c.id] || []).length;
+      });
+
+      const ranked = [...state.communities].sort((a, b) => (msgCounts[b.id] || 0) - (msgCounts[a.id] || 0));
+      const { count: filteredCount, html: filteredHtml } = renderFilteredCommunityCards(msgCounts);
+
+      return `
+        <div class="flex-1 overflow-y-auto bg-app-canvas p-4 sm:p-6 lg:p-8">
+          <div class="max-w-6xl mx-auto space-y-6">
+            <!-- Multi-Tone Calm Hero Banner -->
+            <div class="rounded-2xl p-6 sm:p-8 hero-multitone-card shadow-md">
+              <div class="flex flex-col md:flex-row md:items-center justify-between gap-5">
+                <div class="space-y-2 max-w-2xl">
+                  <div class="flex flex-wrap items-center gap-1.5">
+                    <span class="px-2.5 py-0.5 rounded-md bg-white/12 border border-white/20 text-[11px] font-semibold text-[#e0eaf5]">ΘΔ ALTERHUMAN LOUNGE</span>
+                    <span class="px-2 py-0.5 rounded-md bg-[#6b8f82]/35 border border-[#96bfb1]/30 text-[10px] font-semibold text-[#d7ede5]">테리안 · 시프트</span>
+                    <span class="px-2 py-0.5 rounded-md bg-[#9c7380]/35 border border-[#c79da9]/30 text-[10px] font-semibold text-[#f2dce2]">아더킨 · 픽션킨</span>
+                    <span class="px-2 py-0.5 rounded-md bg-[#998467]/35 border border-[#c4af91]/30 text-[10px] font-semibold text-[#f0e5d5]">쿼드러빅스 · 기어</span>
+                  </div>
+                  <h1 class="text-xl sm:text-2xl font-extrabold tracking-tight text-white">알터휴먼 실시간 오픈 커뮤니티</h1>
+                  <p class="text-xs sm:text-sm text-[#d2dce6] leading-relaxed">
+                    테리안(Therian), 아더킨(Otherkin), 픽션킨(Fictionkin), 아더하트(Otherhearted) 대화방에 참여하거나 직접 새로운 커뮤니티를 개설할 수 있습니다.
+                  </p>
+                </div>
+                <div class="flex flex-wrap items-center gap-2 shrink-0">
+                  <button onclick="openWikiModal()" class="px-4 py-2.5 rounded-xl bg-white/12 hover:bg-white/20 border border-white/25 text-white font-bold text-xs transition">
+                    알터휴먼 위키 사전
+                  </button>
+                  <button onclick="state.isCreateModalOpen = true; render()" class="px-4 py-2.5 rounded-xl bg-[#e8eff6] hover:bg-white text-[#283645] font-bold text-xs transition shadow-sm">
+                    + 새 커뮤니티 만들기
+                  </button>
+                </div>
+              </div>
+
+              <div class="mt-5 max-w-2xl">
+                <input id="lobby-search-input" type="text" value="${escapeHtml(state.lobbySearch)}" oninput="handleLobbySearchInput(this.value)" placeholder="커뮤니티 이름, 테리오타입/킨타입, 해시태그 검색..." class="w-full px-4 py-2.5 rounded-xl bg-[#1e242e]/80 text-white placeholder:text-[#a3b1c2] text-sm border border-white/20 focus:outline-none focus:border-[#a8c0d8]" />
+              </div>
+            </div>
+
+            <!-- Collapsible Alterhuman Wiki Quick Summary -->
+            <div class="rounded-2xl bg-app-surface border border-app overflow-hidden shadow-sm">
+              <div class="px-5 py-3 flex items-center justify-between border-b border-app bg-app-subtle">
+                <div class="flex items-center gap-2">
+                  <span class="px-2 py-0.5 rounded badge-sage font-bold text-[11px]">WIKI GUIDE</span>
+                  <h2 class="text-xs sm:text-sm font-bold text-app-main">알터휴먼(Alterhuman) 핵심 개념 요약</h2>
+                </div>
+                <div class="flex items-center gap-2">
+                  <button onclick="openWikiModal()" class="text-xs font-bold underline text-[#5c7893]">전체 위키 열기</button>
+                  <button onclick="state.showQuickGuide = !state.showQuickGuide; render()" class="px-2.5 py-1 rounded-md bg-app-muted text-xs font-bold">
+                    ${state.showQuickGuide ? "접기" : "펼치기"}
+                  </button>
+                </div>
+              </div>
+              ${state.showQuickGuide ? `
+                <div class="p-4 sm:p-5 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 text-xs">
+                  <div class="p-3.5 rounded-xl bg-app-subtle border border-app border-t-4 border-t-[#63877d] space-y-1.5">
+                    <div class="flex items-center justify-between">
+                      <span class="font-bold text-app-main">테리안 (Therian)</span>
+                      <span class="px-1.5 py-0.5 rounded text-[10px] font-semibold badge-sage">ΘΔ 동물</span>
+                    </div>
+                    <p class="text-app-muted leading-relaxed text-[11px]">늑대, 여우, 고양이, 조류 등 지구상에 실존하는 비인간 동물(테리오타입)과 내면적으로 동일시하는 정체성입니다.</p>
+                  </div>
+                  <div class="p-3.5 rounded-xl bg-app-subtle border border-app border-t-4 border-t-[#7d7399] space-y-1.5">
+                    <div class="flex items-center justify-between">
+                      <span class="font-bold text-app-main">아더킨 · 픽션킨 · 하트</span>
+                      <span class="px-1.5 py-0.5 rounded text-[10px] font-semibold badge-mauve">Kintype</span>
+                    </div>
+                    <p class="text-app-muted leading-relaxed text-[11px]">신화 속 존재(Otherkin), 창작물 캐릭터(Fictionkin)로 정체화하거나, 특정 존재와 깊은 유대감(Otherhearted)을 느낍니다.</p>
+                  </div>
+                  <div class="p-3.5 rounded-xl bg-app-subtle border border-app border-t-4 border-t-[#966b77] space-y-1.5">
+                    <div class="flex items-center justify-between">
+                      <span class="font-bold text-app-main">시프트 & 어웨이크닝</span>
+                      <span class="px-1.5 py-0.5 rounded text-[10px] font-semibold badge-rose">Shift</span>
+                    </div>
+                    <p class="text-app-muted leading-relaxed text-[11px]">멘탈 시프트(M-Shift), 보이지 않는 귀·꼬리·날개 감각이 느껴지는 팬텀 시프트(P-Shift) 등 다양한 감각을 경험합니다.</p>
+                  </div>
+                  <div class="p-3.5 rounded-xl bg-app-subtle border border-app border-t-4 border-t-[#968066] space-y-1.5">
+                    <div class="flex items-center justify-between">
+                      <span class="font-bold text-app-main">쿼드러빅스 & 기어</span>
+                      <span class="px-1.5 py-0.5 rounded text-[10px] font-semibold badge-sand">Activity</span>
+                    </div>
+                    <p class="text-app-muted leading-relaxed text-[11px]">사족보행 스포츠 쿼드러빅스와 테리안 마스크·꼬리 등 기어 제작을 통해 교류합니다. (필수 조건이 아닙니다.)</p>
+                  </div>
+                </div>
+              ` : ""}
+            </div>
+
+            <!-- TOP 3 Ranked Communities -->
+            ${ranked.length > 0 ? `
+            <div class="rounded-2xl p-5 bg-app-surface border border-app space-y-4 shadow-sm">
+              <div>
+                <h2 class="text-sm sm:text-base font-bold flex items-center gap-2 text-app-main">
+                  <span>실시간 인기 커뮤니티 TOP</span>
+                  <span class="text-[10px] font-bold px-2 py-0.5 rounded badge-sand">채팅량 기준</span>
+                </h2>
+              </div>
+              <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                ${ranked.slice(0, 3).map((comm, idx) => {
+                  const medals = ["1위", "2위", "3위"];
+                  const medalBadges = ["badge-rose", "badge-ash", "badge-sage"];
+                  const cnt = msgCounts[comm.id] || 0;
+                  const totalMem = Math.max((comm.members || []).length, comm.memberCount || 1, 1);
+                  return `
+                    <div onclick="enterCommunity('${comm.id}')" class="p-4 rounded-xl border border-app hover:border-[#78899c] bg-app-subtle cursor-pointer transition flex flex-col justify-between">
+                      <div>
+                        <div class="flex items-center justify-between mb-2.5">
+                          <span class="px-2 py-0.5 rounded text-[11px] font-bold ${medalBadges[idx]}">${medals[idx]}</span>
+                          <span class="text-[11px] text-app-muted font-semibold">대화 ${cnt}개</span>
+                        </div>
+                        <div class="flex items-center gap-3">
+                          ${renderCommIcon(comm, "w-11 h-11", "text-xs")}
+                          <div class="min-w-0">
+                            <h3 class="font-bold text-sm truncate text-app-main">${escapeHtml(comm.name)}</h3>
+                            <p class="text-[11px] text-app-muted truncate">${escapeHtml(comm.description)}</p>
+                          </div>
+                        </div>
+                      </div>
+                      <div class="mt-3 pt-2.5 border-t border-app flex items-center justify-between text-xs">
+                        <span class="text-app-muted">접속 ${totalMem}/${totalMem}명</span>
+                        <span class="font-bold text-[#5c7893]">입장하기 →</span>
+                      </div>
+                    </div>
+                  `;
+                }).join("")}
+              </div>
+            </div>
+            ` : ""}
+
+            <!-- Category Tabs -->
+            <div class="flex items-center justify-between gap-3 flex-wrap">
+              <div class="flex items-center gap-1.5 overflow-x-auto pb-1">
+                ${ALTERHUMAN_CATEGORIES.map((cat) => {
+                  const isSelected = state.lobbyCategory === cat;
+                  const badgeCls = getCategoryBadgeClass(cat);
+                  return `
+                    <button onclick="state.lobbyCategory = '${cat}'; render()" class="px-3 py-1.5 rounded-lg text-xs font-bold whitespace-nowrap transition ${isSelected ? badgeCls + ' shadow-sm ring-1 ring-current/30' : 'bg-app-surface text-app-muted border border-app hover:border-[#78899c]'}">
+                      ${escapeHtml(cat)}
+                    </button>
+                  `;
+                }).join("")}
+              </div>
+              <div class="text-xs text-app-muted">
+                개설된 커뮤니티 총 <strong id="lobby-communities-count" class="text-app-main">${filteredCount}</strong>개
+              </div>
+            </div>
+
+            <!-- Communities Grid -->
+            <div id="lobby-communities-grid" class="grid grid-cols-1 md:grid-cols-2 gap-5">
+              ${filteredHtml}
+            </div>
+          </div>
+        </div>
+      `;
+    }
+
+    function renderChatMessagesInnerHtml() {
+      const comm = state.communities.find((c) => c.id === state.activeCommunityId);
+      if (!comm || !state.currentUser) return "";
+      const u = state.currentUser;
+      const iAmAdmin = isSuperAdmin(u);
+      const isOwner = comm.createdById === u.id || comm.createdBy === u.name || comm.createdBy === u.username;
+      const activeCh = (comm.channels || []).find((ch) => ch.id === state.activeChannelId) || (comm.channels || [])[0];
+      const allMsgs = (state.messagesByComm[comm.id] || []).filter((m) => (m.channelId || "general") === activeCh.id);
+      const members = comm.members && comm.members.length > 0 ? comm.members : [{
+        userId: u.id, username: u.username, name: u.name, pronouns: u.pronouns, avatarUrl: u.avatarUrl, role: "방장"
+      }];
+
+      if (allMsgs.length === 0) {
+        return `
+          <div class="h-full flex flex-col items-center justify-center text-center p-8 text-app-muted space-y-1">
+            <p class="font-bold text-sm text-app-main">아직 작성된 메시지가 없습니다.</p>
+            <p class="text-xs">첫 번째 메시지를 보내 대화를 시작해 보세요.</p>
+          </div>
+        `;
+      }
+
+      return allMsgs.map((msg) => {
+        if (msg.isSystem) {
+          return `<div class="flex justify-center my-2"><span class="px-3.5 py-1 rounded-full text-xs font-semibold badge-sand">${escapeHtml(msg.content)}</span></div>`;
+        }
+        const isMe = msg.senderId === u.id;
+        const isSenderAdm = msg.senderRole === "관리자" || SUPER_ADMIN_IDENTIFIERS.includes((msg.senderName || "").trim().toLowerCase());
+        const readUsers = msg.readUserIds || [msg.senderId];
+        const unreadCnt = Math.max(0, members.filter((m) => !readUsers.includes(m.userId)).length);
+
+        return `
+          <div class="group flex items-start gap-3 ${isMe ? 'flex-row-reverse' : 'flex-row'}">
+            <button onclick="openUserProfile('${msg.senderId}')" class="flex-shrink-0" title="프로필 보기">
+              <img src="${msg.senderAvatar || AVATAR_PRESETS[0]}" class="w-9 h-9 rounded-xl bg-[#41566b] object-cover border border-app" />
+            </button>
+            <div class="flex flex-col max-w-[78%] sm:max-w-[68%] ${isMe ? 'items-end' : 'items-start'}">
+              <div class="flex items-center gap-1.5 mb-1 flex-wrap ${isMe ? 'flex-row-reverse' : 'flex-row'}">
+                <button onclick="openUserProfile('${msg.senderId}')" class="font-bold text-xs text-app-main hover:underline">${escapeHtml(msg.senderName)}</button>
+                ${msg.senderPronouns ? `<span class="px-1.5 py-0.5 rounded text-[10px] font-medium badge-mauve">${escapeHtml(msg.senderPronouns)}</span>` : ""}
+                ${isSenderAdm ? `<span class="px-1.5 py-0.5 rounded text-[10px] font-bold badge-rose">최고 관리자</span>` : msg.senderRole === "방장" ? `<span class="px-1.5 py-0.5 rounded text-[10px] font-bold badge-sand">방장</span>` : msg.senderRole ? `<span class="px-1.5 py-0.5 rounded text-[10px] font-bold badge-sage">${escapeHtml(msg.senderRole)}</span>` : ""}
+                ${(isMe || isOwner || iAmAdmin) ? `<button onclick="deleteChatMessage('${comm.id}', '${msg.id}')" class="opacity-0 group-hover:opacity-100 px-1.5 py-0.5 rounded text-[10px] text-app-muted hover:text-app-main" title="메시지 삭제">삭제</button>` : ""}
+                ${!isMe && !isSenderAdm ? `<button onclick="openReportModal('${comm.id}', '${msg.id}')" class="opacity-0 group-hover:opacity-100 px-1.5 py-0.5 rounded text-[10px] text-app-muted hover:text-app-main" title="신고">신고</button>` : ""}
+              </div>
+
+              <div class="flex items-end gap-1.5 ${isMe ? 'flex-row-reverse' : 'flex-row'}">
+                <div class="px-4 py-2.5 rounded-2xl text-sm leading-relaxed whitespace-pre-wrap break-words shadow-sm ${isMe ? 'btn-ash font-medium' : 'bg-app-surface text-app-main border border-app'}">
+                  ${msg.content ? `<div>${escapeHtml(msg.content)}</div>` : ""}
+                  ${msg.attachmentUrl ? `<div class="${msg.content ? 'mt-2' : ''}"><img src="${msg.attachmentUrl}" onclick="state.lightboxImage = '${msg.attachmentUrl}'; render()" class="rounded-xl max-w-[240px] max-h-56 object-cover cursor-pointer border border-white/20" /></div>` : ""}
+                </div>
+                <div class="flex flex-col ${isMe ? 'items-end' : 'items-start'} text-[10px] flex-shrink-0">
+                  ${unreadCnt > 0 ? `<span class="text-[#8c765c] dark:text-[#d9c3a5] font-bold text-[11px] leading-tight">${unreadCnt}</span>` : ""}
+                  <span class="text-app-muted">${escapeHtml(msg.timestamp)}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        `;
+      }).join("");
+    }
+
+    function renderChatRoom() {
+      const comm = state.communities.find((c) => c.id === state.activeCommunityId);
+      if (!comm) return renderLobby();
+      const u = state.currentUser;
+      const iAmAdmin = isSuperAdmin(u);
+      const isOwner = comm.createdById === u.id || comm.createdBy === u.name || comm.createdBy === u.username;
+      const activeCh = (comm.channels || []).find((ch) => ch.id === state.activeChannelId) || (comm.channels || [])[0];
+      const members = comm.members && comm.members.length > 0 ? comm.members : [{
+        userId: u.id, username: u.username, name: u.name, pronouns: u.pronouns, avatarUrl: u.avatarUrl, role: "방장"
+      }];
+
+      return `
+        <div class="flex-1 flex h-full overflow-hidden">
+          <!-- 1. Left Channel Sidebar -->
+          <div class="w-56 hidden lg:flex flex-col bg-app-surface border-r border-app flex-shrink-0">
+            <div class="p-4 border-b border-app flex items-center gap-2.5" style="${comm.bannerImageUrl ? `background: linear-gradient(rgba(22,28,36,0.75), rgba(22,28,36,0.85)), url(${comm.bannerImageUrl}) center/cover; color: white;` : ''}">
+              ${renderCommIcon(comm, "w-9 h-9", "text-xs")}
+              <div class="min-w-0">
+                <h2 class="font-bold text-sm truncate">${escapeHtml(comm.name)}</h2>
+                <p class="text-[10px] opacity-75 truncate">방장: ${escapeHtml(comm.createdBy)}</p>
+              </div>
+            </div>
+            <div class="flex-1 overflow-y-auto p-3 space-y-1">
+              <div class="text-[11px] font-bold uppercase tracking-wider text-app-muted px-2 mb-1.5">대화 채널</div>
+              ${(comm.channels || []).map((ch) => `
+                <button onclick="state.activeChannelId = '${ch.id}'; render()" class="w-full px-3 py-2 rounded-lg text-xs font-bold flex items-center gap-2 transition ${activeCh.id === ch.id ? 'btn-ash shadow-sm' : 'text-app-muted hover:bg-app-subtle'}">
+                  <span>#</span>
+                  <span class="truncate">${escapeHtml(ch.name)}</span>
+                </button>
+              `).join("")}
+            </div>
+          </div>
+
+          <!-- 2. Main Chat Stream -->
+          <div class="flex-1 flex flex-col min-w-0 overflow-hidden">
+            <header class="px-4 py-3 bg-app-surface border-b border-app flex items-center justify-between gap-2">
+              <div class="flex items-center gap-2.5 min-w-0">
+                <button onclick="goLobby()" class="px-2.5 py-1.5 rounded-lg bg-app-subtle border border-app text-xs font-bold">← 로비</button>
+                ${renderCommIcon(comm, "w-8 h-8", "text-[11px]")}
+                <div class="min-w-0">
+                  <div class="flex items-center gap-2">
+                    <h2 class="font-bold text-sm sm:text-base truncate text-app-main">${escapeHtml(comm.name)}</h2>
+                    <span class="hidden sm:inline-block px-2 py-0.5 rounded text-[10px] font-semibold ${getCategoryBadgeClass(comm.category)}">${escapeHtml(comm.category)}</span>
+                  </div>
+                  <div class="flex items-center gap-2 text-[11px] text-app-muted">
+                    <span>#${escapeHtml(activeCh.name)}</span>
+                    <span>· 접속 ${members.length}/${members.length}명</span>
+                  </div>
+                </div>
+              </div>
+
+              <div class="flex items-center gap-1.5 flex-shrink-0">
+                ${iAmAdmin && !isOwner ? `
+                  <button onclick="claimOwnership('${comm.id}')" class="px-2.5 py-1.5 rounded-lg text-xs font-bold badge-rose transition">
+                    방장 권한 회수
+                  </button>
+                ` : ""}
+                <button onclick="state.showRulesPanel = !state.showRulesPanel; render()" class="px-2.5 py-1.5 rounded-lg text-xs font-bold border transition ${state.showRulesPanel ? 'badge-sage' : 'bg-app-subtle border-app text-app-main'}">
+                  규칙
+                </button>
+                <button onclick="state.showMembersSidebar = !state.showMembersSidebar; render()" class="px-2.5 py-1.5 rounded-lg text-xs font-bold border transition ${state.showMembersSidebar ? 'badge-mauve' : 'bg-app-subtle border-app text-app-main'}">
+                  멤버 (${members.length})
+                </button>
+                ${(isOwner || iAmAdmin) ? `
+                  <button onclick="deleteCommunityConfirm('${comm.id}')" class="px-2.5 py-1.5 rounded-lg text-xs font-bold badge-terra transition">
+                    삭제
+                  </button>
+                ` : ""}
+              </div>
+            </header>
+
+            ${state.showRulesPanel ? `
+              <div class="bg-app-subtle border-b border-app px-4 sm:px-6 py-3.5">
+                <div class="max-w-4xl mx-auto flex flex-col md:flex-row gap-4 justify-between">
+                  <div class="space-y-1 flex-1">
+                    <div class="text-xs font-bold text-app-main">커뮤니티 소개</div>
+                    <p class="text-xs text-app-muted leading-relaxed">${escapeHtml(comm.description)}</p>
+                  </div>
+                  <div class="md:w-80 p-3 rounded-xl bg-app-surface border border-app space-y-1">
+                    <div class="text-xs font-bold text-app-main">커뮤니티 이용 규칙</div>
+                    <ul class="space-y-1 text-[11px] text-app-muted">
+                      ${(comm.rules || []).map((r) => `<li>• ${escapeHtml(r)}</li>`).join("")}
+                    </ul>
+                  </div>
+                </div>
+              </div>
+            ` : ""}
+
+            <!-- Messages Stream -->
+            <div id="chat-scroll-box" class="flex-1 overflow-y-auto p-4 sm:p-6 space-y-4 bg-app-canvas">
+              ${renderChatMessagesInnerHtml()}
+            </div>
+
+            <!-- Input Bar -->
+            <form onsubmit="handleSendChat(event)" class="p-3 sm:p-4 bg-app-surface border-t border-app relative">
+              ${state.chatPendingImage ? `
+                <div class="mb-2 relative inline-block">
+                  <img src="${state.chatPendingImage}" class="h-20 w-20 rounded-xl object-cover border border-[#5c7893]" />
+                  <button type="button" onclick="state.chatPendingImage = ''; render()" class="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full btn-rose text-xs">✕</button>
+                </div>
+              ` : ""}
+
+              <div class="flex items-center gap-2">
+                <label class="px-3 py-2.5 rounded-xl badge-sage hover:opacity-90 cursor-pointer text-xs font-bold" title="갤러리에서 사진 첨부">
+                  사진
+                  <input type="file" accept="image/*" onchange="handleChatImageUpload(event)" class="hidden" />
+                </label>
+                <input id="chat-msg-input" type="text" value="${escapeHtml(state.chatInputText)}" oninput="state.chatInputText = this.value" placeholder="#${escapeHtml(activeCh.name)}에 메시지 보내기..." class="flex-1 px-4 py-2.5 rounded-xl input-ash text-sm" />
+                <button type="submit" class="px-4 py-2.5 rounded-xl btn-ash font-bold text-xs shadow-sm">전송</button>
+              </div>
+            </form>
+          </div>
+
+          <!-- 3. Right Members Sidebar -->
+          ${state.showMembersSidebar ? `
+            <aside class="w-64 hidden md:flex flex-col bg-app-surface border-l border-app p-4 overflow-y-auto flex-shrink-0">
+              <div class="text-[11px] font-bold uppercase tracking-wider text-app-muted mb-3 flex items-center justify-between">
+                <span>참여자 목록 (${members.length}명)</span>
+                <button onclick="state.showMembersSidebar = false; render()">✕</button>
+              </div>
+              <div class="space-y-2">
+                ${members.map((m) => {
+                  const isMe = m.userId === u.id;
+                  const isMemAdm = SUPER_ADMIN_IDENTIFIERS.includes((m.name || "").trim().toLowerCase()) || SUPER_ADMIN_IDENTIFIERS.includes((m.username || "").trim().toLowerCase());
+                  return `
+                    <div class="p-2 rounded-xl flex items-center justify-between gap-2 bg-app-subtle border border-app">
+                      <button onclick="openUserProfile('${m.userId}')" class="flex items-center gap-2 min-w-0 flex-1 text-left">
+                        <img src="${m.avatarUrl || AVATAR_PRESETS[0]}" class="w-8 h-8 rounded-lg object-cover shrink-0" />
+                        <div class="min-w-0 flex-1">
+                          <div class="flex items-center gap-1 flex-wrap">
+                            <p class="font-bold text-xs truncate text-app-main">${escapeHtml(m.name)}</p>
+                            ${isMemAdm ? `<span class="text-[9px] font-bold badge-rose px-1.5 rounded">최고 관리자</span>` : m.role === "방장" ? `<span class="text-[9px] font-bold badge-sand px-1.5 rounded">방장</span>` : ""}
+                          </div>
+                          <p class="text-[10px] text-app-muted truncate">${escapeHtml(m.pronouns)}</p>
+                        </div>
+                      </button>
+                      <div class="flex items-center gap-1">
+                        ${iAmAdmin && !isMe && !isMemAdm ? `
+                          <button onclick="openAdminBan('${m.userId}')" class="px-2 py-1 rounded badge-rose text-[10px] font-bold">제재</button>
+                        ` : ""}
+                        ${(isOwner || iAmAdmin) && !isMe && m.role !== "방장" && !isMemAdm ? `
+                          <button onclick="kickMemberFromRoom('${comm.id}', '${m.userId}', '${escapeHtml(m.name)}')" class="px-2 py-1 rounded badge-terra text-[10px] font-bold">강퇴</button>
+                        ` : ""}
+                      </div>
+                    </div>
+                  `;
+                }).join("")}
+              </div>
+            </aside>
+          ` : ""}
+        </div>
+      `;
+    }
+
+    function renderDmRoom() {
+      const target = state.activeDmUser;
+      const u = state.currentUser;
+      if (!target || !u) return "";
+      const convId = [u.id, target.id].sort().join("__");
+      const dms = state.dms[convId] || [];
+
+      return `
+        <div class="flex-1 flex flex-col h-full bg-app-canvas overflow-hidden">
+          <header class="h-14 px-4 sm:px-6 bg-app-surface border-b border-app flex items-center justify-between">
+            <div class="flex items-center gap-3">
+              <button onclick="state.activeDmUser = null; render()" class="px-3 py-1.5 rounded-lg bg-app-subtle border border-app text-xs font-bold">← 뒤로</button>
+              <button onclick="openUserProfile('${target.id}')" class="flex items-center gap-2.5 text-left">
+                <img src="${target.avatarUrl || AVATAR_PRESETS[0]}" class="w-9 h-9 rounded-lg object-cover" />
+                <div>
+                  <div class="flex items-center gap-1.5">
+                    <span class="font-bold text-sm text-app-main">${escapeHtml(target.name)}</span>
+                    <span class="px-1.5 py-0.5 rounded text-[10px] font-medium badge-mauve">${escapeHtml(target.pronouns || "")}</span>
+                  </div>
+                  <p class="text-[11px] text-app-muted">1:1 개인 DM 대화방</p>
+                </div>
+              </button>
+            </div>
+            <button onclick="openUserProfile('${target.id}')" class="px-3 py-1.5 rounded-lg badge-ash text-xs font-bold">프로필 보기</button>
+          </header>
+
+          <div class="flex-1 overflow-y-auto p-4 sm:p-6 space-y-4">
+            ${dms.length === 0 ? `
+              <div class="h-full flex flex-col items-center justify-center text-center p-8 text-app-muted space-y-1">
+                <p class="font-bold text-sm text-app-main">${escapeHtml(target.name)} 님과의 첫 1:1 대화입니다.</p>
+                <p class="text-xs">메시지를 보내 대화를 시작해 보세요.</p>
+              </div>
+            ` : dms.map((m) => {
+              const isMe = m.senderId === u.id;
+              return `
+                <div class="flex items-start gap-2.5 ${isMe ? 'flex-row-reverse' : 'flex-row'}">
+                  <div class="px-4 py-2.5 rounded-2xl text-sm max-w-[75%] shadow-sm ${isMe ? 'btn-ash font-medium' : 'bg-app-surface border border-app text-app-main'}">
+                    ${escapeHtml(m.content)}
+                  </div>
+                  <span class="text-[10px] text-app-muted self-end">${escapeHtml(m.timestamp)}</span>
+                </div>
+              `;
+            }).join("")}
+          </div>
+
+          <form onsubmit="handleSendDm(event)" class="p-3 sm:p-4 bg-app-surface border-t border-app flex items-center gap-2">
+            <input id="dm-msg-input" type="text" placeholder="${escapeHtml(target.name)} 님에게 메시지 보내기..." class="flex-1 px-4 py-2.5 rounded-xl input-ash text-sm" />
+            <button type="submit" class="px-4 py-2.5 rounded-xl btn-ash font-bold text-xs shadow-sm">전송</button>
+          </form>
+        </div>
+      `;
+    }
+
+    function renderWikiEntriesHtml() {
+      const entries = ALTERHUMAN_WIKI_ENTRIES.filter((e) => {
+        const matchCat = state.wikiCategory === "전체" || e.category === state.wikiCategory;
+        const q = state.wikiSearch.trim().toLowerCase();
+        const matchQ = !q || e.termKo.toLowerCase().includes(q) || e.termEn.toLowerCase().includes(q) || e.summary.toLowerCase().includes(q) || e.details.some((d) => d.toLowerCase().includes(q));
+        return matchCat && matchQ;
+      });
+      return entries.map((e) => `
+        <div class="p-4 rounded-xl bg-app-subtle border border-app space-y-2">
+          <div class="flex flex-wrap items-center justify-between gap-2">
+            <div class="flex flex-wrap items-center gap-2">
+              <span class="px-2 py-0.5 rounded text-[11px] font-bold ${e.badgeClass || 'badge-ash'}">${escapeHtml(e.badge)}</span>
+              <h3 class="font-bold text-sm sm:text-base text-app-main">${escapeHtml(e.termKo)}</h3>
+              <span class="text-xs font-mono text-app-muted">(${escapeHtml(e.termEn)})</span>
+            </div>
+            <span class="text-[10px] font-bold px-2 py-0.5 rounded badge-sand">${escapeHtml(e.category)}</span>
+          </div>
+          <p class="text-xs sm:text-sm font-semibold leading-relaxed text-app-main">${escapeHtml(e.summary)}</p>
+          <ul class="space-y-1 pt-1 border-t border-app text-xs text-app-muted">
+            ${e.details.map((d) => `<li>• ${escapeHtml(d)}</li>`).join("")}
+          </ul>
+        </div>
+      `).join("");
+    }
+
+    function renderWikiModal() {
+      if (!state.isWikiModalOpen) return "";
+
+      return `
+        <div onclick="state.isWikiModalOpen = false; render()" class="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-5 bg-black/65 backdrop-blur-xs">
+          <div onclick="event.stopPropagation()" class="w-full max-w-3xl max-h-[90vh] bg-app-surface rounded-2xl shadow-2xl border border-app overflow-hidden flex flex-col">
+            <div class="px-6 py-4 border-b border-app flex items-center justify-between hero-multitone-card">
+              <div class="flex items-center gap-3">
+                <div class="w-9 h-9 rounded-lg bg-white/15 border border-white/25 text-white flex items-center justify-center font-bold text-xs">ΘΔ</div>
+                <div>
+                  <h2 class="font-bold text-base text-white">알터휴먼 위키백과 & 용어 사전</h2>
+                  <p class="text-xs text-[#d0dce8]">테리안(Therian) · 아더킨(Otherkin) · 픽션킨 · 아더하트 · 시프트 · 쿼드러빅스 정리</p>
+                </div>
+              </div>
+              <button onclick="state.isWikiModalOpen = false; render()" class="p-2 rounded-lg text-white/75 hover:text-white">✕</button>
+            </div>
+
+            <div class="p-4 sm:px-6 bg-app-subtle border-b border-app space-y-3">
+              <input id="wiki-search-input" type="text" value="${escapeHtml(state.wikiSearch)}" oninput="handleWikiSearchInput(this.value)" placeholder="용어 검색 (예: 테리안, 시프트, 쿼드러빅스, 기어, 클라도테리안, 디스포리아...)" class="w-full px-4 py-2 rounded-xl input-ash text-xs sm:text-sm" />
+              <div class="flex items-center gap-1.5 overflow-x-auto pb-1">
+                ${WIKI_CATEGORIES.map((cat) => `
+                  <button onclick="state.wikiCategory = '${cat}'; render()" class="px-3 py-1.5 rounded-lg text-xs font-bold whitespace-nowrap transition ${state.wikiCategory === cat ? 'btn-sage shadow-sm' : 'bg-app-surface text-app-muted border border-app'}">${escapeHtml(cat)}</button>
+                `).join("")}
+              </div>
+            </div>
+
+            <div id="wiki-entries-container" class="flex-1 overflow-y-auto p-4 sm:p-6 space-y-3">
+              ${renderWikiEntriesHtml()}
+            </div>
+          </div>
+        </div>
+      `;
+    }
+
+    function renderHamburgerDrawer() {
+      if (!state.isDrawerOpen || !state.currentUser) return "";
+      const u = state.currentUser;
+      const counts = getFollowCounts(u.id);
+      const joinedComms = state.communities.filter((c) => state.joinedCommunityIds.includes(c.id));
+
+      return `
+        <div onclick="toggleDrawer(false)" class="fixed inset-0 z-40 bg-black/55">
+          <aside onclick="event.stopPropagation()" class="w-80 h-full bg-app-surface shadow-2xl border-r border-app flex flex-col">
+            <div class="px-4 py-3.5 flex items-center justify-between border-b border-app">
+              <span class="font-bold text-sm text-app-main">ΘΔ 알터휴먼 메뉴</span>
+              <button onclick="toggleDrawer(false)" class="p-1.5 rounded-lg text-app-muted hover:text-app-main">✕</button>
+            </div>
+
+            <div class="p-4">
+              <div class="rounded-xl overflow-hidden bg-app-subtle border border-app">
+                <div class="h-20 w-full relative" style="background: ${u.bannerUrl ? `url(${u.bannerUrl}) center/cover` : (u.bannerColor || BANNER_PRESETS[0].gradient)}">
+                  <button onclick="toggleDrawer(false); state.isProfileModalOpen = true; render()" class="absolute top-2 right-2 px-2.5 py-1 rounded bg-black/60 text-white text-[11px] font-semibold">프로필 편집</button>
+                </div>
+                <div class="px-4 pb-4 relative">
+                  <div class="flex items-end justify-between -mt-8 mb-2">
+                    <img src="${u.avatarUrl}" class="w-16 h-16 rounded-xl border-4 border-[var(--app-subtle)] bg-[#41566b] object-cover" />
+                    <span class="px-2.5 py-1 rounded text-[11px] font-medium badge-sage truncate max-w-[150px]">${escapeHtml(u.statusMessage)}</span>
+                  </div>
+                  <div class="flex items-center gap-1.5">
+                    <h3 class="font-bold text-base text-app-main">${escapeHtml(u.name)}</h3>
+                    ${isSuperAdmin(u) ? `<span class="px-1.5 py-0.5 rounded text-[9px] font-bold badge-rose">최고 관리자</span>` : ""}
+                  </div>
+                  <span class="inline-block mt-1 px-2 py-0.5 rounded text-[11px] font-medium badge-mauve">${escapeHtml(u.pronouns)}</span>
+                  <div class="flex items-center gap-3 mt-2 text-xs text-app-muted">
+                    <span><strong class="text-app-main">${counts.followers}</strong> 팔로워</span>
+                    <span><strong class="text-app-main">${counts.following}</strong> 팔로잉</span>
+                  </div>
+                  <button onclick="toggleDrawer(false); openUserProfile('${u.id}')" class="mt-2.5 w-full py-1.5 px-3 rounded-lg badge-ash hover:opacity-90 text-xs font-bold transition">
+                    내 프로필 및 피드 보기
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <div class="px-4 pb-3 space-y-1.5">
+              <button onclick="toggleDrawer(false); state.isCreateModalOpen = true; render()" class="w-full py-2.5 px-4 rounded-xl btn-ash font-bold text-xs shadow-sm">
+                + 새 커뮤니티 만들기
+              </button>
+              <button onclick="toggleDrawer(false); openWikiModal()" class="w-full py-2 px-3.5 rounded-xl text-xs font-bold flex items-center justify-between bg-app-subtle border border-app">
+                <span>알터휴먼 위키백과 / 용어 사전</span>
+                <span class="text-[10px] px-2 py-0.5 rounded badge-sage">가이드</span>
+              </button>
+              <button onclick="toggleDrawer(false); state.isDmDrawerOpen = true; render()" class="w-full py-2 px-3.5 rounded-xl bg-app-subtle border border-app text-xs font-bold flex items-center justify-between">
+                <span>1:1 개인 DM 대화 목록</span>
+                <span class="text-[10px] px-2 py-0.5 rounded badge-mauve">열기</span>
+              </button>
+              <button onclick="toggleDrawer(false); goLobby()" class="w-full py-2 px-3.5 rounded-xl bg-app-subtle border border-app text-xs font-bold flex items-center justify-between">
+                <span>전체 커뮤니티 로비</span>
+                <span class="text-[10px] px-2 py-0.5 rounded badge-sand">${state.communities.length}개</span>
+              </button>
+            </div>
+
+            <div class="flex-1 overflow-y-auto px-4 py-2 space-y-1">
+              <div class="text-[11px] font-bold uppercase text-app-muted mb-1">참여 중인 커뮤니티 (${joinedComms.length})</div>
+              ${joinedComms.map((c) => `
+                <button onclick="toggleDrawer(false); enterCommunity('${c.id}')" class="w-full px-3 py-2 rounded-lg text-xs font-bold flex items-center gap-2 hover:bg-app-subtle">
+                  ${c.iconImageUrl ? `<img src="${c.iconImageUrl}" class="w-5 h-5 rounded object-cover" />` : `<span class="text-[10px] font-mono text-[#5c7893]">[${escapeHtml(c.iconEmoji || "ΘΔ")}]</span>`}
+                  <span class="truncate text-app-main">${escapeHtml(c.name)}</span>
+                </button>
+              `).join("")}
+            </div>
+
+            <div class="p-4 border-t border-app flex items-center justify-between gap-2">
+              <button onclick="toggleTheme()" class="flex-1 py-2 px-3 rounded-lg badge-sand text-xs font-bold">
+                ${state.theme === "dark" ? "라이트 모드" : "다크 모드"}
+              </button>
+              <button onclick="handleLogout()" class="py-2 px-3 rounded-lg bg-app-muted text-xs font-bold">로그아웃</button>
+            </div>
+          </aside>
+        </div>
+      `;
+    }
+
+    function renderCreateCommunityModal() {
+      if (!state.isCreateModalOpen) return "";
+      const previewBgStyle = state.newCommBannerImage
+        ? `background: url(${state.newCommBannerImage}) center/cover no-repeat;`
+        : `background: ${state.newCommBanner};`;
+
+      return `
+        <div onclick="state.isCreateModalOpen = false; render()" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/65">
+          <div onclick="event.stopPropagation()" class="w-full max-w-xl bg-app-surface rounded-2xl shadow-2xl border border-app overflow-hidden max-h-[92vh] flex flex-col">
+            <div class="px-6 py-4 border-b border-app flex items-center justify-between bg-app-subtle">
+              <h2 class="font-bold text-base text-app-main">새 커뮤니티 만들기</h2>
+              <button onclick="state.isCreateModalOpen = false; render()">✕</button>
+            </div>
+            <form onsubmit="handleCreateCommunity(event)" class="p-6 overflow-y-auto space-y-4">
+              <!-- Live Preview with Gallery Cover & Icon -->
+              <div class="p-4 rounded-xl text-white flex items-center gap-3.5 border border-white/20 shadow-sm" style="${previewBgStyle}">
+                ${state.newCommIconImage ? `
+                  <img src="${state.newCommIconImage}" class="w-12 h-12 rounded-xl object-cover border border-white/30 bg-[#3a4d61] shrink-0" />
+                ` : `
+                  <div class="w-12 h-12 rounded-xl bg-[#253342]/75 flex items-center justify-center text-xs font-bold border border-white/25 shrink-0">${escapeHtml(state.newCommEmoji)}</div>
+                `}
+                <div class="min-w-0 flex-1 bg-[#1b2430]/60 p-2.5 rounded-lg backdrop-blur-xs">
+                  <span class="inline-block px-2 py-0.5 rounded text-[10px] font-bold bg-black/45 mb-1">${escapeHtml(state.newCommCategory)}</span>
+                  <h3 id="create-comm-preview-name" class="font-bold text-sm truncate">${escapeHtml(state.newCommName || "커뮤니티 이름 미리보기")}</h3>
+                  <p id="create-comm-preview-desc" class="text-xs text-[#d0deec] truncate">${escapeHtml(state.newCommDesc || "상세 소개글 미리보기")}</p>
+                </div>
+              </div>
+
+              <div>
+                <label class="block text-xs font-bold mb-1">1. 커뮤니티 이름 *</label>
+                <input id="create-comm-name-input" type="text" required value="${escapeHtml(state.newCommName)}" oninput="updateCreateCommPreview('newCommName', this.value)" placeholder="예: 북극늑대 & 개과 클라도테리안 라운지" class="w-full px-3.5 py-2 rounded-lg input-ash text-sm" />
+              </div>
+
+              <!-- 방 대표 사진 & 방 커버 배경 사진 갤러리에서 불러오기 + 12종 저채도 배너 -->
+              <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 p-3.5 rounded-xl bg-app-subtle border border-app">
+                <div class="space-y-2">
+                  <div class="flex items-center justify-between">
+                    <label class="text-xs font-bold">방 대표 사진 (아이콘)</label>
+                    <label class="px-2.5 py-1 rounded-md btn-sage text-[11px] font-bold cursor-pointer">
+                      갤러리에서 사진 불러오기
+                      <input type="file" accept="image/*" onchange="handleNewCommIconUpload(event)" class="hidden" />
+                    </label>
+                  </div>
+                  ${state.newCommIconImage ? `
+                    <div class="flex items-center gap-2">
+                      <img src="${state.newCommIconImage}" class="w-10 h-10 rounded-lg object-cover border border-[#5c7893]" />
+                      <button type="button" onclick="state.newCommIconImage = ''; render()" class="text-xs underline text-app-muted">기본 심볼로 초기화</button>
+                    </div>
+                  ` : `
+                    <div class="flex flex-wrap gap-1">
+                      ${ROOM_ICON_TEXT_PRESETS.map((sym) => `
+                        <button type="button" onclick="state.newCommEmoji = '${sym}'; render()" class="px-2.5 py-1 rounded text-xs font-bold border ${state.newCommEmoji === sym ? 'btn-ash border-transparent' : 'bg-app-surface border-app text-app-main'}">${sym}</button>
+                      `).join("")}
+                    </div>
+                  `}
+                </div>
+
+                <div class="space-y-2">
+                  <div class="flex items-center justify-between">
+                    <label class="text-xs font-bold">방 커버 사진 (배너)</label>
+                    <label class="px-2.5 py-1 rounded-md btn-ash text-[11px] font-bold cursor-pointer">
+                      갤러리에서 커버 불러오기
+                      <input type="file" accept="image/*" onchange="handleNewCommBannerUpload(event)" class="hidden" />
+                    </label>
+                  </div>
+                  ${state.newCommBannerImage ? `
+                    <div class="flex items-center gap-2">
+                      <img src="${state.newCommBannerImage}" class="h-10 w-20 rounded-lg object-cover border border-[#5c7893]" />
+                      <button type="button" onclick="state.newCommBannerImage = ''; render()" class="text-xs underline text-app-muted">기본 배너로 초기화</button>
+                    </div>
+                  ` : `
+                    <div class="grid grid-cols-4 gap-1">
+                      ${BANNER_PRESETS.map((b) => `
+                        <button type="button" onclick="state.newCommBanner = '${b.gradient}'; render()" class="h-6 rounded border text-[9px] text-white/90 truncate px-1 ${state.newCommBanner === b.gradient ? 'border-white ring-2 ring-[#5c7893]' : 'border-transparent'}" style="background:${b.gradient}" title="${b.label}">${b.label}</button>
+                      `).join("")}
+                    </div>
+                  `}
+                </div>
+              </div>
+
+              <div>
+                <label class="block text-xs font-bold mb-1">카테고리</label>
+                <select onchange="state.newCommCategory = this.value; render()" class="w-full px-3 py-2 rounded-lg input-ash text-xs font-semibold">
+                  ${ALTERHUMAN_CATEGORIES.filter((c) => c !== "전체").map((c) => `<option value="${c}" ${state.newCommCategory === c ? "selected" : ""}>${c}</option>`).join("")}
+                </select>
+              </div>
+
+              <div>
+                <label class="block text-xs font-bold mb-1">2. 커뮤니티 상세 소개 (Description) *</label>
+                <textarea id="create-comm-desc-input" rows="2" required oninput="updateCreateCommPreview('newCommDesc', this.value)" placeholder="어떤 주제를 다루는 커뮤니티인지 소개해 주세요." class="w-full px-3.5 py-2 rounded-lg input-ash text-xs">${escapeHtml(state.newCommDesc)}</textarea>
+              </div>
+
+              <div>
+                <label class="block text-xs font-bold mb-1">3. 커뮤니티 이용 규칙 (줄바꿈으로 구분) *</label>
+                <textarea rows="3" required oninput="state.newCommRules = this.value" class="w-full px-3.5 py-2 rounded-lg input-ash text-xs">${escapeHtml(state.newCommRules)}</textarea>
+              </div>
+
+              <div>
+                <label class="block text-xs font-bold mb-1">해시태그</label>
+                <input type="text" value="${escapeHtml(state.newCommTags)}" oninput="state.newCommTags = this.value" class="w-full px-3.5 py-2 rounded-lg input-ash text-xs" />
+              </div>
+
+              <div class="flex justify-end gap-2 pt-2">
+                <button type="button" onclick="state.isCreateModalOpen = false; render()" class="px-4 py-2 rounded-lg text-xs font-semibold text-app-muted">취소</button>
+                <button type="submit" class="px-6 py-2.5 rounded-lg btn-sage text-xs font-bold shadow-sm">커뮤니티 생성 완료 및 입장</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      `;
+    }
+
+    function renderUserProfileDetailModal() {
+      const target = state.inspectedUser;
+      const u = state.currentUser;
+      if (!target || !u) return "";
+      const isMe = target.id === u.id;
+      const following = isFollowingUser(target.id);
+      const counts = getFollowCounts(target.id);
+      const userPosts = state.posts.filter((p) => p.authorId === target.id);
+
+      return `
+        <div onclick="state.inspectedUser = null; render()" class="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-5 bg-black/65">
+          <div onclick="event.stopPropagation()" class="w-full max-w-xl max-h-[90vh] bg-app-surface rounded-2xl shadow-2xl border border-app flex flex-col overflow-hidden">
+            <div class="relative h-32 w-full" style="background: ${target.bannerUrl ? `url(${target.bannerUrl}) center/cover` : (target.bannerColor || BANNER_PRESETS[0].gradient)}">
+              <button onclick="state.inspectedUser = null; render()" class="absolute top-3 right-3 px-2.5 py-1 rounded bg-black/55 text-white text-xs">✕</button>
+            </div>
+            <div class="px-6 pb-4 relative border-b border-app">
+              <div class="flex justify-between items-end -mt-12 mb-3">
+                <img src="${target.avatarUrl || AVATAR_PRESETS[0]}" class="w-20 h-20 rounded-xl object-cover bg-[#41566b] border-4 border-[var(--app-surface)]" />
+                <div class="flex items-center gap-2">
+                  ${isMe ? `
+                    <button onclick="state.inspectedUser = null; state.isProfileModalOpen = true; render()" class="px-4 py-2 rounded-lg badge-ash text-xs font-bold">내 프로필 & 아바타 수정</button>
+                  ` : `
+                    <button onclick="toggleFollow('${target.id}')" class="px-4 py-2 rounded-lg text-xs font-bold ${following ? 'badge-sage' : 'btn-ash'}">
+                      ${following ? "팔로잉 중" : "+ 팔로우"}
+                    </button>
+                    <button onclick="startDm('${target.id}')" class="px-4 py-2 rounded-lg badge-mauve text-xs font-bold">1:1 DM</button>
+                    ${isSuperAdmin(u) && !isSuperAdmin(target) ? `
+                      <button onclick="openAdminBan('${target.id}')" class="px-3 py-2 rounded-lg badge-rose text-xs font-bold">관리자 제재</button>
+                    ` : ""}
+                  `}
+                </div>
+              </div>
+              <div class="flex flex-wrap items-center gap-2">
+                <h3 class="text-lg font-bold text-app-main">${escapeHtml(target.name)}</h3>
+                <span class="px-2 py-0.5 rounded text-xs font-medium badge-mauve">${escapeHtml(target.pronouns || "")}</span>
+                ${isSuperAdmin(target) ? `<span class="px-2 py-0.5 rounded text-xs font-bold badge-rose">최고 관리자</span>` : ""}
+              </div>
+              <p class="text-xs text-app-muted mt-0.5">@${escapeHtml(target.displayId || target.username || target.id)}</p>
+              ${target.statusMessage ? `<div class="mt-2 px-3 py-1 rounded badge-sage text-xs inline-block">${escapeHtml(target.statusMessage)}</div>` : ""}
+              ${target.bio ? `<p class="mt-2 text-xs text-app-muted leading-relaxed">${escapeHtml(target.bio)}</p>` : ""}
+              <div class="flex items-center gap-3 mt-3 text-xs">
+                <span class="px-3 py-1 rounded badge-ash"><strong>${counts.followers}</strong> 팔로워</span>
+                <span class="px-3 py-1 rounded badge-sage"><strong>${counts.following}</strong> 팔로잉</span>
+                <span class="px-3 py-1 rounded badge-sand"><strong>${userPosts.length}</strong> 게시글</span>
+              </div>
+            </div>
+
+            <div class="flex-1 overflow-y-auto p-5 space-y-4">
+              ${isMe ? `
+                <form onsubmit="handleCreatePost(event)" class="p-4 rounded-xl bg-app-subtle border border-app space-y-2.5">
+                  <div class="text-xs font-bold text-app-main">새 피드 게시물 작성</div>
+                  <textarea rows="2" oninput="state.newPostContent = this.value" placeholder="내용을 입력하세요..." class="w-full px-3 py-2 rounded-lg input-ash text-xs">${escapeHtml(state.newPostContent)}</textarea>
+                  ${state.newPostImage ? `<img src="${state.newPostImage}" class="max-h-40 rounded-lg object-contain" />` : ""}
+                  <div class="flex items-center justify-between">
+                    <label class="px-3 py-1.5 rounded-lg badge-sage text-xs font-bold cursor-pointer">
+                      갤러리에서 사진 첨부
+                      <input type="file" accept="image/*" onchange="handlePostImageUpload(event)" class="hidden" />
+                    </label>
+                    <button type="submit" class="px-4 py-1.5 rounded-lg btn-ash text-xs font-bold">게시하기</button>
+                  </div>
+                </form>
+              ` : ""}
+
+              ${userPosts.length === 0 ? `
+                <div class="py-8 text-center text-app-muted text-xs">아직 등록된 게시물이 없습니다.</div>
+              ` : userPosts.map((p) => {
+                const liked = (p.likes || []).includes(u.id);
+                return `
+                  <div class="p-4 rounded-xl bg-app-subtle border border-app space-y-2.5">
+                    <div class="flex items-center justify-between">
+                      <div class="flex items-center gap-2">
+                        <img src="${p.authorAvatar || AVATAR_PRESETS[0]}" class="w-8 h-8 rounded-lg object-cover" />
+                        <div>
+                          <span class="font-bold text-xs text-app-main">${escapeHtml(p.authorName)}</span>
+                          <span class="text-[10px] text-app-muted ml-1">${escapeHtml(p.authorPronouns || "")}</span>
+                        </div>
+                      </div>
+                      ${(p.authorId === u.id || isSuperAdmin(u)) ? `<button onclick="deletePost('${p.id}')" class="text-xs text-app-muted">삭제</button>` : ""}
+                    </div>
+                    <p class="text-xs sm:text-sm whitespace-pre-wrap leading-relaxed text-app-main">${escapeHtml(p.content)}</p>
+                    ${p.mediaUrl ? `<img src="${p.mediaUrl}" class="max-h-64 rounded-lg object-contain" />` : ""}
+                    <div class="flex items-center gap-3 pt-1 text-xs">
+                      <button onclick="toggleLikePost('${p.id}')" class="px-2.5 py-1 rounded ${liked ? 'badge-rose font-bold' : 'bg-app-surface border border-app'}">좋아요 ${(p.likes || []).length}</button>
+                    </div>
+                  </div>
+                `;
+              }).join("")}
+            </div>
+          </div>
+        </div>
+      `;
+    }
+
+    function renderProfileSettingsModal() {
+      if (!state.isProfileModalOpen || !state.currentUser) return "";
+      const u = state.currentUser;
+      return `
+        <div onclick="state.isProfileModalOpen = false; render()" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/65">
+          <div onclick="event.stopPropagation()" class="w-full max-w-2xl bg-app-surface rounded-2xl shadow-2xl border border-app overflow-hidden max-h-[92vh] flex flex-col">
+            <div class="px-6 py-4 border-b border-app flex items-center justify-between bg-app-subtle">
+              <div>
+                <h2 class="font-bold text-base text-app-main">프로필 및 아바타 · 정체성 설정</h2>
+                <p class="text-[11px] text-app-muted">24종의 저채도 일러스트 프로필 사진과 12종의 배경 테마, 또는 내 갤러리 사진을 선택할 수 있습니다.</p>
+              </div>
+              <button onclick="state.isProfileModalOpen = false; render()">✕</button>
+            </div>
+            <form onsubmit="handleSaveProfile(event)" class="p-6 overflow-y-auto space-y-5">
+              <!-- Current Profile Banner & Avatar Preview -->
+              <div class="rounded-2xl overflow-hidden bg-app-subtle border border-app">
+                <div class="h-24 w-full relative" style="background: ${u.bannerUrl ? `url(${u.bannerUrl}) center/cover` : (u.bannerColor || BANNER_PRESETS[0].gradient)}">
+                  <div class="absolute top-2.5 right-2.5 flex gap-1.5">
+                    <label class="px-2.5 py-1 rounded-md bg-black/65 text-white text-[11px] font-semibold cursor-pointer hover:bg-black/80">
+                      갤러리에서 내 프로필 사진 업로드
+                      <input type="file" accept="image/*" onchange="handleProfileAvatarUpload(event)" class="hidden" />
+                    </label>
+                    <label class="px-2.5 py-1 rounded-md bg-black/65 text-white text-[11px] font-semibold cursor-pointer hover:bg-black/80">
+                      갤러리에서 배경 사진 업로드
+                      <input type="file" accept="image/*" onchange="handleProfileBannerUpload(event)" class="hidden" />
+                    </label>
+                  </div>
+                </div>
+                <div class="px-5 pb-4 flex items-end justify-between -mt-10">
+                  <div class="flex items-end gap-3">
+                    <img src="${u.avatarUrl || AVATAR_PRESETS[0]}" class="w-20 h-20 rounded-2xl object-cover border-4 border-[var(--app-subtle)] bg-[#41566b] shadow-md" />
+                    <div class="pb-1">
+                      <div class="font-bold text-sm text-app-main">${escapeHtml(u.name)}</div>
+                      <div class="text-[11px] text-app-muted">${escapeHtml(u.pronouns)}</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- 24 Diverse Low-Saturation Profile Avatars Picker -->
+              <div class="p-4 rounded-xl bg-app-subtle border border-app space-y-2.5">
+                <div class="flex items-center justify-between">
+                  <label class="text-xs font-bold text-app-main">기본 제공 프로필 사진 선택 (24종 저채도 알터휴먼 일러스트)</label>
+                  <span class="text-[10px] px-2 py-0.5 rounded badge-sage">클릭 시 즉시 적용</span>
+                </div>
+                <div class="grid grid-cols-6 sm:grid-cols-8 gap-2">
+                  ${AVATAR_PRESETS_INFO.map((av) => `
+                    <button type="button" onclick="selectProfilePresetAvatar('${av.url}')" class="group relative rounded-xl overflow-hidden border-2 aspect-square transition ${u.avatarUrl === av.url ? 'border-[#5c7893] scale-105 shadow-md ring-2 ring-[#5c7893]/40' : 'border-transparent opacity-85 hover:opacity-100'}" title="${av.label}">
+                      <img src="${av.url}" class="w-full h-full object-cover" />
+                      <span class="absolute inset-x-0 bottom-0 bg-black/65 text-white text-[9px] py-0.5 px-1 truncate opacity-0 group-hover:opacity-100 transition text-center">${av.label.split(" (")[0]}</span>
+                    </button>
+                  `).join("")}
+                </div>
+              </div>
+
+              <!-- 12 Multi-Tone Low-Saturation Banner Presets Picker -->
+              <div class="p-4 rounded-xl bg-app-subtle border border-app space-y-2">
+                <label class="block text-xs font-bold text-app-main">기본 제공 프로필 커버 배경 선택 (12종 저채도 컬러)</label>
+                <div class="grid grid-cols-4 sm:grid-cols-6 gap-1.5">
+                  ${BANNER_PRESETS.map((bp) => `
+                    <button type="button" onclick="selectProfilePresetBanner('${bp.gradient}')" class="h-7 rounded-lg border text-[10px] text-white/95 font-semibold px-1.5 truncate ${u.bannerColor === bp.gradient && !u.bannerUrl ? 'border-white ring-2 ring-[#5c7893] shadow-sm' : 'border-transparent opacity-85 hover:opacity-100'}" style="background:${bp.gradient}" title="${bp.label}">${bp.label}</button>
+                  `).join("")}
+                </div>
+              </div>
+
+              <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label class="block text-xs font-bold mb-1">이름 (Name)</label>
+                  <input id="prof-name" type="text" required value="${escapeHtml(u.name)}" class="w-full px-3.5 py-2 rounded-lg input-ash text-sm" />
+                </div>
+                <div>
+                  <label class="block text-xs font-bold mb-1">상태 메시지</label>
+                  <input id="prof-status" type="text" value="${escapeHtml(u.statusMessage)}" class="w-full px-3.5 py-2 rounded-lg input-ash text-sm" />
+                </div>
+              </div>
+
+              <div>
+                <label class="block text-xs font-bold mb-1">테리오타입 / 킨타입 빠른 선택</label>
+                <div class="flex flex-wrap gap-1 mb-2">
+                  ${THERIOTYPE_PRESETS.filter((t) => t !== "직접 입력").map((tp) => {
+                    const short = tp.split(" (")[0];
+                    return `<button type="button" onclick="document.getElementById('prof-pronouns').value = (document.getElementById('prof-pronouns').value.split(' · ')[0] || '그들/그들의') + ' · ${short}'" class="px-2 py-1 rounded text-[10px] font-medium bg-app-subtle border border-app hover:border-[#68877e]">${escapeHtml(tp)}</button>`;
+                  }).join("")}
+                </div>
+                <label class="block text-xs font-bold mb-1">대명사 & 테리오타입/킨타입 직접 입력</label>
+                <input id="prof-pronouns" type="text" required value="${escapeHtml(u.pronouns)}" class="w-full px-3.5 py-2 rounded-lg input-ash text-sm" />
+              </div>
+
+              <div>
+                <label class="block text-xs font-bold mb-1">소개글 (BIO)</label>
+                <textarea id="prof-bio" rows="2" class="w-full px-3.5 py-2 rounded-lg input-ash text-xs">${escapeHtml(u.bio)}</textarea>
+              </div>
+              <div class="flex justify-end gap-2 pt-2">
+                <button type="button" onclick="state.isProfileModalOpen = false; render()" class="px-4 py-2 rounded-lg text-xs text-app-muted">취소</button>
+                <button type="submit" class="px-5 py-2 rounded-lg btn-sage text-xs font-bold shadow-sm">프로필 저장하기</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      `;
+    }
+
+    function renderDmDrawer() {
+      if (!state.isDmDrawerOpen || !state.currentUser) return "";
+      const others = Object.values(state.usersDir).filter((u) => u.id !== state.currentUser.id);
+      return `
+        <div onclick="state.isDmDrawerOpen = false; render()" class="fixed inset-0 z-50 flex justify-end bg-black/55">
+          <div onclick="event.stopPropagation()" class="w-full max-w-sm h-full bg-app-surface border-l border-app flex flex-col shadow-2xl">
+            <div class="h-14 px-5 border-b border-app flex items-center justify-between">
+              <h3 class="font-bold text-sm text-app-main">1:1 개인 DM 대화 목록</h3>
+              <button onclick="state.isDmDrawerOpen = false; render()">✕</button>
+            </div>
+            <div class="flex-1 overflow-y-auto p-3 space-y-2">
+              ${others.length === 0 ? `<div class="py-12 text-center text-xs text-app-muted">대화 가능한 다른 사용자가 없습니다.</div>` : others.map((user) => `
+                <button onclick="startDm('${user.id}')" class="w-full p-2.5 rounded-xl flex items-center justify-between hover:bg-app-subtle text-left border border-transparent hover:border-app">
+                  <div class="flex items-center gap-3 min-w-0">
+                    <img src="${user.avatarUrl || AVATAR_PRESETS[0]}" class="w-10 h-10 rounded-lg object-cover" />
+                    <div class="min-w-0">
+                      <p class="font-bold text-xs truncate text-app-main">${escapeHtml(user.name)}</p>
+                      <p class="text-[10px] text-app-muted truncate">${escapeHtml(user.pronouns)}</p>
+                    </div>
+                  </div>
+                  <span class="px-2.5 py-1 rounded text-[10px] font-bold badge-mauve">대화하기</span>
+                </button>
+              `).join("")}
+            </div>
+          </div>
+        </div>
+      `;
+    }
+
+    function renderReportModal() {
+      if (!state.reportingMessage) return "";
+      const msg = state.reportingMessage;
+      return `
+        <div onclick="state.reportingMessage = null; state.reportVerdict = null; render()" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/65">
+          <div onclick="event.stopPropagation()" class="w-full max-w-md bg-app-surface rounded-2xl p-6 shadow-2xl border border-app space-y-4">
+            <div class="flex items-center justify-between">
+              <h3 class="font-bold text-base text-app-main">메시지 신고 및 AI 자동 제재</h3>
+              <button onclick="state.reportingMessage = null; state.reportVerdict = null; render()">✕</button>
+            </div>
+            <div class="p-3 rounded-xl bg-app-subtle border border-app text-xs space-y-1">
+              <div class="font-bold text-app-main">${escapeHtml(msg.senderName)}:</div>
+              <div class="text-app-muted">${escapeHtml(msg.content)}</div>
+            </div>
+            ${state.reportVerdict ? `
+              <div class="p-4 rounded-xl badge-rose text-xs space-y-1.5">
+                <div class="font-bold">AI 심사 완료: ${escapeHtml(state.reportVerdict.severityLabel)}</div>
+                <div><strong>제재 조치:</strong> 계정 활동 정지 ${state.reportVerdict.bannedDays}일 처분</div>
+                <div class="opacity-85">${escapeHtml(state.reportVerdict.explanation)}</div>
+              </div>
+              <button onclick="state.reportingMessage = null; state.reportVerdict = null; render()" class="w-full py-2.5 rounded-xl btn-ash text-xs font-bold">닫기</button>
+            ` : `
+              <div class="text-xs text-app-muted space-y-1">
+                <p>• 1단계 (우회 비속어/매너 위반): 14일 활동 제한</p>
+                <p>• 2단계 (타인 정체성 조롱·비난): 30일 활동 제한</p>
+                <p>• 3단계 (심한 비난 및 패드립): 45일 활동 제한</p>
+              </div>
+              <button onclick="executeAiReport()" class="w-full py-3 rounded-xl btn-rose text-xs font-bold">AI 규정 심사 및 제재 적용</button>
+            `}
+          </div>
+        </div>
+      `;
+    }
+
+    function renderSupportModal() {
+      if (!state.isSupportModalOpen) return "";
+      return `
+        <div onclick="state.isSupportModalOpen = false; render()" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/65">
+          <div onclick="event.stopPropagation()" class="w-full max-w-md bg-app-surface rounded-2xl p-6 shadow-2xl border border-app space-y-4">
+            <div class="flex items-center justify-between">
+              <h3 class="font-bold text-base text-app-main">비공개 1:1 고객센터 & 문제 신고</h3>
+              <button onclick="state.isSupportModalOpen = false; render()">✕</button>
+            </div>
+            <form onsubmit="event.preventDefault(); alert('문의가 최고 관리자에게 비공개로 접수되었습니다.'); state.isSupportModalOpen = false; render();" class="space-y-3">
+              <input type="text" required placeholder="문의 또는 신고 제목" class="w-full px-3.5 py-2.5 rounded-lg input-ash text-xs" />
+              <textarea rows="4" required placeholder="상세 내용을 입력해 주세요" class="w-full px-3.5 py-2.5 rounded-lg input-ash text-xs"></textarea>
+              <button type="submit" class="w-full py-3 rounded-xl btn-ash text-xs font-bold">문의 접수하기</button>
+            </form>
+          </div>
+        </div>
+      `;
+    }
+
+    function renderAdminBanModal() {
+      const target = state.adminBanningUser;
+      if (!target || !state.currentUser || !isSuperAdmin(state.currentUser)) return "";
+      return `
+        <div onclick="state.adminBanningUser = null; render()" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/65">
+          <div onclick="event.stopPropagation()" class="w-full max-w-md bg-app-surface rounded-2xl overflow-hidden shadow-2xl border border-app">
+            <div class="p-4 hero-multitone-card flex items-center justify-between">
+              <div>
+                <h3 class="font-bold text-base text-white">최고 관리자 맞춤형 유저 제재</h3>
+                <p class="text-[11px] text-[#c7d6e6]">우엉김밥 (Loon) 최고 관리자 전용 권한</p>
+              </div>
+              <button onclick="state.adminBanningUser = null; render()" class="text-white">✕</button>
+            </div>
+            <div class="p-5 space-y-4 text-xs">
+              <div class="p-3 rounded-xl bg-app-subtle border border-app flex items-center justify-between">
+                <div>
+                  <p class="font-bold text-sm text-app-main">${escapeHtml(target.name)}</p>
+                  <p class="text-app-muted">@${escapeHtml(target.username || target.id)}</p>
+                </div>
+                ${isUserBanned(target) ? `<button onclick="applyAdminUnban('${target.id}')" class="px-3 py-1.5 rounded btn-sage font-bold">즉시 해제</button>` : ""}
+              </div>
+              <div>
+                <label class="block font-bold mb-1">정지 일수 (일)</label>
+                <input id="admin-ban-days" type="number" min="1" max="3650" value="7" class="w-full px-3.5 py-2 rounded-lg input-ash font-bold" />
+              </div>
+              <div>
+                <label class="block font-bold mb-1">제재 사유</label>
+                <input id="admin-ban-reason" type="text" value="커뮤니티 운영 원칙 위반" class="w-full px-3.5 py-2 rounded-lg input-ash" />
+              </div>
+              <button onclick="applyAdminBan('${target.id}')" class="w-full py-3 rounded-xl btn-rose font-bold">제재 확정</button>
+            </div>
+          </div>
+        </div>
+      `;
+    }
+
+    function renderLightbox() {
+      if (!state.lightboxImage) return "";
+      return `
+        <div onclick="state.lightboxImage = null; render()" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85">
+          <img src="${state.lightboxImage}" class="max-h-[85vh] max-w-full rounded-xl object-contain" />
+        </div>
+      `;
+    }
+
+    // ============================================================================
+    // 6. Actions & Event Handlers
+    // ============================================================================
+    window.toggleTheme = function() {
+      state.theme = state.theme === "dark" ? "light" : "dark";
+      applyTheme();
+      render();
+    };
+
+    window.openWikiModal = function() {
+      state.isWikiModalOpen = true;
+      render();
+    };
+
+    window.toggleDrawer = function(open) {
+      state.isDrawerOpen = open;
+      render();
+    };
+
+    window.goLobby = function() {
+      state.activeDmUser = null;
+      state.activeCommunityId = null;
+      render();
+    };
+
+    window.switchAuthTab = function(tab) {
+      state.authTab = tab;
+      state.authError = "";
+      render();
+    };
+
+    window.quickLoginSavedAccount = function(uname) {
+      const key = uname.trim().toLowerCase();
+      const acc = state.usersDir[key];
+      if (acc) {
+        state.currentUser = acc;
+        saveStorage(STORAGE_KEYS.USER, acc);
+        saveStorage("alterhuman_site_user_v1", acc);
+        render();
+      }
+    };
+
+    window.updateSignupField = function(field, val) {
+      state[field] = val;
+      const nameEl = document.getElementById("signup-preview-name");
+      if (nameEl) nameEl.textContent = state.signupName || state.signupUsername || "내 이름";
+      const pronEl = document.getElementById("signup-preview-pronouns");
+      if (pronEl) pronEl.textContent = state.signupPronounText || "대명사 · 테리오타입";
+      const statusEl = document.getElementById("signup-preview-status");
+      if (statusEl) statusEl.textContent = state.signupStatusMsg || "상태 메시지";
+      const bioEl = document.getElementById("signup-preview-bio");
+      if (bioEl) bioEl.textContent = state.signupBio || "소개글 미리보기";
+    };
+
+    function syncCombinedSignupBadge() {
+      const p = (state.signupPronounCustom || "").trim();
+      const t = (state.signupTheriotypeCustom || "").trim();
+      if (p && t) {
+        state.signupPronounText = `${p} · ${t}`;
+      } else {
+        state.signupPronounText = p || t || "대명사 · 테리오타입";
+      }
+      const pronEl = document.getElementById("signup-preview-pronouns");
+      if (pronEl) pronEl.textContent = state.signupPronounText;
+    }
+
+    window.updateSignupTheriotypeCustom = function(val) {
+      state.signupTheriotypeCustom = val;
+      state.signupTheriotypePreset = "직접 입력";
+      syncCombinedSignupBadge();
+    };
+
+    window.updateSignupPronounCustom = function(val) {
+      state.signupPronounCustom = val;
+      state.signupPronounPreset = "직접 입력";
+      syncCombinedSignupBadge();
+    };
+
+    window.selectSignupTheriotype = function(tp) {
+      state.signupTheriotypePreset = tp;
+      if (tp !== "직접 입력") {
+        state.signupTheriotypeCustom = tp.split(" (")[0];
+      } else {
+        state.signupTheriotypeCustom = "";
+      }
+      syncCombinedSignupBadge();
+      render();
+      if (tp === "직접 입력") {
+        setTimeout(() => {
+          const inp = document.getElementById("signup-theriotype-input");
+          if (inp) inp.focus();
+        }, 20);
+      }
+    };
+
+    window.selectSignupPronoun = function(pr) {
+      state.signupPronounPreset = pr;
+      if (pr !== "직접 입력") {
+        state.signupPronounCustom = pr;
+      } else {
+        state.signupPronounCustom = "";
+      }
+      syncCombinedSignupBadge();
+      render();
+      if (pr === "직접 입력") {
+        setTimeout(() => {
+          const inp = document.getElementById("signup-pronoun-input");
+          if (inp) inp.focus();
+        }, 20);
+      }
+    };
+
+    window.selectSignupAvatar = function(av) {
+      state.signupAvatar = av;
+      render();
+    };
+
+    window.selectSignupBanner = function(bg) {
+      state.signupBannerColor = bg;
+      state.signupBannerUrl = "";
+      render();
+    };
+
+    window.handleSignupAvatarUpload = async function(e) {
+      const file = e.target.files && e.target.files[0];
+      if (!file) return;
+      state.signupAvatar = await compressImageFromFile(file, 300, 300);
+      render();
+    };
+
+    window.handleSignupBannerUpload = async function(e) {
+      const file = e.target.files && e.target.files[0];
+      if (!file) return;
+      state.signupBannerUrl = await compressImageFromFile(file, 900, 360);
+      render();
+    };
+
+    window.selectProfilePresetAvatar = function(avUrl) {
+      if (!state.currentUser) return;
+      state.currentUser.avatarUrl = avUrl;
+      state.usersDir[state.currentUser.username] = state.currentUser;
+      saveStorage(STORAGE_KEYS.USER, state.currentUser);
+      saveStorage("alterhuman_site_user_v1", state.currentUser);
+      saveStorage(STORAGE_KEYS.USERS_DIR, state.usersDir);
+      saveStorage("alterhuman_users_directory", state.usersDir);
+      saveStorage("alterhuman_user_vault_" + state.currentUser.username, state.currentUser);
+      cloudPut(CLOUD_KEYS.USERS, state.usersDir);
+      render();
+    };
+
+    window.selectProfilePresetBanner = function(gradient) {
+      if (!state.currentUser) return;
+      state.currentUser.bannerColor = gradient;
+      state.currentUser.bannerUrl = "";
+      state.usersDir[state.currentUser.username] = state.currentUser;
+      saveStorage(STORAGE_KEYS.USER, state.currentUser);
+      saveStorage("alterhuman_site_user_v1", state.currentUser);
+      saveStorage(STORAGE_KEYS.USERS_DIR, state.usersDir);
+      saveStorage("alterhuman_users_directory", state.usersDir);
+      saveStorage("alterhuman_user_vault_" + state.currentUser.username, state.currentUser);
+      cloudPut(CLOUD_KEYS.USERS, state.usersDir);
+      render();
+    };
+
+    window.handleProfileAvatarUpload = async function(e) {
+      const file = e.target.files && e.target.files[0];
+      if (!file || !state.currentUser) return;
+      state.currentUser.avatarUrl = await compressImageFromFile(file, 300, 300);
+      state.usersDir[state.currentUser.username] = state.currentUser;
+      saveStorage(STORAGE_KEYS.USER, state.currentUser);
+      saveStorage("alterhuman_site_user_v1", state.currentUser);
+      saveStorage(STORAGE_KEYS.USERS_DIR, state.usersDir);
+      saveStorage("alterhuman_users_directory", state.usersDir);
+      saveStorage("alterhuman_user_vault_" + state.currentUser.username, state.currentUser);
+      cloudPut(CLOUD_KEYS.USERS, state.usersDir);
+      render();
+    };
+
+    window.handleProfileBannerUpload = async function(e) {
+      const file = e.target.files && e.target.files[0];
+      if (!file || !state.currentUser) return;
+      state.currentUser.bannerUrl = await compressImageFromFile(file, 900, 360);
+      state.usersDir[state.currentUser.username] = state.currentUser;
+      saveStorage(STORAGE_KEYS.USER, state.currentUser);
+      saveStorage("alterhuman_site_user_v1", state.currentUser);
+      saveStorage(STORAGE_KEYS.USERS_DIR, state.usersDir);
+      saveStorage("alterhuman_users_directory", state.usersDir);
+      saveStorage("alterhuman_user_vault_" + state.currentUser.username, state.currentUser);
+      cloudPut(CLOUD_KEYS.USERS, state.usersDir);
+      render();
+    };
+
+    window.handleNewCommIconUpload = async function(e) {
+      const file = e.target.files && e.target.files[0];
+      if (!file) return;
+      state.newCommIconImage = await compressImageFromFile(file, 300, 300);
+      render();
+    };
+
+    window.handleNewCommBannerUpload = async function(e) {
+      const file = e.target.files && e.target.files[0];
+      if (!file) return;
+      state.newCommBannerImage = await compressImageFromFile(file, 900, 360);
+      render();
+    };
+
+    window.handleLobbySearchInput = function(val) {
+      state.lobbySearch = val;
+      const msgCounts = {};
+      state.communities.forEach((c) => {
+        msgCounts[c.id] = (state.messagesByComm[c.id] || []).length;
+      });
+      const { count, html } = renderFilteredCommunityCards(msgCounts);
+      const gridEl = document.getElementById("lobby-communities-grid");
+      if (gridEl) gridEl.innerHTML = html;
+      const countEl = document.getElementById("lobby-communities-count");
+      if (countEl) countEl.textContent = count;
+    };
+
+    window.handleWikiSearchInput = function(val) {
+      state.wikiSearch = val;
+      const container = document.getElementById("wiki-entries-container");
+      if (container) container.innerHTML = renderWikiEntriesHtml();
+    };
+
+    window.updateCreateCommPreview = function(field, val) {
+      state[field] = val;
+      const nameEl = document.getElementById("create-comm-preview-name");
+      if (nameEl) nameEl.textContent = state.newCommName || "커뮤니티 이름 미리보기";
+      const descEl = document.getElementById("create-comm-preview-desc");
+      if (descEl) descEl.textContent = state.newCommDesc || "상세 소개글 미리보기";
+    };
+
+    window.handleSignup = async function(e) {
+      e.preventDefault();
+      const rawId = state.signupUsername.trim();
+      const uname = rawId.toLowerCase();
+      if (!uname) { state.authError = "아이디를 입력해 주세요."; render(); return; }
+      if (state.signupPassword.length < 4) { state.authError = "비밀번호는 4자 이상이어야 합니다."; render(); return; }
+
+      const newUser = {
+        id: state.usersDir[uname]?.id || ("user-" + Date.now()),
+        username: uname,
+        displayId: rawId,
+        password: state.signupPassword,
+        name: state.signupName.trim() || rawId,
+        pronouns: state.signupPronounText.trim() || "그들/그들의",
+        avatarUrl: state.signupAvatar,
+        bannerUrl: state.signupBannerUrl,
+        bannerColor: state.signupBannerColor,
+        bio: state.signupBio.trim(),
+        statusMessage: state.signupStatusMsg.trim() || "온라인",
+        status: "online",
+        createdAt: new Date().toISOString().slice(0, 10)
+      };
+
+      state.usersDir[uname] = newUser;
+      saveStorage(STORAGE_KEYS.USERS_DIR, state.usersDir);
+      saveStorage("alterhuman_users_directory", state.usersDir);
+      saveStorage("alterhuman_user_vault_" + uname, newUser);
+      state.currentUser = newUser;
+      saveStorage(STORAGE_KEYS.USER, newUser);
+      saveStorage("alterhuman_site_user_v1", newUser);
+      render();
+      await cloudPut(CLOUD_KEYS.USERS, state.usersDir);
+    };
+
+    window.handleLogin = async function(e) {
+      e.preventDefault();
+      const uname = state.loginUsername.trim().toLowerCase();
+      await syncWithCloud();
+      const found = state.usersDir[uname];
+      if (!found) { state.authError = "존재하지 않는 아이디입니다."; render(); return; }
+      if (found.password && found.password !== state.loginPassword) {
+        state.authError = "비밀번호가 일치하지 않습니다."; render(); return;
+      }
+      state.currentUser = found;
+      saveStorage(STORAGE_KEYS.USER, found);
+      saveStorage("alterhuman_site_user_v1", found);
+      render();
+    };
+
+    window.handleLogout = function() {
+      state.currentUser = null;
+      localStorage.removeItem(STORAGE_KEYS.USER);
+      state.isDrawerOpen = false;
+      state.activeCommunityId = null;
+      state.activeDmUser = null;
+      render();
+    };
+
+    window.enterCommunity = function(commId) {
+      const comm = state.communities.find((c) => c.id === commId);
+      if (!comm || !state.currentUser) return;
+      if ((comm.kickedUserIds || []).includes(state.currentUser.id)) {
+        alert("해당 커뮤니티에서 강퇴된 계정이므로 입장할 수 없습니다.");
+        return;
+      }
+      if (!state.joinedCommunityIds.includes(commId)) {
+        state.joinedCommunityIds.push(commId);
+        saveStorage(STORAGE_KEYS.JOINED, state.joinedCommunityIds);
+      }
+      const members = comm.members || [];
+      let memberAdded = false;
+      if (!members.some((m) => m.userId === state.currentUser.id)) {
+        members.push({
+          userId: state.currentUser.id,
+          username: state.currentUser.username,
+          name: state.currentUser.name,
+          pronouns: state.currentUser.pronouns,
+          avatarUrl: state.currentUser.avatarUrl,
+          role: comm.createdById === state.currentUser.id ? "방장" : "멤버",
+          joinedAt: new Date().toISOString()
+        });
+        comm.members = members;
+        comm.memberCount = members.length;
+        saveStorage(STORAGE_KEYS.COMMUNITIES, state.communities);
+        memberAdded = true;
+      }
+
+      // 읽음 처리 업데이트
+      const roomMsgs = state.messagesByComm[commId] || [];
+      let readChanged = false;
+      roomMsgs.forEach((m) => {
+        if (!Array.isArray(m.readUserIds)) m.readUserIds = [m.senderId];
+        if (!m.readUserIds.includes(state.currentUser.id)) {
+          m.readUserIds.push(state.currentUser.id);
+          readChanged = true;
+        }
+      });
+      if (readChanged) {
+        saveStorage(STORAGE_KEYS.MESSAGES, state.messagesByComm);
+        cloudPut(CLOUD_KEYS.MESSAGES, state.messagesByComm);
+      }
+      if (memberAdded) {
+        cloudPut(CLOUD_KEYS.COMMUNITIES, state.communities);
+      }
+
+      state.activeDmUser = null;
+      state.activeCommunityId = commId;
+      state.activeChannelId = (comm.channels && comm.channels[0]) ? comm.channels[0].id : "general";
+      render();
+      setTimeout(() => {
+        const box = document.getElementById("chat-scroll-box");
+        if (box) box.scrollTop = box.scrollHeight;
+      }, 30);
+    };
+
+    window.handleSendChat = function(e) {
+      e.preventDefault();
+      const u = state.currentUser;
+      const comm = state.communities.find((c) => c.id === state.activeCommunityId);
+      if (!u || !comm) return;
+      const text = state.chatInputText.trim();
+      if (!text && !state.chatPendingImage) return;
+
+      const isOwner = comm.createdById === u.id || comm.createdBy === u.name;
+      const newMsg = {
+        id: "msg-" + Date.now() + "-" + Math.random().toString(36).slice(2, 6),
+        communityId: comm.id,
+        channelId: state.activeChannelId || "general",
+        senderId: u.id,
+        senderName: u.name,
+        senderPronouns: u.pronouns,
+        senderAvatar: u.avatarUrl,
+        senderRole: isSuperAdmin(u) ? "관리자" : isOwner ? "방장" : "멤버",
+        content: filterProfanity(text),
+        timestamp: formatKoreanTime(),
+        createdAt: new Date().toISOString(),
+        readUserIds: [u.id],
+        reactions: [],
+        attachmentUrl: state.chatPendingImage || undefined
+      };
+
+      if (!state.messagesByComm[comm.id]) state.messagesByComm[comm.id] = [];
+      state.messagesByComm[comm.id].push(newMsg);
+      saveStorage(STORAGE_KEYS.MESSAGES, state.messagesByComm);
+
+      state.chatInputText = "";
+      state.chatPendingImage = "";
+      render();
+      cloudPut(CLOUD_KEYS.MESSAGES, state.messagesByComm);
+      setTimeout(() => {
+        const box = document.getElementById("chat-scroll-box");
+        if (box) box.scrollTop = box.scrollHeight;
+        const inp = document.getElementById("chat-msg-input");
+        if (inp) inp.focus();
+      }, 20);
+    };
+
+    window.handleChatImageUpload = async function(e) {
+      const file = e.target.files && e.target.files[0];
+      if (!file) return;
+      state.chatPendingImage = await compressImageFromFile(file, 700, 700);
+      render();
+    };
+
+    window.deleteChatMessage = function(commId, msgId) {
+      state.messagesByComm[commId] = (state.messagesByComm[commId] || []).filter((m) => m.id !== msgId);
+      saveStorage(STORAGE_KEYS.MESSAGES, state.messagesByComm);
+      cloudPut(CLOUD_KEYS.MESSAGES, state.messagesByComm);
+      render();
+    };
+
+    window.claimOwnership = function(commId) {
+      const comm = state.communities.find((c) => c.id === commId);
+      const u = state.currentUser;
+      if (!comm || !u || !isSuperAdmin(u)) return;
+      comm.createdBy = u.name;
+      comm.createdById = u.id;
+      (comm.members || []).forEach((m) => {
+        m.role = m.userId === u.id ? "방장" : "멤버";
+      });
+      if (!state.messagesByComm[commId]) state.messagesByComm[commId] = [];
+      state.messagesByComm[commId].push({
+        id: "sys-" + Date.now(),
+        communityId: commId,
+        channelId: state.activeChannelId,
+        senderId: "system",
+        senderName: "시스템",
+        content: `최고 관리자(${u.name})님이 커뮤니티 방장 권한을 회수하여 신규 방장으로 지정되었습니다.`,
+        timestamp: formatKoreanTime(),
+        isSystem: true
+      });
+      saveStorage(STORAGE_KEYS.COMMUNITIES, state.communities);
+      saveStorage(STORAGE_KEYS.MESSAGES, state.messagesByComm);
+      cloudPut(CLOUD_KEYS.COMMUNITIES, state.communities);
+      cloudPut(CLOUD_KEYS.MESSAGES, state.messagesByComm);
+      render();
+    };
+
+    window.deleteCommunityConfirm = function(commId) {
+      if (!confirm("정말 이 커뮤니티와 모든 대화 내역을 삭제하시겠습니까?")) return;
+      state.communities = state.communities.filter((c) => c.id !== commId);
+      state.joinedCommunityIds = state.joinedCommunityIds.filter((id) => id !== commId);
+      if (!state.deletedCommIds.includes(commId)) {
+        state.deletedCommIds.push(commId);
+      }
+      delete state.messagesByComm[commId];
+      state.activeCommunityId = null;
+      saveStorage(STORAGE_KEYS.COMMUNITIES, state.communities);
+      saveStorage(STORAGE_KEYS.DELETED_COMMS, state.deletedCommIds);
+      saveStorage(STORAGE_KEYS.JOINED, state.joinedCommunityIds);
+      saveStorage(STORAGE_KEYS.MESSAGES, state.messagesByComm);
+      cloudPut(CLOUD_KEYS.DELETED_COMMS, state.deletedCommIds);
+      cloudPut(CLOUD_KEYS.COMMUNITIES, state.communities);
+      cloudPut(CLOUD_KEYS.MESSAGES, state.messagesByComm);
+      render();
+    };
+
+    window.kickMemberFromRoom = function(commId, targetUserId, targetName) {
+      if (!confirm(`${targetName} 님을 이 커뮤니티에서 강퇴하시겠습니까?`)) return;
+      const comm = state.communities.find((c) => c.id === commId);
+      if (!comm) return;
+      comm.members = (comm.members || []).filter((m) => m.userId !== targetUserId);
+      if (!comm.kickedUserIds) comm.kickedUserIds = [];
+      comm.kickedUserIds.push(targetUserId);
+      if (!state.messagesByComm[commId]) state.messagesByComm[commId] = [];
+      state.messagesByComm[commId].push({
+        id: "sys-" + Date.now(),
+        communityId: commId,
+        channelId: state.activeChannelId,
+        senderId: "system",
+        senderName: "시스템",
+        content: `${targetName} 님이 커뮤니티에서 내보내졌습니다.`,
+        timestamp: formatKoreanTime(),
+        isSystem: true
+      });
+      saveStorage(STORAGE_KEYS.COMMUNITIES, state.communities);
+      saveStorage(STORAGE_KEYS.MESSAGES, state.messagesByComm);
+      cloudPut(CLOUD_KEYS.COMMUNITIES, state.communities);
+      cloudPut(CLOUD_KEYS.MESSAGES, state.messagesByComm);
+      render();
+    };
+
+    window.handleCreateCommunity = function(e) {
+      e.preventDefault();
+      const u = state.currentUser;
+      if (!u || !state.newCommName.trim()) return;
+      const newComm = {
+        id: "comm-" + Date.now() + "-" + Math.random().toString(36).slice(2, 6),
+        name: state.newCommName.trim(),
+        description: state.newCommDesc.trim(),
+        rules: state.newCommRules.split("\n").map((r) => r.trim()).filter(Boolean),
+        category: state.newCommCategory,
+        iconEmoji: state.newCommEmoji,
+        iconImageUrl: state.newCommIconImage || "",
+        bannerGradient: state.newCommBanner,
+        bannerImageUrl: state.newCommBannerImage || "",
+        memberCount: 1,
+        onlineCount: 1,
+        createdBy: u.name,
+        createdById: u.id,
+        createdAt: new Date().toISOString().slice(0, 10),
+        tags: state.newCommTags.split(/[\s,]+/).filter(Boolean).map((t) => t.startsWith("#") ? t : "#" + t),
+        channels: [
+          { id: "general", name: "자유-대화방", type: "text", description: "메인 대화 채널" },
+          { id: "shifts", name: "시프트-일기장", type: "text", description: "시프트 및 일상 공유" }
+        ],
+        members: [{
+          userId: u.id,
+          username: u.username,
+          name: u.name,
+          pronouns: u.pronouns,
+          avatarUrl: u.avatarUrl,
+          role: "방장",
+          joinedAt: new Date().toISOString()
+        }],
+        kickedUserIds: []
+      };
+      state.communities.unshift(newComm);
+      state.joinedCommunityIds.push(newComm.id);
+      saveStorage(STORAGE_KEYS.COMMUNITIES, state.communities);
+      saveStorage(STORAGE_KEYS.JOINED, state.joinedCommunityIds);
+      cloudPut(CLOUD_KEYS.COMMUNITIES, state.communities);
+      state.newCommName = "";
+      state.newCommDesc = "";
+      state.newCommIconImage = "";
+      state.newCommBannerImage = "";
+      state.isCreateModalOpen = false;
+      enterCommunity(newComm.id);
+    };
+
+    window.openUserProfile = function(userId) {
+      const found = findUserById(userId);
+      if (found) {
+        state.inspectedUser = found;
+        render();
+      }
+    };
+
+    window.toggleFollow = function(targetId) {
+      const u = state.currentUser;
+      if (!u || u.id === targetId) return;
+      const idx = state.follows.findIndex((f) => f.followerId === u.id && f.followingId === targetId);
+      if (idx >= 0) {
+        state.follows.splice(idx, 1);
+      } else {
+        state.follows.push({ followerId: u.id, followingId: targetId });
+      }
+      saveStorage(STORAGE_KEYS.FOLLOWS, state.follows);
+      cloudPut(CLOUD_KEYS.FOLLOWS, state.follows);
+      render();
+    };
+
+    window.startDm = function(targetId) {
+      const target = findUserById(targetId);
+      if (!target) return;
+      state.inspectedUser = null;
+      state.isDmDrawerOpen = false;
+      state.isDrawerOpen = false;
+      state.activeCommunityId = null;
+      state.activeDmUser = target;
+      render();
+    };
+
+    window.handleSendDm = function(e) {
+      e.preventDefault();
+      const inp = document.getElementById("dm-msg-input");
+      if (!inp || !inp.value.trim() || !state.currentUser || !state.activeDmUser) return;
+      const convId = [state.currentUser.id, state.activeDmUser.id].sort().join("__");
+      if (!state.dms[convId]) state.dms[convId] = [];
+      state.dms[convId].push({
+        id: "dm-" + Date.now() + "-" + Math.random().toString(36).slice(2, 6),
+        senderId: state.currentUser.id,
+        senderName: state.currentUser.name,
+        content: filterProfanity(inp.value.trim()),
+        timestamp: formatKoreanTime()
+      });
+      saveStorage(STORAGE_KEYS.DMS, state.dms);
+      cloudPut(CLOUD_KEYS.DMS, state.dms);
+      render();
+    };
+
+    window.handlePostImageUpload = async function(e) {
+      const file = e.target.files && e.target.files[0];
+      if (!file) return;
+      state.newPostImage = await compressImageFromFile(file, 700, 700);
+      render();
+    };
+
+    window.handleCreatePost = function(e) {
+      e.preventDefault();
+      const u = state.currentUser;
+      if (!u || (!state.newPostContent.trim() && !state.newPostImage)) return;
+      state.posts.unshift({
+        id: "post-" + Date.now() + "-" + Math.random().toString(36).slice(2, 6),
+        authorId: u.id,
+        authorName: u.name,
+        authorAvatar: u.avatarUrl,
+        authorPronouns: u.pronouns,
+        content: filterProfanity(state.newPostContent.trim()),
+        mediaUrl: state.newPostImage || undefined,
+        likes: [],
+        comments: [],
+        createdAt: new Date().toISOString()
+      });
+      saveStorage(STORAGE_KEYS.POSTS, state.posts);
+      cloudPut(CLOUD_KEYS.POSTS, state.posts);
+      state.newPostContent = "";
+      state.newPostImage = "";
+      render();
+    };
+
+    window.toggleLikePost = function(postId) {
+      const p = state.posts.find((x) => x.id === postId);
+      if (!p || !state.currentUser) return;
+      if (!p.likes) p.likes = [];
+      if (p.likes.includes(state.currentUser.id)) {
+        p.likes = p.likes.filter((id) => id !== state.currentUser.id);
+      } else {
+        p.likes.push(state.currentUser.id);
+      }
+      saveStorage(STORAGE_KEYS.POSTS, state.posts);
+      cloudPut(CLOUD_KEYS.POSTS, state.posts);
+      render();
+    };
+
+    window.deletePost = function(postId) {
+      state.posts = state.posts.filter((p) => p.id !== postId);
+      saveStorage(STORAGE_KEYS.POSTS, state.posts);
+      cloudPut(CLOUD_KEYS.POSTS, state.posts);
+      render();
+    };
+
+    window.handleSaveProfile = function(e) {
+      e.preventDefault();
+      const u = state.currentUser;
+      if (!u) return;
+      u.name = document.getElementById("prof-name").value.trim() || u.name;
+      u.pronouns = document.getElementById("prof-pronouns").value.trim() || u.pronouns;
+      u.statusMessage = document.getElementById("prof-status").value.trim();
+      u.bio = document.getElementById("prof-bio").value.trim();
+      state.usersDir[u.username] = u;
+      saveStorage(STORAGE_KEYS.USER, u);
+      saveStorage("alterhuman_site_user_v1", u);
+      saveStorage(STORAGE_KEYS.USERS_DIR, state.usersDir);
+      saveStorage("alterhuman_users_directory", state.usersDir);
+      saveStorage("alterhuman_user_vault_" + u.username, u);
+      cloudPut(CLOUD_KEYS.USERS, state.usersDir);
+      state.isProfileModalOpen = false;
+      render();
+    };
+
+    window.openReportModal = function(commId, msgId) {
+      const msg = (state.messagesByComm[commId] || []).find((m) => m.id === msgId);
+      if (msg) {
+        state.reportingMessage = msg;
+        state.reportVerdict = null;
+        render();
+      }
+    };
+
+    window.executeAiReport = function() {
+      if (!state.reportingMessage) return;
+      state.reportVerdict = analyzeMessageForReport(state.reportingMessage.content, "");
+      render();
+    };
+
+    window.openAdminBan = function(userId) {
+      const found = findUserById(userId);
+      if (found) {
+        state.adminBanningUser = found;
+        render();
+      }
+    };
+
+    window.applyAdminBan = function(userId) {
+      const days = parseInt(document.getElementById("admin-ban-days")?.value || "7", 10) || 7;
+      const reason = document.getElementById("admin-ban-reason")?.value || "운영 원칙 위반";
+      const bannedUntil = new Date(Date.now() + days * 86400000).toISOString();
+      for (const [k, u] of Object.entries(state.usersDir)) {
+        if (u.id === userId || u.username === userId) {
+          u.bannedUntil = bannedUntil;
+          u.banReason = reason;
+        }
+      }
+      saveStorage(STORAGE_KEYS.USERS_DIR, state.usersDir);
+      cloudPut(CLOUD_KEYS.USERS, state.usersDir);
+      alert(`[${state.adminBanningUser.name}] 유저에게 ${days}일 활동 정지 제재가 적용되었습니다.`);
+      state.adminBanningUser = null;
+      render();
+    };
+
+    window.applyAdminUnban = function(userId) {
+      for (const [k, u] of Object.entries(state.usersDir)) {
+        if (u.id === userId || u.username === userId) {
+          delete u.bannedUntil;
+          delete u.banReason;
+        }
+      }
+      saveStorage(STORAGE_KEYS.USERS_DIR, state.usersDir);
+      cloudPut(CLOUD_KEYS.USERS, state.usersDir);
+      alert("활동 제한이 즉시 해제되었습니다.");
+      state.adminBanningUser = null;
+      render();
+    };
+
+    function render() {
+      const root = document.getElementById("app");
+      if (!state.currentUser) {
+        root.innerHTML = renderAuthOnboarding() + renderWikiModal();
+        return;
+      }
+
+      let mainView = "";
+      if (state.activeDmUser) {
+        mainView = renderDmRoom();
+      } else if (state.activeCommunityId) {
+        mainView = renderChatRoom();
+      } else {
+        mainView = renderLobby();
+      }
+
+      root.innerHTML = `
+        ${renderTopNav()}
+        ${renderHamburgerDrawer()}
+        <main class="flex-1 flex overflow-hidden">${mainView}</main>
+        ${renderWikiModal()}
+        ${renderCreateCommunityModal()}
+        ${renderUserProfileDetailModal()}
+        ${renderProfileSettingsModal()}
+        ${renderDmDrawer()}
+        ${renderReportModal()}
+        ${renderSupportModal()}
+        ${renderAdminBanModal()}
+        ${renderLightbox()}
+      `;
+    }
+
+    render();
+    syncWithCloud();
+    setInterval(syncWithCloud, 3500);
+  </script>
+</body>
+</html>
