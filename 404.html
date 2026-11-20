@@ -768,11 +768,11 @@
     }
 
     // ============================================================================
-    // 4. Permanent Account & Community Protection + Real-Time Multi-User Cloud Sync
+    // 4. Clean Alterhuman Account Management (참치김밥 계정 완전 삭제 + 강제 자동 로그인 버그 제거)
     // ============================================================================
     const CLOUD_API_BASE = "https://kvdb.io/UJi5qrxjVL5oMcMYSXCvLC";
     const CLOUD_KEYS = {
-      USERS: "alterhuman_cloud_users_v1",
+      USERS: "alterhuman_lounge_users_v2",
       COMMUNITIES: "alterhuman_cloud_comms_v1",
       DELETED_COMMS: "alterhuman_cloud_deleted_comms_v1",
       MESSAGES: "alterhuman_cloud_msgs_v1",
@@ -782,8 +782,9 @@
     };
 
     const STORAGE_KEYS = {
-      USER: "alterhuman_standalone_user_v1",
-      USERS_DIR: "alterhuman_standalone_users_dir_v1",
+      // 사용자가 직접 아이디/비밀번호로 로그인하거나 회원가입했을 때만 저장되는 명시적 세션 키
+      ACTIVE_SESSION: "alterhuman_explicit_session_v2",
+      USERS_DIR: "alterhuman_lounge_users_dir_v2",
       COMMUNITIES: "alterhuman_standalone_comms_v1",
       DELETED_COMMS: "alterhuman_standalone_deleted_comms_v1",
       MESSAGES: "alterhuman_standalone_msgs_v1",
@@ -833,7 +834,7 @@
       return `${period} ${displayHour}:${minutes}`;
     }
 
-    const SUPER_ADMIN_IDENTIFIERS = ["우엉김밥", "loon", "알터휴먼", "alterhuman", "참치김밥"];
+    const SUPER_ADMIN_IDENTIFIERS = ["우엉김밥", "loon"];
 
     function isSuperAdmin(user) {
       if (!user) return false;
@@ -859,44 +860,65 @@
     const AI_SEED_COMM_IDS = ["comm-therian-den", "comm-quadrobics-gear", "comm-otherkin-sanctuary", "comm-otherhearted-forest"];
     const AI_BOT_USER_IDS = ["system-alterhuman", "bot-redfox", "bot-dragon"];
 
-    // 기존에 만들어진 모든 유저 계정을 100% 복구·통합하고, 우엉김밥(ID: Loon, PW: 1022) 계정을 영구 보장합니다.
+    // 참치김밥에서 넘어온 계정인지 판별하여 100% 차단·삭제합니다.
+    function isChamchiGimbapAccount(u, chamchiUsernamesSet) {
+      if (!u || typeof u !== "object") return true;
+      const uname = (u.username || "").trim().toLowerCase();
+      if (!uname) return true;
+      // 우엉김밥(Loon) 계정은 알터휴먼 최고 관리자 계정이므로 항상 보존
+      if (uname === "loon") return false;
+      if (AI_BOT_USER_IDS.includes(u.id)) return true;
+      if (chamchiUsernamesSet && chamchiUsernamesSet.has(uname)) return true;
+      if (u.email && String(u.email).includes("chamchi-gimbap")) return true;
+      if (u.bio && String(u.bio).includes("참치김밥")) return true;
+      if (u.name && String(u.name).includes("참치김밥")) return true;
+      return false;
+    }
+
+    // 참치김밥 계정은 일절 삭제하고, 알터휴먼 라운지 전용 계정과 Loon(우엉김밥) 계정만 보존합니다.
     function loadAndRestoreUsersDirectory() {
-      const rawStandalone = loadStorage(STORAGE_KEYS.USERS_DIR, {});
-      const rawNextDir = loadStorage("alterhuman_users_directory", {});
-      const rawChamchiDir = loadStorage("chamchi_users_directory", {});
+      // 1) 참치김밥 스토리지에 있던 계정 목록을 수집하여 블랙리스트(삭제 대상)로 지정
+      const chamchiUsernames = new Set();
+      try {
+        const rawChamchiDir = loadStorage("chamchi_users_directory", {});
+        if (rawChamchiDir && typeof rawChamchiDir === "object") {
+          for (const [k, u] of Object.entries(rawChamchiDir)) {
+            const nk = ((u && u.username) || k || "").trim().toLowerCase();
+            if (nk && nk !== "loon") chamchiUsernames.add(nk);
+          }
+        }
+        for (let i = 0; i < localStorage.length; i++) {
+          const k = localStorage.key(i);
+          if (k && k.startsWith("chamchi_user_vault_")) {
+            const nk = k.replace("chamchi_user_vault_", "").trim().toLowerCase();
+            if (nk && nk !== "loon") chamchiUsernames.add(nk);
+          }
+        }
+      } catch (e) {}
 
-      const merged = {};
+      // 2) 알터휴먼 전용 디렉터리에서 참치김밥 계정을 완전히 걸러내고 순수 알터휴먼 계정만 로드
+      const rawV2 = loadStorage(STORAGE_KEYS.USERS_DIR, {});
+      const rawV1 = loadStorage("alterhuman_standalone_users_dir_v1", {});
+      const cleaned = {};
 
-      for (const source of [rawChamchiDir, rawNextDir, rawStandalone]) {
+      for (const source of [rawV1, rawV2]) {
         if (source && typeof source === "object") {
           for (const [k, u] of Object.entries(source)) {
-            if (u && typeof u === "object" && !AI_BOT_USER_IDS.includes(u.id)) {
+            if (u && typeof u === "object" && !isChamchiGimbapAccount(u, chamchiUsernames)) {
               const normKey = (u.username || k).trim().toLowerCase();
               if (normKey) {
-                merged[normKey] = { ...merged[normKey], ...u, username: normKey };
+                cleaned[normKey] = { ...cleaned[normKey], ...u, username: normKey };
               }
             }
           }
         }
       }
 
-      try {
-        for (let i = 0; i < localStorage.length; i++) {
-          const k = localStorage.key(i);
-          if (k && (k.startsWith("alterhuman_user_vault_") || k.startsWith("chamchi_user_vault_"))) {
-            const u = loadStorage(k, null);
-            if (u && u.username && !AI_BOT_USER_IDS.includes(u.id)) {
-              const normKey = u.username.trim().toLowerCase();
-              merged[normKey] = { ...merged[normKey], ...u, username: normKey };
-            }
-          }
-        }
-      } catch (e) {}
-
-      const existingLoon = merged["loon"] || {};
+      // 3) 우엉김밥 (ID: Loon, 비밀번호: 1022) 최고 관리자 계정은 항상 DB에 등록 보장 (자동 로그인은 하지 않음)
+      const existingLoon = cleaned["loon"] || {};
       const isOldBlackBanner = !existingLoon.bannerColor || existingLoon.bannerColor.includes("#09090b");
       const isOldTextAvatar = !existingLoon.avatarUrl || existingLoon.avatarUrl.includes("%2318181b") || existingLoon.avatarUrl.includes("font-family");
-      merged["loon"] = {
+      cleaned["loon"] = {
         ...PERMANENT_LOON_ACCOUNT,
         ...existingLoon,
         username: "loon",
@@ -906,31 +928,27 @@
         bannerColor: isOldBlackBanner ? BANNER_PRESETS[0].gradient : existingLoon.bannerColor,
       };
 
-      saveStorage(STORAGE_KEYS.USERS_DIR, merged);
-      saveStorage("alterhuman_users_directory", merged);
-      saveStorage("alterhuman_user_vault_loon", merged["loon"]);
-      return merged;
+      // 이전 오염된 키 정리 및 깨끗한 v2 디렉터리 저장
+      try {
+        localStorage.removeItem("alterhuman_standalone_users_dir_v1");
+        localStorage.removeItem("alterhuman_standalone_user_v1");
+        localStorage.removeItem("alterhuman_site_user_v1");
+      } catch (e) {}
+
+      saveStorage(STORAGE_KEYS.USERS_DIR, cleaned);
+      return cleaned;
     }
 
-    function loadAndRestoreCurrentUser(usersDir) {
-      let cur = loadStorage(STORAGE_KEYS.USER, null) || loadStorage("alterhuman_site_user_v1", null);
-      if (cur && AI_BOT_USER_IDS.includes(cur.id)) {
-        cur = null;
+    // 기존에 직접 로그인을 했던 세션이 있는 경우에만 세션을 유지하고, 처음 접속 시에는 무조건 null(로그인 화면)을 반환합니다.
+    function loadExplicitSessionUser(usersDir) {
+      const sessionUser = loadStorage(STORAGE_KEYS.ACTIVE_SESSION, null);
+      if (!sessionUser || !sessionUser.username) return null;
+      const key = sessionUser.username.trim().toLowerCase();
+      if (!usersDir[key]) {
+        try { localStorage.removeItem(STORAGE_KEYS.ACTIVE_SESSION); } catch (e) {}
+        return null;
       }
-      if (cur && cur.username) {
-        const key = cur.username.trim().toLowerCase();
-        if (usersDir[key]) {
-          cur = usersDir[key];
-          saveStorage(STORAGE_KEYS.USER, cur);
-          saveStorage("alterhuman_site_user_v1", cur);
-        }
-      }
-      if (!cur && usersDir["loon"]) {
-        cur = usersDir["loon"];
-        saveStorage(STORAGE_KEYS.USER, cur);
-        saveStorage("alterhuman_site_user_v1", cur);
-      }
-      return cur;
+      return usersDir[key];
     }
 
     function loadCleanCommunities() {
@@ -986,7 +1004,7 @@
     }
 
     const initialUsersDir = loadAndRestoreUsersDirectory();
-    const initialCurrentUser = loadAndRestoreCurrentUser(initialUsersDir);
+    const initialCurrentUser = loadExplicitSessionUser(initialUsersDir);
 
     const state = {
       theme: loadStorage(STORAGE_KEYS.THEME, "dark"),
@@ -1001,7 +1019,7 @@
       dms: loadStorage(STORAGE_KEYS.DMS, {}),
       cloudConnected: false,
 
-      // Auth onboarding state
+      // Auth onboarding state (처음 접속 시 로그인 화면 표시, 아이디/비밀번호 직접 입력 필수)
       authTab: "login",
       authError: "",
       signupUsername: "",
@@ -1017,7 +1035,7 @@
       signupBannerUrl: "",
       signupBio: "반갑습니다. 알터휴먼 라운지에서 소통해요.",
       signupStatusMsg: "온라인",
-      loginUsername: "Loon",
+      loginUsername: "",
       loginPassword: "",
 
       // Navigation & Active Views
@@ -1063,9 +1081,8 @@
 
     // ============================================================================
     // Real-Time Multi-User Cloud Sync (KVDB + BroadcastChannel)
-    // 다른 기기·브라우저 사용자들과 실시간으로 커뮤니티·채팅·계정·DM 공유 (데이터 삭제 절대 방지)
     // ============================================================================
-    const bcChannel = typeof BroadcastChannel !== "undefined" ? new BroadcastChannel("alterhuman_lounge_realtime_v1") : null;
+    const bcChannel = typeof BroadcastChannel !== "undefined" ? new BroadcastChannel("alterhuman_lounge_realtime_v2") : null;
     if (bcChannel) {
       bcChannel.onmessage = () => {
         state.usersDir = loadAndRestoreUsersDirectory();
@@ -1115,7 +1132,6 @@
     }
 
     function safeReactiveRender() {
-      // 키보드 입력 중일 때는 포커스가 풀리지 않도록 채팅 스트림이나 로비 그리드만 부분 업데이트
       if (isUserTypingInInput()) {
         const activeId = document.activeElement ? document.activeElement.id : "";
         if (activeId === "chat-msg-input" && state.activeCommunityId) {
@@ -1141,19 +1157,18 @@
           saveStorage(STORAGE_KEYS.DELETED_COMMS, mergedDeleted);
         }
 
-        // 2. Users Directory (절대 기존 계정 삭제 없이 양방향 병합)
+        // 2. Users Directory (참치김밥 계정은 철저히 제외하고 알터휴먼 전용 계정만 동기화)
         const cloudUsers = await cloudGet(CLOUD_KEYS.USERS, null);
         let changed = false;
         if (cloudUsers && typeof cloudUsers === "object") {
           const prevCount = Object.keys(state.usersDir).length;
-          const mergedUsers = { ...cloudUsers, ...state.usersDir };
+          const mergedUsers = { ...state.usersDir };
           for (const [k, cu] of Object.entries(cloudUsers)) {
-            if (cu && cu.username && !AI_BOT_USER_IDS.includes(cu.id)) {
+            if (cu && cu.username && !isChamchiGimbapAccount(cu, null)) {
               const nk = cu.username.trim().toLowerCase();
               mergedUsers[nk] = { ...cu, ...(state.usersDir[nk] || {}), username: nk };
             }
           }
-          // Loon 최고 관리자 계정 보장
           mergedUsers["loon"] = {
             ...PERMANENT_LOON_ACCOUNT,
             ...(mergedUsers["loon"] || {}),
@@ -1171,7 +1186,7 @@
           cloudPut(CLOUD_KEYS.USERS, state.usersDir);
         }
 
-        // 3. Communities (절대 기존 커뮤니티 삭제 없이 병합)
+        // 3. Communities
         const cloudComms = await cloudGet(CLOUD_KEYS.COMMUNITIES, null);
         if (Array.isArray(cloudComms)) {
           const commMap = new Map();
@@ -1352,11 +1367,9 @@
     }
 
     // ============================================================================
-    // 5. Render Functions (다채로운 저채도 색감 & 24종 프로필 아바타 프리셋)
+    // 5. Render Functions (처음 접속 시 로그인 화면 + 타인 계정 클릭 입장 완전 제거)
     // ============================================================================
     function renderAuthOnboarding() {
-      const savedAccounts = Object.values(state.usersDir);
-
       return `
         <div class="h-screen w-full overflow-y-auto bg-app-canvas">
           <!-- Top Sticky Header Bar -->
@@ -1396,33 +1409,15 @@
                 </p>
               </div>
 
-              <!-- Saved Account Quick Restore Card -->
-              ${savedAccounts.length > 0 ? `
-                <div class="p-4 rounded-xl bg-[#1c222b]/75 border border-white/15 space-y-2.5">
-                  <div class="flex items-center justify-between">
-                    <span class="text-xs font-bold text-[#e6edf5]">보존된 내 계정 목록 (클릭 시 즉시 입장)</span>
-                    <span class="text-[10px] px-2 py-0.5 rounded bg-[#58786e]/50 text-[#d3ebe3] border border-[#82ab9e]/35">데이터 영구 보호됨</span>
-                  </div>
-                  <div class="space-y-1.5 max-h-48 overflow-y-auto">
-                    ${savedAccounts.map((acc) => `
-                      <button type="button" onclick="quickLoginSavedAccount('${escapeHtml(acc.username)}')" class="w-full p-2.5 rounded-xl bg-[#272f3b]/90 hover:bg-[#323c4b] border border-white/12 flex items-center justify-between text-left transition">
-                        <div class="flex items-center gap-2.5 min-w-0">
-                          <img src="${acc.avatarUrl || AVATAR_PRESETS[0]}" class="w-9 h-9 rounded-lg object-cover bg-[#3a4d61]" />
-                          <div class="min-w-0">
-                            <div class="flex items-center gap-1.5">
-                              <span class="font-bold text-xs text-white truncate">${escapeHtml(acc.name)}</span>
-                              <span class="text-[11px] text-[#b8c5d4]">(@${escapeHtml(acc.displayId || acc.username)})</span>
-                              ${isSuperAdmin(acc) ? `<span class="px-1.5 py-0.5 rounded text-[9px] font-bold bg-[#e6cfd5] text-[#4a2c34]">최고 관리자</span>` : ""}
-                            </div>
-                            <p class="text-[10px] text-[#c2cedb] truncate">${escapeHtml(acc.pronouns || "")}</p>
-                          </div>
-                        </div>
-                        <span class="px-2.5 py-1 rounded-lg bg-[#627e96] hover:bg-[#718fa8] text-white text-[11px] font-bold shrink-0">바로 입장</span>
-                      </button>
-                    `).join("")}
-                  </div>
-                </div>
-              ` : ""}
+              <!-- Alterhuman Core Identity Guide Summary -->
+              <div class="p-4 rounded-xl bg-[#1c222b]/70 border border-white/15 space-y-2 text-xs">
+                <div class="font-bold text-[#e6edf5]">알터휴먼 라운지 안내</div>
+                <ul class="space-y-1.5 text-[#c7d3e0] text-[11px] leading-relaxed">
+                  <li>• 본인의 아이디(ID)와 비밀번호로 로그인하거나 새 계정을 만들어 입장합니다.</li>
+                  <li>• 테리오타입(Theriotype), 킨타입(Kintype), 하트타입 및 대명사를 자유롭게 설정할 수 있습니다.</li>
+                  <li>• 24종의 저채도 알터휴먼 일러스트 프로필과 12종의 커버 테마, 또는 갤러리 사진을 지원합니다.</li>
+                </ul>
+              </div>
 
               <!-- Live Profile Card Preview -->
               <div>
@@ -1456,7 +1451,7 @@
                 <div>
                   <h2 class="text-lg font-extrabold text-app-main">${state.authTab === "signup" ? "새 계정 만들기" : "계정 로그인"}</h2>
                   <p class="text-xs text-app-muted mt-0.5">
-                    ${state.authTab === "signup" ? "아이디, 이름, 테리오타입/킨타입 및 24종 프로필 아바타를 설정하세요." : "기존에 만든 아이디와 비밀번호로 로그인합니다."}
+                    ${state.authTab === "signup" ? "아이디, 이름, 테리오타입/킨타입 및 24종 프로필 아바타를 설정하세요." : "본인의 아이디와 비밀번호를 입력하여 로그인합니다."}
                   </p>
                 </div>
                 <div class="flex bg-app-subtle border border-app p-1 rounded-xl text-xs font-bold self-start">
@@ -1474,7 +1469,7 @@
                     <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
                       <div>
                         <label class="block text-xs font-bold mb-1">아이디 (ID) *</label>
-                        <input type="text" required value="${escapeHtml(state.signupUsername)}" oninput="updateSignupField('signupUsername', this.value)" placeholder="로그인 아이디" class="w-full px-3 py-2 rounded-lg input-ash text-xs sm:text-sm" />
+                        <input type="text" required value="${escapeHtml(state.signupUsername)}" oninput="updateSignupField('signupUsername', this.value)" placeholder="사용할 로그인 아이디" class="w-full px-3 py-2 rounded-lg input-ash text-xs sm:text-sm" />
                       </div>
                       <div>
                         <label class="block text-xs font-bold mb-1">비밀번호 * (4자 이상)</label>
@@ -1571,16 +1566,21 @@
                   <div class="p-4 rounded-xl bg-app-subtle border border-app space-y-3">
                     <div>
                       <label class="block text-xs font-bold mb-1">아이디 (ID)</label>
-                      <input type="text" required value="${escapeHtml(state.loginUsername)}" oninput="state.loginUsername = this.value" placeholder="아이디 입력 (예: Loon)" class="w-full px-3.5 py-2.5 rounded-lg input-ash text-sm" />
+                      <input type="text" required value="${escapeHtml(state.loginUsername)}" oninput="state.loginUsername = this.value" placeholder="아이디를 입력하세요" class="w-full px-3.5 py-2.5 rounded-lg input-ash text-sm" />
                     </div>
                     <div>
                       <label class="block text-xs font-bold mb-1">비밀번호</label>
-                      <input type="password" required value="${escapeHtml(state.loginPassword)}" oninput="state.loginPassword = this.value" placeholder="비밀번호 입력" class="w-full px-3.5 py-2.5 rounded-lg input-ash text-sm" />
+                      <input type="password" required value="${escapeHtml(state.loginPassword)}" oninput="state.loginPassword = this.value" placeholder="비밀번호를 입력하세요" class="w-full px-3.5 py-2.5 rounded-lg input-ash text-sm" />
                     </div>
                   </div>
                   <button type="submit" class="w-full py-3.5 px-5 rounded-xl btn-ash font-bold text-sm shadow-sm">
                     로그인하고 입장하기
                   </button>
+                  <div class="text-center pt-1">
+                    <button type="button" onclick="switchAuthTab('signup')" class="text-xs text-app-muted hover:text-app-main underline">
+                      아직 계정이 없으신가요? 새 계정 만들기
+                    </button>
+                  </div>
                 </form>
               `}
             </div>
@@ -2766,17 +2766,6 @@
       render();
     };
 
-    window.quickLoginSavedAccount = function(uname) {
-      const key = uname.trim().toLowerCase();
-      const acc = state.usersDir[key];
-      if (acc) {
-        state.currentUser = acc;
-        saveStorage(STORAGE_KEYS.USER, acc);
-        saveStorage("alterhuman_site_user_v1", acc);
-        render();
-      }
-    };
-
     window.updateSignupField = function(field, val) {
       state[field] = val;
       const nameEl = document.getElementById("signup-preview-name");
@@ -2876,11 +2865,8 @@
       if (!state.currentUser) return;
       state.currentUser.avatarUrl = avUrl;
       state.usersDir[state.currentUser.username] = state.currentUser;
-      saveStorage(STORAGE_KEYS.USER, state.currentUser);
-      saveStorage("alterhuman_site_user_v1", state.currentUser);
+      saveStorage(STORAGE_KEYS.ACTIVE_SESSION, state.currentUser);
       saveStorage(STORAGE_KEYS.USERS_DIR, state.usersDir);
-      saveStorage("alterhuman_users_directory", state.usersDir);
-      saveStorage("alterhuman_user_vault_" + state.currentUser.username, state.currentUser);
       cloudPut(CLOUD_KEYS.USERS, state.usersDir);
       render();
     };
@@ -2890,11 +2876,8 @@
       state.currentUser.bannerColor = gradient;
       state.currentUser.bannerUrl = "";
       state.usersDir[state.currentUser.username] = state.currentUser;
-      saveStorage(STORAGE_KEYS.USER, state.currentUser);
-      saveStorage("alterhuman_site_user_v1", state.currentUser);
+      saveStorage(STORAGE_KEYS.ACTIVE_SESSION, state.currentUser);
       saveStorage(STORAGE_KEYS.USERS_DIR, state.usersDir);
-      saveStorage("alterhuman_users_directory", state.usersDir);
-      saveStorage("alterhuman_user_vault_" + state.currentUser.username, state.currentUser);
       cloudPut(CLOUD_KEYS.USERS, state.usersDir);
       render();
     };
@@ -2904,11 +2887,8 @@
       if (!file || !state.currentUser) return;
       state.currentUser.avatarUrl = await compressImageFromFile(file, 300, 300);
       state.usersDir[state.currentUser.username] = state.currentUser;
-      saveStorage(STORAGE_KEYS.USER, state.currentUser);
-      saveStorage("alterhuman_site_user_v1", state.currentUser);
+      saveStorage(STORAGE_KEYS.ACTIVE_SESSION, state.currentUser);
       saveStorage(STORAGE_KEYS.USERS_DIR, state.usersDir);
-      saveStorage("alterhuman_users_directory", state.usersDir);
-      saveStorage("alterhuman_user_vault_" + state.currentUser.username, state.currentUser);
       cloudPut(CLOUD_KEYS.USERS, state.usersDir);
       render();
     };
@@ -2918,11 +2898,8 @@
       if (!file || !state.currentUser) return;
       state.currentUser.bannerUrl = await compressImageFromFile(file, 900, 360);
       state.usersDir[state.currentUser.username] = state.currentUser;
-      saveStorage(STORAGE_KEYS.USER, state.currentUser);
-      saveStorage("alterhuman_site_user_v1", state.currentUser);
+      saveStorage(STORAGE_KEYS.ACTIVE_SESSION, state.currentUser);
       saveStorage(STORAGE_KEYS.USERS_DIR, state.usersDir);
-      saveStorage("alterhuman_users_directory", state.usersDir);
-      saveStorage("alterhuman_user_vault_" + state.currentUser.username, state.currentUser);
       cloudPut(CLOUD_KEYS.USERS, state.usersDir);
       render();
     };
@@ -2975,8 +2952,15 @@
       if (!uname) { state.authError = "아이디를 입력해 주세요."; render(); return; }
       if (state.signupPassword.length < 4) { state.authError = "비밀번호는 4자 이상이어야 합니다."; render(); return; }
 
+      await syncWithCloud();
+      if (state.usersDir[uname]) {
+        state.authError = "이미 사용 중인 아이디입니다. 로그인 탭에서 로그인해 주세요.";
+        render();
+        return;
+      }
+
       const newUser = {
-        id: state.usersDir[uname]?.id || ("user-" + Date.now()),
+        id: "user-" + Date.now() + "-" + Math.random().toString(36).slice(2, 6),
         username: uname,
         displayId: rawId,
         password: state.signupPassword,
@@ -2993,11 +2977,8 @@
 
       state.usersDir[uname] = newUser;
       saveStorage(STORAGE_KEYS.USERS_DIR, state.usersDir);
-      saveStorage("alterhuman_users_directory", state.usersDir);
-      saveStorage("alterhuman_user_vault_" + uname, newUser);
       state.currentUser = newUser;
-      saveStorage(STORAGE_KEYS.USER, newUser);
-      saveStorage("alterhuman_site_user_v1", newUser);
+      saveStorage(STORAGE_KEYS.ACTIVE_SESSION, newUser);
       render();
       await cloudPut(CLOUD_KEYS.USERS, state.usersDir);
     };
@@ -3005,21 +2986,36 @@
     window.handleLogin = async function(e) {
       e.preventDefault();
       const uname = state.loginUsername.trim().toLowerCase();
+      if (!uname) {
+        state.authError = "아이디를 입력해 주세요.";
+        render();
+        return;
+      }
       await syncWithCloud();
       const found = state.usersDir[uname];
-      if (!found) { state.authError = "존재하지 않는 아이디입니다."; render(); return; }
-      if (found.password && found.password !== state.loginPassword) {
-        state.authError = "비밀번호가 일치하지 않습니다."; render(); return;
+      if (!found) {
+        state.authError = "존재하지 않는 아이디입니다.";
+        render();
+        return;
       }
+      if ((found.password || "") !== state.loginPassword) {
+        state.authError = "비밀번호가 일치하지 않습니다.";
+        render();
+        return;
+      }
+      state.authError = "";
       state.currentUser = found;
-      saveStorage(STORAGE_KEYS.USER, found);
-      saveStorage("alterhuman_site_user_v1", found);
+      saveStorage(STORAGE_KEYS.ACTIVE_SESSION, found);
       render();
     };
 
     window.handleLogout = function() {
       state.currentUser = null;
-      localStorage.removeItem(STORAGE_KEYS.USER);
+      try {
+        localStorage.removeItem(STORAGE_KEYS.ACTIVE_SESSION);
+      } catch (e) {}
+      state.loginUsername = "";
+      state.loginPassword = "";
       state.isDrawerOpen = false;
       state.activeCommunityId = null;
       state.activeDmUser = null;
@@ -3055,7 +3051,6 @@
         memberAdded = true;
       }
 
-      // 읽음 처리 업데이트
       const roomMsgs = state.messagesByComm[commId] || [];
       let readChanged = false;
       roomMsgs.forEach((m) => {
@@ -3369,11 +3364,8 @@
       u.statusMessage = document.getElementById("prof-status").value.trim();
       u.bio = document.getElementById("prof-bio").value.trim();
       state.usersDir[u.username] = u;
-      saveStorage(STORAGE_KEYS.USER, u);
-      saveStorage("alterhuman_site_user_v1", u);
+      saveStorage(STORAGE_KEYS.ACTIVE_SESSION, u);
       saveStorage(STORAGE_KEYS.USERS_DIR, state.usersDir);
-      saveStorage("alterhuman_users_directory", state.usersDir);
-      saveStorage("alterhuman_user_vault_" + u.username, u);
       cloudPut(CLOUD_KEYS.USERS, state.usersDir);
       state.isProfileModalOpen = false;
       render();
