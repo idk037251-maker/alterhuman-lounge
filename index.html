@@ -2,12 +2,34 @@
 <html lang="ko" class="dark">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
   <title>알터휴먼 라운지 — 테리안 · 아더킨 실시간 커뮤니티</title>
   <script src="https://www.gstatic.com/antigravity/web/dev/tailwindcss.min.js"></script>
   <script src="https://cdn.tailwindcss.com"></script>
   <style>
     * { box-sizing: border-box; }
+    html, body {
+      width: 100%;
+      max-width: 100%;
+      height: 100dvh;
+      max-height: 100dvh;
+      overflow-x: hidden;
+      margin: 0;
+      padding: 0;
+      -webkit-text-size-adjust: 100%;
+    }
+    #app {
+      width: 100%;
+      max-width: 100%;
+      height: 100dvh;
+      max-height: 100dvh;
+      overflow: hidden;
+    }
+    @media (max-width: 768px) {
+      input, textarea, select {
+        font-size: 16px !important;
+      }
+    }
     ::-webkit-scrollbar { width: 6px; height: 6px; }
     ::-webkit-scrollbar-track { background: transparent; }
     ::-webkit-scrollbar-thumb { background: rgba(130, 142, 158, 0.35); border-radius: 9999px; }
@@ -194,8 +216,8 @@
     }
   </style>
 </head>
-<body class="bg-app-canvas antialiased selection:bg-[#5c7893] selection:text-white m-0 p-0 overflow-hidden h-screen w-screen">
-  <div id="app" class="h-screen w-screen overflow-hidden flex flex-col"></div>
+<body class="bg-app-canvas antialiased selection:bg-[#5c7893] selection:text-white m-0 p-0 overflow-hidden h-[100dvh] w-full max-w-full">
+  <div id="app" class="h-[100dvh] w-full max-w-full overflow-hidden flex flex-col"></div>
 
   <script>
     // ============================================================================
@@ -1105,13 +1127,27 @@
       });
     }
 
+    const processedEventIds = new Set();
+
     function handleIncomingRealtimeEvent(data) {
-      const { type, payload } = data || {};
+      const { type, payload, eventId } = data || {};
+      if (eventId) {
+        if (processedEventIds.has(eventId)) return;
+        processedEventIds.add(eventId);
+        if (processedEventIds.size > 1500) {
+          const first = processedEventIds.values().next().value;
+          processedEventIds.delete(first);
+        }
+      }
       let needsUpdate = false;
 
       if (type === "NEW_MESSAGE" && payload && payload.communityId) {
         const cid = payload.communityId;
         const curList = state.messagesByComm[cid] || [];
+        // 방 단위 수신 보장: 현재 입장해 있는 방이거나 이미 참여한 방의 메시지만 처리
+        if (curList.some((m) => m.id === payload.id)) {
+          return;
+        }
         const nextList = mergeMessageArrays(curList, [payload]);
         if (state.activeCommunityId === cid && state.currentUser) {
           nextList.forEach((m) => {
@@ -1124,6 +1160,21 @@
         state.messagesByComm[cid] = nextList;
         saveStorage(STORAGE_KEYS.MESSAGES, state.messagesByComm);
         needsUpdate = true;
+      } else if (type === "ROOM_READ_ACK" && payload && payload.communityId && payload.userId) {
+        const cid = payload.communityId;
+        const curList = state.messagesByComm[cid] || [];
+        let ackChanged = false;
+        curList.forEach((m) => {
+          if (!Array.isArray(m.readUserIds)) m.readUserIds = [m.senderId];
+          if (!m.readUserIds.includes(payload.userId)) {
+            m.readUserIds.push(payload.userId);
+            ackChanged = true;
+          }
+        });
+        if (ackChanged) {
+          saveStorage(STORAGE_KEYS.MESSAGES, state.messagesByComm);
+          needsUpdate = true;
+        }
       } else if (type === "MESSAGE_DELETED" && payload) {
         const { communityId, messageId } = payload;
         if (communityId && messageId) {
@@ -1144,12 +1195,18 @@
         const commId = payload;
         state.communities = state.communities.filter((c) => c.id !== commId);
         if (!state.deletedCommIds.includes(commId)) state.deletedCommIds.push(commId);
-        if (state.activeCommunityId === commId) state.activeCommunityId = null;
+        if (state.activeCommunityId === commId) {
+          roomSocket.leaveRoom(commId);
+          state.activeCommunityId = null;
+        }
         saveStorage(STORAGE_KEYS.COMMUNITIES, state.communities);
         saveStorage(STORAGE_KEYS.DELETED_COMMS, state.deletedCommIds);
         needsUpdate = true;
       } else if (type === "NEW_DM" && payload && payload.convId) {
         const curDms = state.dms[payload.convId] || [];
+        if (payload.message && curDms.some((m) => m.id === payload.message.id)) {
+          return;
+        }
         state.dms[payload.convId] = mergeMessageArrays(curDms, [payload.message]);
         saveStorage(STORAGE_KEYS.DMS, state.dms);
         needsUpdate = true;
@@ -1168,6 +1225,272 @@
         safeReactiveRender(true);
       }
     }
+
+    // ============================================================================
+    // Room-Scoped Bidirectional WebSocket Client (MQTT-over-WSS, 무설치 실시간 양방향 소켓)
+    // - 방(Room) 단위 토픽 구독/브로드캐스팅 (joinRoom / leaveRoom / publishToRoom)
+    // - 네트워크 단절 시 지수 백오프 자동 재연결 + 25초 하트비트
+    // - 페이지 이탈 시 DISCONNECT 전송 및 소켓 해제
+    // ============================================================================
+    class RoomWebSocketClient {
+      constructor() {
+        this.ws = null;
+        this.connected = false;
+        this.manuallyClosed = false;
+        this.reconnectAttempts = 0;
+        this.reconnectTimer = null;
+        this.pingTimer = null;
+        this.packetId = 1;
+        this.activeRoomId = null;
+        this.clientId = "ah_" + Math.random().toString(36).slice(2, 10) + "_" + Date.now().toString(36);
+        this.encoder = new TextEncoder();
+        this.decoder = new TextDecoder();
+        this.rxBuffer = new Uint8Array(0);
+      }
+
+      nextPacketId() {
+        this.packetId = (this.packetId % 65535) + 1;
+        return this.packetId;
+      }
+
+      encodeUtf8Str(str) {
+        const bytes = this.encoder.encode(str);
+        const out = new Uint8Array(2 + bytes.length);
+        out[0] = (bytes.length >> 8) & 0xff;
+        out[1] = bytes.length & 0xff;
+        out.set(bytes, 2);
+        return out;
+      }
+
+      encodeRemainingLength(len) {
+        const bytes = [];
+        do {
+          let digit = len % 128;
+          len = Math.floor(len / 128);
+          if (len > 0) digit |= 0x80;
+          bytes.push(digit);
+        } while (len > 0);
+        return new Uint8Array(bytes);
+      }
+
+      buildPacket(headerByte, bodyParts) {
+        let total = 0;
+        for (const p of bodyParts) total += p.length;
+        const rem = this.encodeRemainingLength(total);
+        const pkt = new Uint8Array(1 + rem.length + total);
+        pkt[0] = headerByte;
+        pkt.set(rem, 1);
+        let offset = 1 + rem.length;
+        for (const p of bodyParts) {
+          pkt.set(p, offset);
+          offset += p.length;
+        }
+        return pkt;
+      }
+
+      connect() {
+        if (this.ws && (this.ws.readyState === WebSocket.OPEN || this.ws.readyState === WebSocket.CONNECTING)) {
+          return;
+        }
+        this.manuallyClosed = false;
+        try {
+          this.ws = new WebSocket("wss://broker.emqx.io:8084/mqtt", "mqtt");
+          this.ws.binaryType = "arraybuffer";
+
+          this.ws.onopen = () => {
+            this.connected = false;
+            this.rxBuffer = new Uint8Array(0);
+            // MQTT v3.1.1 CONNECT packet
+            const proto = this.encodeUtf8Str("MQTT");
+            const flags = new Uint8Array([0x04, 0x02, 0x00, 0x3c]); // level 4, cleanSession=1, keepAlive=60s
+            const cid = this.encodeUtf8Str(this.clientId);
+            this.ws.send(this.buildPacket(0x10, [proto, flags, cid]));
+          };
+
+          this.ws.onmessage = (evt) => {
+            const chunk = new Uint8Array(evt.data);
+            const merged = new Uint8Array(this.rxBuffer.length + chunk.length);
+            merged.set(this.rxBuffer, 0);
+            merged.set(chunk, this.rxBuffer.length);
+            this.rxBuffer = merged;
+            this.parseIncomingPackets();
+          };
+
+          this.ws.onclose = () => {
+            this.connected = false;
+            this.stopHeartbeat();
+            if (!this.manuallyClosed) {
+              this.scheduleReconnect();
+            }
+          };
+
+          this.ws.onerror = () => {
+            try { this.ws.close(); } catch (e) {}
+          };
+        } catch (e) {
+          this.scheduleReconnect();
+        }
+      }
+
+      parseIncomingPackets() {
+        while (this.rxBuffer.length >= 2) {
+          const type = this.rxBuffer[0] & 0xf0;
+          let multiplier = 1;
+          let remLen = 0;
+          let idx = 1;
+          let encodedByte = 0;
+          let incomplete = false;
+          do {
+            if (idx >= this.rxBuffer.length) { incomplete = true; break; }
+            encodedByte = this.rxBuffer[idx++];
+            remLen += (encodedByte & 127) * multiplier;
+            multiplier *= 128;
+          } while ((encodedByte & 128) !== 0);
+
+          if (incomplete || this.rxBuffer.length < idx + remLen) break;
+
+          const payloadStart = idx;
+          const packetEnd = idx + remLen;
+          const body = this.rxBuffer.slice(payloadStart, packetEnd);
+          this.rxBuffer = this.rxBuffer.slice(packetEnd);
+
+          if (type === 0x20) {
+            // CONNACK
+            this.connected = true;
+            this.reconnectAttempts = 0;
+            this.startHeartbeat();
+            this.subscribeTopic("alterhuman/lounge/v2/lobby");
+            if (this.activeRoomId) {
+              this.subscribeTopic(`alterhuman/lounge/v2/room/${this.activeRoomId}`);
+            }
+          } else if (type === 0x30) {
+            // PUBLISH
+            const qos = (this.rxBuffer[0] || 0) & 0x06;
+            if (body.length >= 2) {
+              const topicLen = (body[0] << 8) | body[1];
+              let pos = 2 + topicLen;
+              if (qos > 0) pos += 2;
+              if (pos <= body.length) {
+                const jsonStr = this.decoder.decode(body.slice(pos));
+                try {
+                  const data = JSON.parse(jsonStr);
+                  if (data && data.senderClientId !== this.clientId) {
+                    handleIncomingRealtimeEvent(data);
+                  }
+                } catch (e) {}
+              }
+            }
+          }
+        }
+      }
+
+      startHeartbeat() {
+        this.stopHeartbeat();
+        this.pingTimer = setInterval(() => {
+          if (this.ws && this.ws.readyState === WebSocket.OPEN) {
+            this.ws.send(new Uint8Array([0xc0, 0x00])); // PINGREQ
+          }
+        }, 25000);
+      }
+
+      stopHeartbeat() {
+        if (this.pingTimer) {
+          clearInterval(this.pingTimer);
+          this.pingTimer = null;
+        }
+      }
+
+      scheduleReconnect() {
+        if (this.reconnectTimer || this.manuallyClosed) return;
+        const delay = Math.min(15000, 1200 * Math.pow(1.5, this.reconnectAttempts));
+        this.reconnectAttempts++;
+        this.reconnectTimer = setTimeout(() => {
+          this.reconnectTimer = null;
+          this.connect();
+        }, delay);
+      }
+
+      subscribeTopic(topic) {
+        if (!this.ws || this.ws.readyState !== WebSocket.OPEN || !this.connected) return;
+        const pid = this.nextPacketId();
+        const pidBytes = new Uint8Array([(pid >> 8) & 0xff, pid & 0xff]);
+        const tBytes = this.encodeUtf8Str(topic);
+        const qosByte = new Uint8Array([0x00]);
+        this.ws.send(this.buildPacket(0x82, [pidBytes, tBytes, qosByte]));
+      }
+
+      unsubscribeTopic(topic) {
+        if (!this.ws || this.ws.readyState !== WebSocket.OPEN || !this.connected) return;
+        const pid = this.nextPacketId();
+        const pidBytes = new Uint8Array([(pid >> 8) & 0xff, pid & 0xff]);
+        const tBytes = this.encodeUtf8Str(topic);
+        this.ws.send(this.buildPacket(0xa2, [pidBytes, tBytes]));
+      }
+
+      publishTopic(topic, type, payload) {
+        if (!this.ws || this.ws.readyState !== WebSocket.OPEN || !this.connected) return;
+        const tBytes = this.encodeUtf8Str(topic);
+        const msgObj = {
+          type,
+          payload,
+          senderClientId: this.clientId,
+          eventId: `${this.clientId}_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`
+        };
+        const pBytes = this.encoder.encode(JSON.stringify(msgObj));
+        this.ws.send(this.buildPacket(0x30, [tBytes, pBytes]));
+      }
+
+      joinRoom(roomId) {
+        if (!roomId) return;
+        if (this.activeRoomId && this.activeRoomId !== roomId) {
+          this.unsubscribeTopic(`alterhuman/lounge/v2/room/${this.activeRoomId}`);
+        }
+        this.activeRoomId = roomId;
+        this.subscribeTopic(`alterhuman/lounge/v2/room/${roomId}`);
+        if (state.currentUser) {
+          this.publishTopic(`alterhuman/lounge/v2/room/${roomId}`, "ROOM_READ_ACK", {
+            communityId: roomId,
+            userId: state.currentUser.id
+          });
+        }
+      }
+
+      leaveRoom(roomId) {
+        const target = roomId || this.activeRoomId;
+        if (target) {
+          this.unsubscribeTopic(`alterhuman/lounge/v2/room/${target}`);
+        }
+        if (this.activeRoomId === target) {
+          this.activeRoomId = null;
+        }
+      }
+
+      disconnect() {
+        this.manuallyClosed = true;
+        this.stopHeartbeat();
+        if (this.reconnectTimer) {
+          clearTimeout(this.reconnectTimer);
+          this.reconnectTimer = null;
+        }
+        if (this.ws) {
+          try {
+            if (this.ws.readyState === WebSocket.OPEN) {
+              this.ws.send(new Uint8Array([0xe0, 0x00])); // MQTT DISCONNECT
+            }
+            this.ws.close();
+          } catch (e) {}
+          this.ws = null;
+        }
+        this.connected = false;
+      }
+    }
+
+    const roomSocket = new RoomWebSocketClient();
+    roomSocket.connect();
+
+    // 페이지 이탈 시 소켓 연결 정상 해제 (Disconnect)
+    window.addEventListener("beforeunload", () => roomSocket.disconnect());
+    window.addEventListener("pagehide", () => roomSocket.disconnect());
 
     if (bcChannel) {
       bcChannel.onmessage = (event) => {
@@ -1190,8 +1513,18 @@
     });
 
     function broadcastEvent(type, payload) {
+      const eventId = `bc_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
       if (bcChannel) {
-        try { bcChannel.postMessage({ type, payload, t: Date.now() }); } catch (e) {}
+        try { bcChannel.postMessage({ type, payload, eventId, t: Date.now() }); } catch (e) {}
+      }
+      // 방 단위 메시지/삭제/읽음 이벤트는 해당 방 토픽으로만 브로드캐스팅, 커뮤니티 목록/DM/유저는 로비 토픽으로 브로드캐스팅
+      if ((type === "NEW_MESSAGE" || type === "MESSAGE_DELETED" || type === "ROOM_READ_ACK") && payload && payload.communityId) {
+        roomSocket.publishTopic(`alterhuman/lounge/v2/room/${payload.communityId}`, type, payload);
+      } else if (type === "COMMUNITY_UPDATED" && payload && payload.id) {
+        roomSocket.publishTopic(`alterhuman/lounge/v2/room/${payload.id}`, type, payload);
+        roomSocket.publishTopic("alterhuman/lounge/v2/lobby", type, payload);
+      } else {
+        roomSocket.publishTopic("alterhuman/lounge/v2/lobby", type, payload);
       }
     }
 
@@ -1552,21 +1885,21 @@
     // ============================================================================
     function renderAuthOnboarding() {
       return `
-        <div class="h-screen w-full overflow-y-auto bg-app-canvas">
-          <div class="sticky top-0 z-30 w-full px-5 py-3 bg-app-surface/95 border-b border-app backdrop-blur flex items-center justify-between">
-            <div class="flex items-center gap-2">
-              <div class="w-7 h-7 rounded-lg btn-ash flex items-center justify-center text-xs font-black shadow-sm">ΘΔ</div>
-              <span class="font-bold text-sm tracking-tight text-app-main">알터휴먼 라운지 (Alterhuman Lounge)</span>
+        <div class="h-[100dvh] w-full max-w-full overflow-y-auto overflow-x-hidden bg-app-canvas">
+          <div class="sticky top-0 z-30 w-full px-3 sm:px-5 py-2.5 sm:py-3 bg-app-surface/95 border-b border-app backdrop-blur flex flex-wrap items-center justify-between gap-2">
+            <div class="flex items-center gap-2 min-w-0">
+              <div class="w-7 h-7 rounded-lg btn-ash flex items-center justify-center text-xs font-black shadow-sm shrink-0">ΘΔ</div>
+              <span class="font-bold text-xs sm:text-sm tracking-tight text-app-main truncate">알터휴먼 라운지 (Alterhuman Lounge)</span>
               <span class="hidden sm:inline-block px-2 py-0.5 rounded-md badge-sage text-[10px] font-semibold">테리안</span>
               <span class="hidden md:inline-block px-2 py-0.5 rounded-md badge-mauve text-[10px] font-semibold">아더킨</span>
               <span class="hidden md:inline-block px-2 py-0.5 rounded-md badge-rose text-[10px] font-semibold">아더하트</span>
             </div>
-            <div class="flex items-center gap-2">
-              <button onclick="openWikiModal()" class="px-3 py-1.5 rounded-lg badge-sage hover:opacity-90 text-xs font-semibold transition">
-                알터휴먼 위키백과 / 용어 사전
+            <div class="flex items-center gap-1.5 sm:gap-2 shrink-0">
+              <button onclick="openWikiModal()" class="px-2.5 sm:px-3 py-1.5 rounded-lg badge-sage hover:opacity-90 text-[11px] sm:text-xs font-semibold transition">
+                위키/사전
               </button>
-              <button onclick="toggleTheme()" class="px-3 py-1.5 rounded-lg badge-sand text-xs font-semibold">
-                ${state.theme === "dark" ? "라이트 모드" : "다크 모드"}
+              <button onclick="toggleTheme()" class="px-2.5 sm:px-3 py-1.5 rounded-lg badge-sand text-[11px] sm:text-xs font-semibold">
+                ${state.theme === "dark" ? "라이트" : "다크"}
               </button>
             </div>
           </div>
@@ -1766,14 +2099,14 @@
       const joinedComms = state.communities.filter((c) => state.joinedCommunityIds.includes(c.id));
 
       return `
-        <nav class="h-14 px-3 sm:px-5 bg-app-surface border-b border-app flex items-center justify-between gap-2 flex-shrink-0 z-20">
+        <nav class="min-h-[3.5rem] py-2 px-3 sm:px-5 bg-app-surface border-b border-app flex flex-wrap items-center justify-between gap-2 flex-shrink-0 z-20 w-full max-w-full">
           <div class="flex items-center gap-2 min-w-0">
-            <button onclick="toggleDrawer(true)" class="px-3 py-1.5 rounded-lg badge-ash hover:opacity-90 text-xs font-bold transition">
+            <button onclick="toggleDrawer(true)" class="px-2.5 sm:px-3 py-1.5 rounded-lg badge-ash hover:opacity-90 text-xs font-bold transition shrink-0">
               메뉴
             </button>
 
-            <button onclick="goLobby()" class="flex items-center gap-2 px-2 py-1 rounded-lg hover:bg-app-subtle transition">
-              <div class="w-7 h-7 rounded-lg btn-ash flex items-center justify-center text-xs font-black shadow-sm">ΘΔ</div>
+            <button onclick="goLobby()" class="flex items-center gap-1.5 sm:gap-2 px-1.5 sm:px-2 py-1 rounded-lg hover:bg-app-subtle transition min-w-0">
+              <div class="w-7 h-7 rounded-lg btn-ash flex items-center justify-center text-xs font-black shadow-sm shrink-0">ΘΔ</div>
               <div class="text-left hidden sm:block">
                 <div class="flex items-center gap-1.5">
                   <span class="font-bold text-sm tracking-tight text-app-main">알터휴먼</span>
@@ -1800,28 +2133,28 @@
             </div>
           </div>
 
-          <div class="flex items-center gap-1.5 sm:gap-2 flex-shrink-0">
-            <button onclick="openWikiModal()" class="px-2.5 py-1.5 rounded-lg text-xs font-bold badge-sage hover:opacity-90 transition">
-              알터휴먼 위키
+          <div class="flex items-center flex-wrap gap-1.5 sm:gap-2 flex-shrink-0">
+            <button onclick="openWikiModal()" class="px-2 sm:px-2.5 py-1.5 rounded-lg text-[11px] sm:text-xs font-bold badge-sage hover:opacity-90 transition">
+              위키
             </button>
 
-            <button onclick="state.isDmDrawerOpen = true; render()" class="px-2.5 py-1.5 rounded-lg text-xs font-bold badge-mauve hover:opacity-90 transition">
-              1:1 DM
+            <button onclick="state.isDmDrawerOpen = true; render()" class="px-2 sm:px-2.5 py-1.5 rounded-lg text-[11px] sm:text-xs font-bold badge-mauve hover:opacity-90 transition">
+              DM
             </button>
 
             <button onclick="state.isSupportModalOpen = true; render()" class="px-2.5 py-1.5 rounded-lg text-xs font-semibold hidden lg:inline-block badge-sand hover:opacity-90 transition">
               문의/신고
             </button>
 
-            <button onclick="state.isCreateModalOpen = true; render()" class="px-3 py-1.5 rounded-lg btn-ash font-bold text-xs shadow-sm">
-              + 커뮤니티 만들기
+            <button onclick="state.isCreateModalOpen = true; render()" class="px-2.5 sm:px-3 py-1.5 rounded-lg btn-ash font-bold text-[11px] sm:text-xs shadow-sm">
+              + 방 만들기
             </button>
 
-            <button onclick="toggleTheme()" class="px-2.5 py-1.5 rounded-lg bg-app-subtle border border-app text-xs font-semibold">
+            <button onclick="toggleTheme()" class="px-2 sm:px-2.5 py-1.5 rounded-lg bg-app-subtle border border-app text-[11px] sm:text-xs font-semibold">
               ${state.theme === "dark" ? "라이트" : "다크"}
             </button>
 
-            <button onclick="state.isProfileModalOpen = true; render()" class="pl-1.5 pr-2.5 py-1 rounded-lg bg-app-subtle border border-app flex items-center gap-2 transition hover:border-[#78899c]" title="프로필 및 아바타 변경">
+            <button onclick="state.isProfileModalOpen = true; render()" class="p-1 sm:pl-1.5 sm:pr-2.5 sm:py-1 rounded-lg bg-app-subtle border border-app flex items-center gap-2 transition hover:border-[#78899c]" title="프로필 및 아바타 변경">
               <img src="${u.avatarUrl}" class="w-7 h-7 rounded-md object-cover bg-[#455b73]" />
               <div class="text-left hidden sm:block max-w-[125px]">
                 <p class="text-xs font-bold leading-none truncate text-app-main">${escapeHtml(u.name)}</p>
@@ -2196,41 +2529,50 @@
 
           <!-- 2. Main Chat Stream -->
           <div class="flex-1 flex flex-col min-w-0 overflow-hidden">
-            <header class="px-4 py-3 bg-app-surface border-b border-app flex items-center justify-between gap-2">
-              <div class="flex items-center gap-2.5 min-w-0">
-                <button onclick="goLobby()" class="px-2.5 py-1.5 rounded-lg bg-app-subtle border border-app text-xs font-bold">← 로비</button>
+            <header class="px-3 sm:px-4 py-2.5 sm:py-3 bg-app-surface border-b border-app flex flex-wrap items-center justify-between gap-2 shrink-0">
+              <div class="flex items-center gap-2 min-w-0 flex-1">
+                <button onclick="goLobby()" class="px-2.5 py-1.5 rounded-lg bg-app-subtle border border-app text-xs font-bold shrink-0">← 로비</button>
                 ${renderCommIcon(comm, "w-8 h-8", "text-[11px]")}
-                <div class="min-w-0">
-                  <div class="flex items-center gap-2">
+                <div class="min-w-0 flex-1">
+                  <div class="flex items-center gap-1.5 min-w-0">
                     <h2 class="font-bold text-sm sm:text-base truncate text-app-main">${escapeHtml(comm.name)}</h2>
-                    <span class="hidden sm:inline-block px-2 py-0.5 rounded text-[10px] font-semibold ${getCategoryBadgeClass(comm.category)}">${escapeHtml(comm.category)}</span>
+                    <span class="hidden sm:inline-block px-2 py-0.5 rounded text-[10px] font-semibold shrink-0 ${getCategoryBadgeClass(comm.category)}">${escapeHtml(comm.category)}</span>
                   </div>
-                  <div class="flex items-center gap-2 text-[11px] text-app-muted">
-                    <span>#${escapeHtml(activeCh.name)}</span>
-                    <span id="chat-header-member-count">· 접속 ${members.length}/${members.length}명</span>
+                  <div class="flex items-center gap-1.5 text-[11px] text-app-muted">
+                    <span class="truncate">#${escapeHtml(activeCh.name)}</span>
+                    <span id="chat-header-member-count" class="shrink-0">· 접속 ${members.length}/${members.length}명</span>
                   </div>
                 </div>
               </div>
 
-              <div class="flex items-center gap-1.5 flex-shrink-0">
+              <div class="flex items-center flex-wrap gap-1.5 flex-shrink-0">
                 ${iAmAdmin && !isOwner ? `
-                  <button onclick="claimOwnership('${comm.id}')" class="px-2.5 py-1.5 rounded-lg text-xs font-bold badge-rose transition">
-                    방장 권한 회수
+                  <button onclick="claimOwnership('${comm.id}')" class="px-2.5 py-1.5 rounded-lg text-[11px] sm:text-xs font-bold badge-rose transition">
+                    권한 회수
                   </button>
                 ` : ""}
-                <button onclick="state.showRulesPanel = !state.showRulesPanel; render()" class="px-2.5 py-1.5 rounded-lg text-xs font-bold border transition ${state.showRulesPanel ? 'badge-sage' : 'bg-app-subtle border-app text-app-main'}">
+                <button onclick="state.showRulesPanel = !state.showRulesPanel; render()" class="px-2.5 py-1.5 rounded-lg text-[11px] sm:text-xs font-bold border transition ${state.showRulesPanel ? 'badge-sage' : 'bg-app-subtle border-app text-app-main'}">
                   규칙
                 </button>
-                <button id="chat-btn-member-count" onclick="state.showMembersSidebar = !state.showMembersSidebar; render()" class="px-2.5 py-1.5 rounded-lg text-xs font-bold border transition ${state.showMembersSidebar ? 'badge-mauve' : 'bg-app-subtle border-app text-app-main'}">
+                <button id="chat-btn-member-count" onclick="state.showMembersSidebar = !state.showMembersSidebar; render()" class="px-2.5 py-1.5 rounded-lg text-[11px] sm:text-xs font-bold border transition ${state.showMembersSidebar ? 'badge-mauve' : 'bg-app-subtle border-app text-app-main'}">
                   멤버 (${members.length})
                 </button>
                 ${(isOwner || iAmAdmin) ? `
-                  <button onclick="deleteCommunityConfirm('${comm.id}')" class="px-2.5 py-1.5 rounded-lg text-xs font-bold badge-terra transition">
+                  <button onclick="deleteCommunityConfirm('${comm.id}')" class="px-2.5 py-1.5 rounded-lg text-[11px] sm:text-xs font-bold badge-terra transition">
                     삭제
                   </button>
                 ` : ""}
               </div>
             </header>
+
+            <!-- Mobile Channel Switcher Bar -->
+            <div class="lg:hidden px-3 py-1.5 bg-app-subtle border-b border-app flex items-center gap-1.5 overflow-x-auto shrink-0">
+              ${(comm.channels || []).map((ch) => `
+                <button onclick="state.activeChannelId = '${ch.id}'; render()" class="px-2.5 py-1 rounded-md text-[11px] font-bold whitespace-nowrap transition ${activeCh.id === ch.id ? 'btn-ash shadow-sm' : 'bg-app-surface text-app-muted border border-app'}">
+                  # ${escapeHtml(ch.name)}
+                </button>
+              `).join("")}
+            </div>
 
             ${state.showRulesPanel ? `
               <div class="bg-app-subtle border-b border-app px-4 sm:px-6 py-3.5">
@@ -2254,8 +2596,8 @@
               ${renderChatMessagesInnerHtml()}
             </div>
 
-            <!-- Input Bar -->
-            <form onsubmit="handleSendChat(event)" class="p-3 sm:p-4 bg-app-surface border-t border-app relative">
+            <!-- Input Bar (모바일 16px 폰트, z-index 최상단 보장, 100dvh 대응) -->
+            <form onsubmit="handleSendChat(event)" class="p-2.5 sm:p-4 bg-app-surface border-t border-app relative z-30 pointer-events-auto shrink-0">
               ${state.chatPendingImage ? `
                 <div class="mb-2 relative inline-block">
                   <img src="${state.chatPendingImage}" class="h-20 w-20 rounded-xl object-cover border border-[#5c7893]" />
@@ -2263,23 +2605,24 @@
                 </div>
               ` : ""}
 
-              <div class="flex items-center gap-2">
-                <label class="px-3 py-2.5 rounded-xl badge-sage hover:opacity-90 cursor-pointer text-xs font-bold" title="갤러리에서 사진 첨부">
+              <div class="flex items-center gap-2 min-w-0">
+                <label class="px-3 py-2.5 rounded-xl badge-sage hover:opacity-90 cursor-pointer text-xs font-bold shrink-0 min-h-[42px] flex items-center justify-center" title="갤러리에서 사진 첨부">
                   사진
                   <input type="file" accept="image/*" onchange="handleChatImageUpload(event)" class="hidden" />
                 </label>
-                <input id="chat-msg-input" type="text" value="${escapeHtml(state.chatInputText)}" oninput="state.chatInputText = this.value" placeholder="#${escapeHtml(activeCh.name)}에 메시지 보내기..." class="flex-1 px-4 py-2.5 rounded-xl input-ash text-sm" />
-                <button type="submit" class="px-4 py-2.5 rounded-xl btn-ash font-bold text-xs shadow-sm">전송</button>
+                <input id="chat-msg-input" type="text" value="${escapeHtml(state.chatInputText)}" oninput="state.chatInputText = this.value" placeholder="#${escapeHtml(activeCh.name)}에 메시지 보내기..." class="flex-1 min-w-0 px-3.5 py-2.5 rounded-xl input-ash text-base sm:text-sm min-h-[42px] relative z-30 pointer-events-auto" />
+                <button type="submit" class="px-4 py-2.5 rounded-xl btn-ash font-bold text-xs shadow-sm shrink-0 min-h-[42px]">전송</button>
               </div>
             </form>
           </div>
 
-          <!-- 3. Right Members Sidebar -->
+          <!-- 3. Right Members Sidebar (데스크톱: 우측 고정 / 모바일: 오버레이 드로어) -->
           ${state.showMembersSidebar ? `
-            <aside class="w-64 hidden md:flex flex-col bg-app-surface border-l border-app p-4 overflow-y-auto flex-shrink-0">
+            <div onclick="state.showMembersSidebar = false; render()" class="fixed inset-0 bg-black/50 z-30 md:hidden"></div>
+            <aside class="fixed inset-y-0 right-0 z-40 w-72 md:static md:w-64 md:z-auto flex flex-col bg-app-surface border-l border-app p-4 overflow-y-auto flex-shrink-0 shadow-2xl md:shadow-none">
               <div class="text-[11px] font-bold uppercase tracking-wider text-app-muted mb-3 flex items-center justify-between">
                 <span id="chat-sidebar-member-count">참여자 목록 (${members.length}명)</span>
-                <button onclick="state.showMembersSidebar = false; render()">✕</button>
+                <button onclick="state.showMembersSidebar = false; render()" class="p-1.5 rounded-lg hover:bg-app-subtle">✕</button>
               </div>
               <div id="chat-members-list-box" class="space-y-2">
                 ${renderChatMembersListInnerHtml()}
@@ -2324,30 +2667,30 @@
 
       return `
         <div class="flex-1 flex flex-col h-full bg-app-canvas overflow-hidden">
-          <header class="h-14 px-4 sm:px-6 bg-app-surface border-b border-app flex items-center justify-between">
-            <div class="flex items-center gap-3">
-              <button onclick="state.activeDmUser = null; render()" class="px-3 py-1.5 rounded-lg bg-app-subtle border border-app text-xs font-bold">← 뒤로</button>
-              <button onclick="openUserProfile('${target.id}')" class="flex items-center gap-2.5 text-left">
-                <img src="${target.avatarUrl || AVATAR_PRESETS[0]}" class="w-9 h-9 rounded-lg object-cover" />
-                <div>
-                  <div class="flex items-center gap-1.5">
-                    <span class="font-bold text-sm text-app-main">${escapeHtml(target.name)}</span>
-                    <span class="px-1.5 py-0.5 rounded text-[10px] font-medium badge-mauve">${escapeHtml(target.pronouns || "")}</span>
+          <header class="min-h-[3.5rem] py-2 px-3 sm:px-6 bg-app-surface border-b border-app flex flex-wrap items-center justify-between gap-2 shrink-0">
+            <div class="flex items-center gap-2 sm:gap-3 min-w-0">
+              <button onclick="state.activeDmUser = null; render()" class="px-2.5 sm:px-3 py-1.5 rounded-lg bg-app-subtle border border-app text-xs font-bold shrink-0">← 뒤로</button>
+              <button onclick="openUserProfile('${target.id}')" class="flex items-center gap-2 sm:gap-2.5 text-left min-w-0">
+                <img src="${target.avatarUrl || AVATAR_PRESETS[0]}" class="w-9 h-9 rounded-lg object-cover shrink-0" />
+                <div class="min-w-0">
+                  <div class="flex items-center gap-1.5 flex-wrap">
+                    <span class="font-bold text-sm text-app-main truncate">${escapeHtml(target.name)}</span>
+                    <span class="px-1.5 py-0.5 rounded text-[10px] font-medium badge-mauve truncate">${escapeHtml(target.pronouns || "")}</span>
                   </div>
                   <p class="text-[11px] text-app-muted">1:1 개인 DM 대화방</p>
                 </div>
               </button>
             </div>
-            <button onclick="openUserProfile('${target.id}')" class="px-3 py-1.5 rounded-lg badge-ash text-xs font-bold">프로필 보기</button>
+            <button onclick="openUserProfile('${target.id}')" class="px-3 py-1.5 rounded-lg badge-ash text-xs font-bold shrink-0">프로필 보기</button>
           </header>
 
           <div id="dm-scroll-box" class="flex-1 overflow-y-auto p-4 sm:p-6 space-y-4">
             ${renderDmMessagesInnerHtml()}
           </div>
 
-          <form onsubmit="handleSendDm(event)" class="p-3 sm:p-4 bg-app-surface border-t border-app flex items-center gap-2">
-            <input id="dm-msg-input" type="text" placeholder="${escapeHtml(target.name)} 님에게 메시지 보내기..." class="flex-1 px-4 py-2.5 rounded-xl input-ash text-sm" />
-            <button type="submit" class="px-4 py-2.5 rounded-xl btn-ash font-bold text-xs shadow-sm">전송</button>
+          <form onsubmit="handleSendDm(event)" class="p-2.5 sm:p-4 bg-app-surface border-t border-app flex items-center gap-2 relative z-30 pointer-events-auto shrink-0">
+            <input id="dm-msg-input" type="text" placeholder="${escapeHtml(target.name)} 님에게 메시지 보내기..." class="flex-1 min-w-0 px-3.5 py-2.5 rounded-xl input-ash text-base sm:text-sm min-h-[42px] relative z-30 pointer-events-auto" />
+            <button type="submit" class="px-4 py-2.5 rounded-xl btn-ash font-bold text-xs shadow-sm shrink-0 min-h-[42px]">전송</button>
           </form>
         </div>
       `;
@@ -2940,6 +3283,9 @@
     };
 
     window.goLobby = function() {
+      if (state.activeCommunityId) {
+        roomSocket.leaveRoom(state.activeCommunityId);
+      }
       state.activeDmUser = null;
       state.activeCommunityId = null;
       render();
@@ -3201,6 +3547,9 @@
     };
 
     window.handleLogout = function() {
+      if (state.activeCommunityId) {
+        roomSocket.leaveRoom(state.activeCommunityId);
+      }
       state.currentUser = null;
       clearActiveSession();
       state.loginUsername = "";
@@ -3243,6 +3592,8 @@
       state.activeDmUser = null;
       state.activeCommunityId = commId;
       state.activeChannelId = (comm.channels && comm.channels[0]) ? comm.channels[0].id : "general";
+      // 방 단위 WebSocket 토픽 구독 (해당 방에 입장한 유저에게만 실시간 메시지 브로드캐스트)
+      roomSocket.joinRoom(commId);
 
       const roomMsgs = state.messagesByComm[commId] || [];
       roomMsgs.forEach((m) => {
@@ -3683,6 +4034,21 @@
     document.addEventListener("visibilitychange", () => {
       if (!document.hidden) syncWithCloud();
     });
+
+    // 모바일 가상 키보드 올라올 때 동적 뷰포트 높이(visualViewport) 동기화 및 채팅 스크롤 유지
+    if (window.visualViewport) {
+      const syncViewportHeight = () => {
+        const appEl = document.getElementById("app");
+        if (appEl && window.visualViewport) {
+          appEl.style.height = window.visualViewport.height + "px";
+        }
+        const chatBox = document.getElementById("chat-scroll-box");
+        if (chatBox && document.activeElement && document.activeElement.id === "chat-msg-input") {
+          chatBox.scrollTop = chatBox.scrollHeight;
+        }
+      };
+      window.visualViewport.addEventListener("resize", syncViewportHeight);
+    }
   </script>
 </body>
 </html>
