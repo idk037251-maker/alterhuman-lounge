@@ -21,13 +21,6 @@
 
     /* ==========================================================================
        Multi-Tone Low-Saturation Calm Palette (다양한 저채도 뮤트 색감 시스템)
-       - 애쉬 블루 (Ash Blue)
-       - 애쉬 세이지 (Ash Sage / Muted Green)
-       - 더스티 로즈 (Dusty Rose / Ash Pink)
-       - 애쉬 라벤더 (Ash Lavender / Mauve)
-       - 웜 샌드 (Warm Sand / Ash Ochre)
-       - 애쉬 테라코타 (Ash Terracotta / Muted Coral)
-       - 애쉬 민트 (Ash Mint / Muted Teal)
        ========================================================================== */
     :root {
       --app-canvas: #f1f0ec;
@@ -41,37 +34,30 @@
       --ash-primary: #577087;
       --ash-primary-hover: #496075;
 
-      /* 1. Ash Blue (애쉬 블루) */
       --ash-bg: #e3ebf2;
       --ash-text: #3a5269;
       --ash-border: #c5d5e3;
 
-      /* 2. Ash Sage (애쉬 세이지 - 회녹색) */
       --sage-bg: #e2eee9;
       --sage-text: #38574e;
       --sage-border: #c1d8cf;
 
-      /* 3. Dusty Rose (더스티 로즈 - 회분홍) */
       --rose-bg: #f2e4e7;
       --rose-text: #6b424c;
       --rose-border: #dfc5cb;
 
-      /* 4. Ash Lavender (애쉬 라벤더 - 회보라) */
       --mauve-bg: #eae6f2;
       --mauve-text: #4d4666;
       --mauve-border: #cfc9df;
 
-      /* 5. Warm Sand (웜 샌드 - 애쉬 베이지/오크) */
       --sand-bg: #f1eae0;
       --sand-text: #63513b;
       --sand-border: #dfd1be;
 
-      /* 6. Ash Terracotta (애쉬 테라코타 - 뮤트 코랄) */
       --terra-bg: #f3e6e1;
       --terra-text: #6b483d;
       --terra-border: #e1c9c0;
 
-      /* 7. Ash Mint (애쉬 민트 - 회청록) */
       --mint-bg: #e0eef0;
       --mint-text: #35585c;
       --mint-border: #bed8dc;
@@ -89,37 +75,30 @@
       --ash-primary: #5c7893;
       --ash-primary-hover: #6c89a6;
 
-      /* 1. Ash Blue */
       --ash-bg: rgba(102, 134, 166, 0.19);
       --ash-text: #bfd4e8;
       --ash-border: rgba(122, 155, 188, 0.32);
 
-      /* 2. Ash Sage */
       --sage-bg: rgba(96, 138, 125, 0.19);
       --sage-text: #b7d8ce;
       --sage-border: rgba(114, 156, 143, 0.32);
 
-      /* 3. Dusty Rose */
       --rose-bg: rgba(162, 110, 123, 0.21);
       --rose-text: #e3bfc8;
       --rose-border: rgba(180, 128, 141, 0.34);
 
-      /* 4. Ash Lavender */
       --mauve-bg: rgba(128, 118, 162, 0.21);
       --mauve-text: #cfc9e6;
       --mauve-border: rgba(146, 136, 180, 0.34);
 
-      /* 5. Warm Sand */
       --sand-bg: rgba(158, 134, 102, 0.21);
       --sand-text: #e2d1b8;
       --sand-border: rgba(176, 152, 118, 0.34);
 
-      /* 6. Ash Terracotta */
       --terra-bg: rgba(166, 120, 104, 0.21);
       --terra-text: #e6c6bb;
       --terra-border: rgba(184, 138, 122, 0.34);
 
-      /* 7. Ash Mint */
       --mint-bg: rgba(92, 138, 144, 0.21);
       --mint-text: #b8dce0;
       --mint-border: rgba(112, 158, 164, 0.34);
@@ -221,7 +200,6 @@
   <script>
     // ============================================================================
     // 1. 24 Diverse Low-Saturation Illustrated Profile Avatars & 12 Banners
-    //    (애쉬블루, 애쉬세이지, 더스티로즈, 애쉬라벤더, 웜샌드, 테라코타, 애쉬민트 등)
     // ============================================================================
     function makeIllustratedAvatar(bg, fg, accent, innerSvg) {
       const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="120" height="120" viewBox="0 0 120 120">
@@ -524,7 +502,7 @@
     const ROOM_ICON_TEXT_PRESETS = ["ΘΔ", "TH", "OK", "FK", "OH", "QD", "PK", "AH"];
 
     // ============================================================================
-    // 2. Alterhuman Wiki & Glossary Database (위키 기반 상세 백과사전)
+    // 2. Alterhuman Wiki & Glossary Database
     // ============================================================================
     const WIKI_CATEGORIES = [
       "전체",
@@ -768,7 +746,7 @@
     }
 
     // ============================================================================
-    // 4. Clean Alterhuman Account Management (참치김밥 계정 완전 삭제 + 강제 자동 로그인 버그 제거)
+    // 4. Clean Alterhuman Account Management & Real-Time Multi-User Cloud Store
     // ============================================================================
     const CLOUD_API_BASE = "https://kvdb.io/UJi5qrxjVL5oMcMYSXCvLC";
     const CLOUD_KEYS = {
@@ -776,13 +754,13 @@
       COMMUNITIES: "alterhuman_cloud_comms_v1",
       DELETED_COMMS: "alterhuman_cloud_deleted_comms_v1",
       MESSAGES: "alterhuman_cloud_msgs_v1",
+      ROOM_MSG_PREFIX: "alterhuman_room_msgs_v1_",
       POSTS: "alterhuman_cloud_posts_v1",
       FOLLOWS: "alterhuman_cloud_follows_v1",
       DMS: "alterhuman_cloud_dms_v1"
     };
 
     const STORAGE_KEYS = {
-      // 사용자가 직접 아이디/비밀번호로 로그인하거나 회원가입했을 때만 저장되는 명시적 세션 키
       ACTIVE_SESSION: "alterhuman_explicit_session_v2",
       USERS_DIR: "alterhuman_lounge_users_dir_v2",
       COMMUNITIES: "alterhuman_standalone_comms_v1",
@@ -860,12 +838,10 @@
     const AI_SEED_COMM_IDS = ["comm-therian-den", "comm-quadrobics-gear", "comm-otherkin-sanctuary", "comm-otherhearted-forest"];
     const AI_BOT_USER_IDS = ["system-alterhuman", "bot-redfox", "bot-dragon"];
 
-    // 참치김밥에서 넘어온 계정인지 판별하여 100% 차단·삭제합니다.
     function isChamchiGimbapAccount(u, chamchiUsernamesSet) {
       if (!u || typeof u !== "object") return true;
       const uname = (u.username || "").trim().toLowerCase();
       if (!uname) return true;
-      // 우엉김밥(Loon) 계정은 알터휴먼 최고 관리자 계정이므로 항상 보존
       if (uname === "loon") return false;
       if (AI_BOT_USER_IDS.includes(u.id)) return true;
       if (chamchiUsernamesSet && chamchiUsernamesSet.has(uname)) return true;
@@ -875,9 +851,7 @@
       return false;
     }
 
-    // 참치김밥 계정은 일절 삭제하고, 알터휴먼 라운지 전용 계정과 Loon(우엉김밥) 계정만 보존합니다.
     function loadAndRestoreUsersDirectory() {
-      // 1) 참치김밥 스토리지에 있던 계정 목록을 수집하여 블랙리스트(삭제 대상)로 지정
       const chamchiUsernames = new Set();
       try {
         const rawChamchiDir = loadStorage("chamchi_users_directory", {});
@@ -896,7 +870,6 @@
         }
       } catch (e) {}
 
-      // 2) 알터휴먼 전용 디렉터리에서 참치김밥 계정을 완전히 걸러내고 순수 알터휴먼 계정만 로드
       const rawV2 = loadStorage(STORAGE_KEYS.USERS_DIR, {});
       const rawV1 = loadStorage("alterhuman_standalone_users_dir_v1", {});
       const cleaned = {};
@@ -914,7 +887,6 @@
         }
       }
 
-      // 3) 우엉김밥 (ID: Loon, 비밀번호: 1022) 최고 관리자 계정은 항상 DB에 등록 보장 (자동 로그인은 하지 않음)
       const existingLoon = cleaned["loon"] || {};
       const isOldBlackBanner = !existingLoon.bannerColor || existingLoon.bannerColor.includes("#09090b");
       const isOldTextAvatar = !existingLoon.avatarUrl || existingLoon.avatarUrl.includes("%2318181b") || existingLoon.avatarUrl.includes("font-family");
@@ -928,7 +900,6 @@
         bannerColor: isOldBlackBanner ? BANNER_PRESETS[0].gradient : existingLoon.bannerColor,
       };
 
-      // 이전 오염된 키 정리 및 깨끗한 v2 디렉터리 저장
       try {
         localStorage.removeItem("alterhuman_standalone_users_dir_v1");
         localStorage.removeItem("alterhuman_standalone_user_v1");
@@ -939,16 +910,34 @@
       return cleaned;
     }
 
-    // 기존에 직접 로그인을 했던 세션이 있는 경우에만 세션을 유지하고, 처음 접속 시에는 무조건 null(로그인 화면)을 반환합니다.
     function loadExplicitSessionUser(usersDir) {
-      const sessionUser = loadStorage(STORAGE_KEYS.ACTIVE_SESSION, null);
+      // sessionStorage를 우선 사용하여 새 탭에서 다른 계정으로 동시에 로그인해 실시간 채팅 테스트도 가능하도록 지원
+      let sessionUser = null;
+      try {
+        const sRaw = sessionStorage.getItem(STORAGE_KEYS.ACTIVE_SESSION);
+        if (sRaw) sessionUser = JSON.parse(sRaw);
+      } catch (e) {}
+      if (!sessionUser) {
+        sessionUser = loadStorage(STORAGE_KEYS.ACTIVE_SESSION, null);
+      }
       if (!sessionUser || !sessionUser.username) return null;
       const key = sessionUser.username.trim().toLowerCase();
       if (!usersDir[key]) {
-        try { localStorage.removeItem(STORAGE_KEYS.ACTIVE_SESSION); } catch (e) {}
-        return null;
+        return sessionUser;
       }
       return usersDir[key];
+    }
+
+    function saveActiveSession(user) {
+      saveStorage(STORAGE_KEYS.ACTIVE_SESSION, user);
+      try {
+        sessionStorage.setItem(STORAGE_KEYS.ACTIVE_SESSION, JSON.stringify(user));
+      } catch (e) {}
+    }
+
+    function clearActiveSession() {
+      try { localStorage.removeItem(STORAGE_KEYS.ACTIVE_SESSION); } catch (e) {}
+      try { sessionStorage.removeItem(STORAGE_KEYS.ACTIVE_SESSION); } catch (e) {}
     }
 
     function loadCleanCommunities() {
@@ -1019,7 +1008,6 @@
       dms: loadStorage(STORAGE_KEYS.DMS, {}),
       cloudConnected: false,
 
-      // Auth onboarding state (처음 접속 시 로그인 화면 표시, 아이디/비밀번호 직접 입력 필수)
       authTab: "login",
       authError: "",
       signupUsername: "",
@@ -1038,7 +1026,6 @@
       loginUsername: "",
       loginPassword: "",
 
-      // Navigation & Active Views
       activeCommunityId: null,
       activeChannelId: "general",
       activeDmUser: null,
@@ -1050,7 +1037,6 @@
       chatInputText: "",
       chatPendingImage: "",
 
-      // Modals & Drawers
       isDrawerOpen: false,
       isWikiModalOpen: false,
       wikiCategory: "전체",
@@ -1067,7 +1053,6 @@
       adminBanningUser: null,
       lightboxImage: null,
 
-      // Create community form
       newCommName: "",
       newCommDesc: "",
       newCommRules: "1. 모든 멤버의 테리오타입(Theriotype), 킨타입(Kintype), 하트타입 및 대명사(Pronouns)를 존중합니다.\n2. 타인의 정체성 진위를 의심(Fakeclaiming)하거나 기어·쿼드러빅스 유무로 차별하지 않습니다.\n3. 주제와 무관한 도배 및 비난·혐오 발언은 제한됩니다.",
@@ -1080,24 +1065,133 @@
     };
 
     // ============================================================================
-    // Real-Time Multi-User Cloud Sync (KVDB + BroadcastChannel)
+    // Real-Time Multi-User Cloud & Cross-Tab Synchronization Engine (참치김밥 동일 아키텍처)
     // ============================================================================
     const bcChannel = typeof BroadcastChannel !== "undefined" ? new BroadcastChannel("alterhuman_lounge_realtime_v2") : null;
-    if (bcChannel) {
-      bcChannel.onmessage = () => {
+
+    function mergeCommunityObjects(c1, c2) {
+      const memMap = new Map();
+      for (const m of [...(c1.members || []), ...(c2.members || [])]) {
+        if (m && m.userId) memMap.set(m.userId, m);
+      }
+      const kickedSet = new Set([...(c1.kickedUserIds || []), ...(c2.kickedUserIds || [])]);
+      const mergedMembers = Array.from(memMap.values()).filter((m) => !kickedSet.has(m.userId));
+      return {
+        ...c1,
+        ...c2,
+        members: mergedMembers,
+        kickedUserIds: Array.from(kickedSet),
+        memberCount: Math.max(1, mergedMembers.length)
+      };
+    }
+
+    function mergeMessageArrays(arr1, arr2, deletedIdSet) {
+      const map = new Map();
+      for (const m of [...(Array.isArray(arr1) ? arr1 : []), ...(Array.isArray(arr2) ? arr2 : [])]) {
+        if (!m || !m.id) continue;
+        if (deletedIdSet && deletedIdSet.has(m.id)) continue;
+        const prev = map.get(m.id);
+        if (prev) {
+          const readSet = new Set([...(prev.readUserIds || []), ...(m.readUserIds || []), m.senderId].filter(Boolean));
+          map.set(m.id, { ...prev, ...m, readUserIds: Array.from(readSet) });
+        } else {
+          map.set(m.id, m);
+        }
+      }
+      return Array.from(map.values()).sort((a, b) => {
+        const tA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+        const tB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+        return tA - tB;
+      });
+    }
+
+    function handleIncomingRealtimeEvent(data) {
+      const { type, payload } = data || {};
+      let needsUpdate = false;
+
+      if (type === "NEW_MESSAGE" && payload && payload.communityId) {
+        const cid = payload.communityId;
+        const curList = state.messagesByComm[cid] || [];
+        const nextList = mergeMessageArrays(curList, [payload]);
+        if (state.activeCommunityId === cid && state.currentUser) {
+          nextList.forEach((m) => {
+            if (!Array.isArray(m.readUserIds)) m.readUserIds = [m.senderId];
+            if (!m.readUserIds.includes(state.currentUser.id)) {
+              m.readUserIds.push(state.currentUser.id);
+            }
+          });
+        }
+        state.messagesByComm[cid] = nextList;
+        saveStorage(STORAGE_KEYS.MESSAGES, state.messagesByComm);
+        needsUpdate = true;
+      } else if (type === "MESSAGE_DELETED" && payload) {
+        const { communityId, messageId } = payload;
+        if (communityId && messageId) {
+          state.messagesByComm[communityId] = (state.messagesByComm[communityId] || []).filter((m) => m.id !== messageId);
+          saveStorage(STORAGE_KEYS.MESSAGES, state.messagesByComm);
+          needsUpdate = true;
+        }
+      } else if ((type === "COMMUNITY_UPDATED" || type === "NEW_COMMUNITY") && payload && payload.id) {
+        const idx = state.communities.findIndex((c) => c.id === payload.id);
+        if (idx >= 0) {
+          state.communities[idx] = mergeCommunityObjects(state.communities[idx], payload);
+        } else if (!state.deletedCommIds.includes(payload.id)) {
+          state.communities.unshift(payload);
+        }
+        saveStorage(STORAGE_KEYS.COMMUNITIES, state.communities);
+        needsUpdate = true;
+      } else if (type === "COMMUNITY_DELETED" && payload) {
+        const commId = payload;
+        state.communities = state.communities.filter((c) => c.id !== commId);
+        if (!state.deletedCommIds.includes(commId)) state.deletedCommIds.push(commId);
+        if (state.activeCommunityId === commId) state.activeCommunityId = null;
+        saveStorage(STORAGE_KEYS.COMMUNITIES, state.communities);
+        saveStorage(STORAGE_KEYS.DELETED_COMMS, state.deletedCommIds);
+        needsUpdate = true;
+      } else if (type === "NEW_DM" && payload && payload.convId) {
+        const curDms = state.dms[payload.convId] || [];
+        state.dms[payload.convId] = mergeMessageArrays(curDms, [payload.message]);
+        saveStorage(STORAGE_KEYS.DMS, state.dms);
+        needsUpdate = true;
+      } else {
+        // Fallback full storage reload
         state.usersDir = loadAndRestoreUsersDirectory();
         state.communities = loadCleanCommunities();
         state.messagesByComm = loadCleanMessages();
         state.posts = loadCleanPosts();
         state.follows = loadCleanFollows();
         state.dms = loadStorage(STORAGE_KEYS.DMS, {});
-        safeReactiveRender();
+        needsUpdate = true;
+      }
+
+      if (needsUpdate) {
+        safeReactiveRender(true);
+      }
+    }
+
+    if (bcChannel) {
+      bcChannel.onmessage = (event) => {
+        handleIncomingRealtimeEvent(event.data);
       };
     }
 
-    function notifyRealtimePeers() {
+    // 동일 브라우저 내 다른 탭/창에서 localStorage 변경 시 즉시 반응
+    window.addEventListener("storage", (e) => {
+      if (!e.key) return;
+      if (
+        e.key === STORAGE_KEYS.COMMUNITIES ||
+        e.key === STORAGE_KEYS.MESSAGES ||
+        e.key === STORAGE_KEYS.USERS_DIR ||
+        e.key === STORAGE_KEYS.DMS ||
+        e.key === STORAGE_KEYS.POSTS
+      ) {
+        handleIncomingRealtimeEvent({ type: "STORAGE_SYNC" });
+      }
+    });
+
+    function broadcastEvent(type, payload) {
       if (bcChannel) {
-        try { bcChannel.postMessage({ t: Date.now() }); } catch (e) {}
+        try { bcChannel.postMessage({ type, payload, t: Date.now() }); } catch (e) {}
       }
     }
 
@@ -1121,47 +1215,111 @@
         });
         state.cloudConnected = true;
       } catch (e) {}
-      notifyRealtimePeers();
     }
 
-    function isUserTypingInInput() {
-      const el = document.activeElement;
-      if (!el) return false;
-      const tag = (el.tagName || "").toUpperCase();
-      return tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT";
+    // 방별 실시간 메시지 원자적(Atomic) 저장: 클라우드의 최신 메시지와 병합 후 저장하여 다른 사람의 메시지가 덮어써지지 않도록 보장
+    async function cloudSaveRoomMessages(commId, localRoomMsgs, deletedMsgId) {
+      const roomKey = CLOUD_KEYS.ROOM_MSG_PREFIX + commId;
+      const cloudRoomMsgs = await cloudGet(roomKey, []);
+      const deletedSet = deletedMsgId ? new Set([deletedMsgId]) : null;
+      const merged = mergeMessageArrays(cloudRoomMsgs, localRoomMsgs, deletedSet);
+      state.messagesByComm[commId] = merged;
+      saveStorage(STORAGE_KEYS.MESSAGES, state.messagesByComm);
+      await cloudPut(roomKey, merged);
+      await cloudPut(CLOUD_KEYS.MESSAGES, state.messagesByComm);
+      return merged;
     }
 
-    function safeReactiveRender() {
-      if (isUserTypingInInput()) {
-        const activeId = document.activeElement ? document.activeElement.id : "";
-        if (activeId === "chat-msg-input" && state.activeCommunityId) {
-          const box = document.getElementById("chat-scroll-box");
-          if (box) {
-            const wasNearBottom = box.scrollHeight - box.scrollTop - box.clientHeight < 120;
-            box.innerHTML = renderChatMessagesInnerHtml();
-            if (wasNearBottom) box.scrollTop = box.scrollHeight;
-          }
+    // 커뮤니티 목록 원자적(Atomic) 저장: 다른 계정이 방에 입장하거나 새 방을 만들었을 때 클라우드 최신 멤버 목록과 병합 후 저장
+    async function cloudSaveCommunities() {
+      const cloudComms = await cloudGet(CLOUD_KEYS.COMMUNITIES, []);
+      const commMap = new Map();
+      for (const c of [...(Array.isArray(cloudComms) ? cloudComms : []), ...state.communities]) {
+        if (c && c.id && !AI_SEED_COMM_IDS.includes(c.id) && !state.deletedCommIds.includes(c.id)) {
+          const prev = commMap.get(c.id);
+          commMap.set(c.id, prev ? mergeCommunityObjects(prev, c) : c);
+        }
+      }
+      const mergedComms = Array.from(commMap.values());
+      state.communities = mergedComms;
+      saveStorage(STORAGE_KEYS.COMMUNITIES, mergedComms);
+      await cloudPut(CLOUD_KEYS.COMMUNITIES, mergedComms);
+      return mergedComms;
+    }
+
+    // 키보드 포커스를 절대 잃지 않으면서 채팅 메시지, 참여자 목록, 헤더 인원수, 로비 카드를 실시간 갱신
+    function safeReactiveRender(autoScrollIfNearBottom = false) {
+      const activeEl = document.activeElement;
+      const activeId = activeEl ? activeEl.id : "";
+      const isInputFocused = activeEl && ["INPUT", "TEXTAREA", "SELECT"].includes((activeEl.tagName || "").toUpperCase());
+
+      // 채팅방 안에서 입력창에 포커스가 있을 때: 입력창 DOM은 건드리지 않고 메시지 스트림, 참여자 사이드바, 상단 인원수를 모두 실시간 업데이트!
+      if (isInputFocused && activeId === "chat-msg-input" && state.activeCommunityId) {
+        const box = document.getElementById("chat-scroll-box");
+        if (box) {
+          const wasNearBottom = box.scrollHeight - box.scrollTop - box.clientHeight < 140;
+          box.innerHTML = renderChatMessagesInnerHtml();
+          if (wasNearBottom || autoScrollIfNearBottom) box.scrollTop = box.scrollHeight;
+        }
+        const membersBox = document.getElementById("chat-members-list-box");
+        if (membersBox) {
+          membersBox.innerHTML = renderChatMembersListInnerHtml();
+        }
+        const comm = state.communities.find((c) => c.id === state.activeCommunityId);
+        if (comm) {
+          const cnt = Math.max((comm.members || []).length, 1);
+          const headerCntEl = document.getElementById("chat-header-member-count");
+          if (headerCntEl) headerCntEl.textContent = `· 접속 ${cnt}/${cnt}명`;
+          const btnCntEl = document.getElementById("chat-btn-member-count");
+          if (btnCntEl) btnCntEl.textContent = `멤버 (${cnt})`;
+          const sideCntEl = document.getElementById("chat-sidebar-member-count");
+          if (sideCntEl) sideCntEl.textContent = `참여자 목록 (${cnt}명)`;
         }
         return;
       }
+
+      if (isInputFocused && activeId === "dm-msg-input" && state.activeDmUser) {
+        const dmBox = document.getElementById("dm-scroll-box");
+        if (dmBox) {
+          dmBox.innerHTML = renderDmMessagesInnerHtml();
+          dmBox.scrollTop = dmBox.scrollHeight;
+        }
+        return;
+      }
+
+      if (isInputFocused) {
+        return;
+      }
+
       render();
+      if (autoScrollIfNearBottom && state.activeCommunityId) {
+        const box = document.getElementById("chat-scroll-box");
+        if (box) box.scrollTop = box.scrollHeight;
+      }
     }
 
+    let isSyncingCloud = false;
     async function syncWithCloud() {
+      if (isSyncingCloud) return;
+      isSyncingCloud = true;
       try {
+        let changed = false;
+
         // 1. Deleted community tombstones
         const cloudDeleted = await cloudGet(CLOUD_KEYS.DELETED_COMMS, []);
         if (Array.isArray(cloudDeleted)) {
           const mergedDeleted = Array.from(new Set([...state.deletedCommIds, ...cloudDeleted]));
-          state.deletedCommIds = mergedDeleted;
-          saveStorage(STORAGE_KEYS.DELETED_COMMS, mergedDeleted);
+          if (mergedDeleted.length !== state.deletedCommIds.length) {
+            state.deletedCommIds = mergedDeleted;
+            saveStorage(STORAGE_KEYS.DELETED_COMMS, mergedDeleted);
+            changed = true;
+          }
         }
 
-        // 2. Users Directory (참치김밥 계정은 철저히 제외하고 알터휴먼 전용 계정만 동기화)
+        // 2. Users Directory
         const cloudUsers = await cloudGet(CLOUD_KEYS.USERS, null);
-        let changed = false;
         if (cloudUsers && typeof cloudUsers === "object") {
-          const prevCount = Object.keys(state.usersDir).length;
+          const prevJson = JSON.stringify(state.usersDir);
           const mergedUsers = { ...state.usersDir };
           for (const [k, cu] of Object.entries(cloudUsers)) {
             if (cu && cu.username && !isChamchiGimbapAccount(cu, null)) {
@@ -1176,69 +1334,93 @@
             password: (mergedUsers["loon"] && mergedUsers["loon"].password) || "1022",
             name: (mergedUsers["loon"] && mergedUsers["loon"].name) || "우엉김밥"
           };
-          state.usersDir = mergedUsers;
-          saveStorage(STORAGE_KEYS.USERS_DIR, mergedUsers);
-          if (Object.keys(mergedUsers).length !== prevCount) changed = true;
+          if (JSON.stringify(mergedUsers) !== prevJson) {
+            state.usersDir = mergedUsers;
+            saveStorage(STORAGE_KEYS.USERS_DIR, mergedUsers);
+            changed = true;
+          }
           if (Object.keys(mergedUsers).length > Object.keys(cloudUsers).length) {
-            cloudPut(CLOUD_KEYS.USERS, mergedUsers);
+            await cloudPut(CLOUD_KEYS.USERS, mergedUsers);
           }
         } else {
-          cloudPut(CLOUD_KEYS.USERS, state.usersDir);
+          await cloudPut(CLOUD_KEYS.USERS, state.usersDir);
         }
 
-        // 3. Communities
+        // 3. Communities & Members (다른 계정이 방에 들어오거나 방을 만들었을 때 실시간 반영)
         const cloudComms = await cloudGet(CLOUD_KEYS.COMMUNITIES, null);
         if (Array.isArray(cloudComms)) {
+          const prevCommsJson = JSON.stringify(state.communities);
           const commMap = new Map();
           for (const c of [...cloudComms, ...state.communities]) {
             if (c && c.id && !AI_SEED_COMM_IDS.includes(c.id) && !state.deletedCommIds.includes(c.id)) {
               const existing = commMap.get(c.id);
-              if (existing) {
-                const memMap = new Map();
-                for (const m of [...(existing.members || []), ...(c.members || [])]) {
-                  if (m && m.userId) memMap.set(m.userId, m);
-                }
-                const mergedMembers = Array.from(memMap.values());
-                commMap.set(c.id, { ...existing, ...c, members: mergedMembers, memberCount: Math.max(1, mergedMembers.length) });
-              } else {
-                commMap.set(c.id, c);
-              }
+              commMap.set(c.id, existing ? mergeCommunityObjects(existing, c) : c);
             }
           }
           const mergedComms = Array.from(commMap.values());
-          if (JSON.stringify(mergedComms) !== JSON.stringify(state.communities)) {
+          if (JSON.stringify(mergedComms) !== prevCommsJson) {
             state.communities = mergedComms;
             saveStorage(STORAGE_KEYS.COMMUNITIES, mergedComms);
             changed = true;
           }
-          if (mergedComms.length > cloudComms.length) {
-            cloudPut(CLOUD_KEYS.COMMUNITIES, mergedComms);
+          if (JSON.stringify(mergedComms) !== JSON.stringify(cloudComms)) {
+            await cloudPut(CLOUD_KEYS.COMMUNITIES, mergedComms);
           }
         } else if (state.communities.length > 0) {
-          cloudPut(CLOUD_KEYS.COMMUNITIES, state.communities);
+          await cloudPut(CLOUD_KEYS.COMMUNITIES, state.communities);
         }
 
-        // 4. Messages
+        // 4. Active Room Messages (현재 들어가 있는 커뮤니티 방의 메시지를 최우선으로 실시간 동기화 + 읽음 숫자 실시간 차감)
+        if (state.activeCommunityId && !state.deletedCommIds.includes(state.activeCommunityId)) {
+          const cid = state.activeCommunityId;
+          const roomKey = CLOUD_KEYS.ROOM_MSG_PREFIX + cid;
+          const cloudRoomMsgs = await cloudGet(roomKey, null);
+          if (Array.isArray(cloudRoomMsgs)) {
+            const localList = state.messagesByComm[cid] || [];
+            const prevRoomJson = JSON.stringify(localList);
+            const mergedRoom = mergeMessageArrays(localList, cloudRoomMsgs);
+
+            let readUpdated = false;
+            if (state.currentUser) {
+              mergedRoom.forEach((m) => {
+                if (!Array.isArray(m.readUserIds)) m.readUserIds = [m.senderId];
+                if (!m.readUserIds.includes(state.currentUser.id)) {
+                  m.readUserIds.push(state.currentUser.id);
+                  readUpdated = true;
+                }
+              });
+            }
+
+            if (JSON.stringify(mergedRoom) !== prevRoomJson || readUpdated) {
+              state.messagesByComm[cid] = mergedRoom;
+              saveStorage(STORAGE_KEYS.MESSAGES, state.messagesByComm);
+              changed = true;
+            }
+            if (readUpdated || mergedRoom.length > cloudRoomMsgs.length) {
+              await cloudPut(roomKey, mergedRoom);
+            }
+          } else if ((state.messagesByComm[cid] || []).length > 0) {
+            await cloudPut(roomKey, state.messagesByComm[cid]);
+          }
+        }
+
+        // 5. All Communities Messages Map
         const cloudMsgs = await cloudGet(CLOUD_KEYS.MESSAGES, null);
         if (cloudMsgs && typeof cloudMsgs === "object") {
+          const prevMsgsJson = JSON.stringify(state.messagesByComm);
           const mergedMsgs = { ...state.messagesByComm };
           for (const [cid, list] of Object.entries(cloudMsgs)) {
             if (AI_SEED_COMM_IDS.includes(cid) || state.deletedCommIds.includes(cid)) continue;
-            const localList = mergedMsgs[cid] || [];
-            const msgMap = new Map();
-            for (const m of [...localList, ...(Array.isArray(list) ? list : [])]) {
-              if (m && m.id) msgMap.set(m.id, m);
-            }
-            mergedMsgs[cid] = Array.from(msgMap.values());
+            mergedMsgs[cid] = mergeMessageArrays(mergedMsgs[cid] || [], Array.isArray(list) ? list : []);
           }
-          if (JSON.stringify(mergedMsgs) !== JSON.stringify(state.messagesByComm)) {
+          if (JSON.stringify(mergedMsgs) !== prevMsgsJson) {
             state.messagesByComm = mergedMsgs;
             saveStorage(STORAGE_KEYS.MESSAGES, mergedMsgs);
             changed = true;
           }
         }
 
-        // 5. Posts & DMs
+        // 6. Posts & DMs
         const cloudPosts = await cloudGet(CLOUD_KEYS.POSTS, null);
         if (Array.isArray(cloudPosts)) {
           const postMap = new Map();
@@ -1246,7 +1428,7 @@
             if (p && p.id && !AI_BOT_USER_IDS.includes(p.authorId)) postMap.set(p.id, p);
           }
           const mergedPosts = Array.from(postMap.values());
-          if (mergedPosts.length !== state.posts.length) {
+          if (JSON.stringify(mergedPosts) !== JSON.stringify(state.posts)) {
             state.posts = mergedPosts;
             saveStorage(STORAGE_KEYS.POSTS, mergedPosts);
             changed = true;
@@ -1255,16 +1437,12 @@
 
         const cloudDms = await cloudGet(CLOUD_KEYS.DMS, null);
         if (cloudDms && typeof cloudDms === "object") {
+          const prevDmsJson = JSON.stringify(state.dms);
           const mergedDms = { ...state.dms };
           for (const [convId, list] of Object.entries(cloudDms)) {
-            const localList = mergedDms[convId] || [];
-            const dmMap = new Map();
-            for (const m of [...localList, ...(Array.isArray(list) ? list : [])]) {
-              if (m && m.id) dmMap.set(m.id, m);
-            }
-            mergedDms[convId] = Array.from(dmMap.values());
+            mergedDms[convId] = mergeMessageArrays(mergedDms[convId] || [], Array.isArray(list) ? list : []);
           }
-          if (JSON.stringify(mergedDms) !== JSON.stringify(state.dms)) {
+          if (JSON.stringify(mergedDms) !== prevDmsJson) {
             state.dms = mergedDms;
             saveStorage(STORAGE_KEYS.DMS, mergedDms);
             changed = true;
@@ -1272,9 +1450,12 @@
         }
 
         if (changed) {
-          safeReactiveRender();
+          safeReactiveRender(true);
         }
-      } catch (e) {}
+      } catch (e) {
+      } finally {
+        isSyncingCloud = false;
+      }
     }
 
     function applyTheme() {
@@ -1367,12 +1548,11 @@
     }
 
     // ============================================================================
-    // 5. Render Functions (처음 접속 시 로그인 화면 + 타인 계정 클릭 입장 완전 제거)
+    // 5. Render Functions
     // ============================================================================
     function renderAuthOnboarding() {
       return `
         <div class="h-screen w-full overflow-y-auto bg-app-canvas">
-          <!-- Top Sticky Header Bar -->
           <div class="sticky top-0 z-30 w-full px-5 py-3 bg-app-surface/95 border-b border-app backdrop-blur flex items-center justify-between">
             <div class="flex items-center gap-2">
               <div class="w-7 h-7 rounded-lg btn-ash flex items-center justify-center text-xs font-black shadow-sm">ΘΔ</div>
@@ -1391,9 +1571,7 @@
             </div>
           </div>
 
-          <!-- Main Scrollable Content -->
           <div class="max-w-6xl mx-auto px-4 sm:px-6 py-6 sm:py-10 grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-            <!-- Left Panel: Multi-Tone Calm Hero & Live Profile Preview -->
             <div class="lg:col-span-5 hero-multitone-card rounded-2xl p-6 sm:p-8 shadow-lg space-y-6">
               <div class="space-y-3">
                 <div class="flex flex-wrap items-center gap-1.5">
@@ -1409,7 +1587,6 @@
                 </p>
               </div>
 
-              <!-- Alterhuman Core Identity Guide Summary -->
               <div class="p-4 rounded-xl bg-[#1c222b]/70 border border-white/15 space-y-2 text-xs">
                 <div class="font-bold text-[#e6edf5]">알터휴먼 라운지 안내</div>
                 <ul class="space-y-1.5 text-[#c7d3e0] text-[11px] leading-relaxed">
@@ -1419,7 +1596,6 @@
                 </ul>
               </div>
 
-              <!-- Live Profile Card Preview -->
               <div>
                 <div class="text-xs font-bold text-[#ced9e6] uppercase tracking-wider mb-2">
                   실시간 프로필 미리보기
@@ -1445,7 +1621,6 @@
               </div>
             </div>
 
-            <!-- Right Panel: Login / Signup Form -->
             <div class="lg:col-span-7 bg-app-surface rounded-2xl border border-app p-6 sm:p-8 shadow-sm">
               <div class="flex flex-col sm:flex-row sm:items-center justify-between border-b border-app pb-4 mb-5 gap-3">
                 <div>
@@ -1529,19 +1704,15 @@
                       </div>
                     </div>
 
-                    <!-- 24 Diverse Low-Saturation Avatar Presets -->
                     <div class="grid grid-cols-6 sm:grid-cols-8 gap-2">
                       ${AVATAR_PRESETS_INFO.map((av) => `
                         <button type="button" onclick="selectSignupAvatar('${av.url}')" class="group relative rounded-xl overflow-hidden border-2 aspect-square transition ${state.signupAvatar === av.url ? 'border-[#5c7893] scale-105 shadow-md ring-2 ring-[#5c7893]/40' : 'border-transparent opacity-85 hover:opacity-100'}" title="${av.label}">
                           <img src="${av.url}" class="w-full h-full object-cover" />
-                          <span class="
-                            absolute inset-x-0 bottom-0 bg-black/60 text-white text-[9px] py-0.5 px-1 truncate opacity-0 group-hover:opacity-100 transition text-center
-                          ">${av.label.split(" (")[0]}</span>
+                          <span class="absolute inset-x-0 bottom-0 bg-black/60 text-white text-[9px] py-0.5 px-1 truncate opacity-0 group-hover:opacity-100 transition text-center">${av.label.split(" (")[0]}</span>
                         </button>
                       `).join("")}
                     </div>
 
-                    <!-- 12 Multi-Tone Low-Saturation Banner Presets -->
                     <div>
                       <span class="block text-[11px] font-semibold text-app-muted mb-1">커버 배경 색상 (12종 저채도 테마)</span>
                       <div class="grid grid-cols-4 sm:grid-cols-6 gap-1.5">
@@ -1750,7 +1921,6 @@
       return `
         <div class="flex-1 overflow-y-auto bg-app-canvas p-4 sm:p-6 lg:p-8">
           <div class="max-w-6xl mx-auto space-y-6">
-            <!-- Multi-Tone Calm Hero Banner -->
             <div class="rounded-2xl p-6 sm:p-8 hero-multitone-card shadow-md">
               <div class="flex flex-col md:flex-row md:items-center justify-between gap-5">
                 <div class="space-y-2 max-w-2xl">
@@ -1780,7 +1950,6 @@
               </div>
             </div>
 
-            <!-- Collapsible Alterhuman Wiki Quick Summary -->
             <div class="rounded-2xl bg-app-surface border border-app overflow-hidden shadow-sm">
               <div class="px-5 py-3 flex items-center justify-between border-b border-app bg-app-subtle">
                 <div class="flex items-center gap-2">
@@ -1828,7 +1997,6 @@
               ` : ""}
             </div>
 
-            <!-- TOP 3 Ranked Communities -->
             ${ranked.length > 0 ? `
             <div class="rounded-2xl p-5 bg-app-surface border border-app space-y-4 shadow-sm">
               <div>
@@ -1869,7 +2037,6 @@
             </div>
             ` : ""}
 
-            <!-- Category Tabs -->
             <div class="flex items-center justify-between gap-3 flex-wrap">
               <div class="flex items-center gap-1.5 overflow-x-auto pb-1">
                 ${ALTERHUMAN_CATEGORIES.map((cat) => {
@@ -1887,7 +2054,6 @@
               </div>
             </div>
 
-            <!-- Communities Grid -->
             <div id="lobby-communities-grid" class="grid grid-cols-1 md:grid-cols-2 gap-5">
               ${filteredHtml}
             </div>
@@ -1896,6 +2062,7 @@
       `;
     }
 
+    // Bug #1 해결: 말풍선 외부 컨테이너에서 whitespace-pre-wrap을 제거하고 내부 텍스트 태그에만 공백 없이 적용하여 위아래 빈 여백이 생기지 않도록 수정
     function renderChatMessagesInnerHtml() {
       const comm = state.communities.find((c) => c.id === state.activeCommunityId);
       if (!comm || !state.currentUser) return "";
@@ -1926,6 +2093,9 @@
         const readUsers = msg.readUserIds || [msg.senderId];
         const unreadCnt = Math.max(0, members.filter((m) => !readUsers.includes(m.userId)).length);
 
+        const textHtml = msg.content ? `<div class="whitespace-pre-wrap break-words">${escapeHtml(msg.content)}</div>` : "";
+        const imgHtml = msg.attachmentUrl ? `<div class="${msg.content ? 'mt-2' : ''}"><img src="${msg.attachmentUrl}" onclick="state.lightboxImage = '${msg.attachmentUrl}'; render()" class="rounded-xl max-w-[240px] max-h-56 object-cover cursor-pointer border border-white/20" /></div>` : "";
+
         return `
           <div class="group flex items-start gap-3 ${isMe ? 'flex-row-reverse' : 'flex-row'}">
             <button onclick="openUserProfile('${msg.senderId}')" class="flex-shrink-0" title="프로필 보기">
@@ -1941,15 +2111,50 @@
               </div>
 
               <div class="flex items-end gap-1.5 ${isMe ? 'flex-row-reverse' : 'flex-row'}">
-                <div class="px-4 py-2.5 rounded-2xl text-sm leading-relaxed whitespace-pre-wrap break-words shadow-sm ${isMe ? 'btn-ash font-medium' : 'bg-app-surface text-app-main border border-app'}">
-                  ${msg.content ? `<div>${escapeHtml(msg.content)}</div>` : ""}
-                  ${msg.attachmentUrl ? `<div class="${msg.content ? 'mt-2' : ''}"><img src="${msg.attachmentUrl}" onclick="state.lightboxImage = '${msg.attachmentUrl}'; render()" class="rounded-xl max-w-[240px] max-h-56 object-cover cursor-pointer border border-white/20" /></div>` : ""}
-                </div>
+                <div class="px-3.5 py-2 rounded-2xl text-sm leading-snug shadow-sm ${isMe ? 'btn-ash font-medium rounded-tr-sm' : 'bg-app-surface text-app-main border border-app rounded-tl-sm'}">${textHtml}${imgHtml}</div>
                 <div class="flex flex-col ${isMe ? 'items-end' : 'items-start'} text-[10px] flex-shrink-0">
                   ${unreadCnt > 0 ? `<span class="text-[#8c765c] dark:text-[#d9c3a5] font-bold text-[11px] leading-tight">${unreadCnt}</span>` : ""}
                   <span class="text-app-muted">${escapeHtml(msg.timestamp)}</span>
                 </div>
               </div>
+            </div>
+          </div>
+        `;
+      }).join("");
+    }
+
+    function renderChatMembersListInnerHtml() {
+      const comm = state.communities.find((c) => c.id === state.activeCommunityId);
+      if (!comm || !state.currentUser) return "";
+      const u = state.currentUser;
+      const iAmAdmin = isSuperAdmin(u);
+      const isOwner = comm.createdById === u.id || comm.createdBy === u.name || comm.createdBy === u.username;
+      const members = comm.members && comm.members.length > 0 ? comm.members : [{
+        userId: u.id, username: u.username, name: u.name, pronouns: u.pronouns, avatarUrl: u.avatarUrl, role: "방장"
+      }];
+
+      return members.map((m) => {
+        const isMe = m.userId === u.id;
+        const isMemAdm = SUPER_ADMIN_IDENTIFIERS.includes((m.name || "").trim().toLowerCase()) || SUPER_ADMIN_IDENTIFIERS.includes((m.username || "").trim().toLowerCase());
+        return `
+          <div class="p-2 rounded-xl flex items-center justify-between gap-2 bg-app-subtle border border-app">
+            <button onclick="openUserProfile('${m.userId}')" class="flex items-center gap-2 min-w-0 flex-1 text-left">
+              <img src="${m.avatarUrl || AVATAR_PRESETS[0]}" class="w-8 h-8 rounded-lg object-cover shrink-0" />
+              <div class="min-w-0 flex-1">
+                <div class="flex items-center gap-1 flex-wrap">
+                  <p class="font-bold text-xs truncate text-app-main">${escapeHtml(m.name)}</p>
+                  ${isMemAdm ? `<span class="text-[9px] font-bold badge-rose px-1.5 rounded">최고 관리자</span>` : m.role === "방장" ? `<span class="text-[9px] font-bold badge-sand px-1.5 rounded">방장</span>` : ""}
+                </div>
+                <p class="text-[10px] text-app-muted truncate">${escapeHtml(m.pronouns)}</p>
+              </div>
+            </button>
+            <div class="flex items-center gap-1">
+              ${iAmAdmin && !isMe && !isMemAdm ? `
+                <button onclick="openAdminBan('${m.userId}')" class="px-2 py-1 rounded badge-rose text-[10px] font-bold">제재</button>
+              ` : ""}
+              ${(isOwner || iAmAdmin) && !isMe && m.role !== "방장" && !isMemAdm ? `
+                <button onclick="kickMemberFromRoom('${comm.id}', '${m.userId}', '${escapeHtml(m.name)}')" class="px-2 py-1 rounded badge-terra text-[10px] font-bold">강퇴</button>
+              ` : ""}
             </div>
           </div>
         `;
@@ -2002,7 +2207,7 @@
                   </div>
                   <div class="flex items-center gap-2 text-[11px] text-app-muted">
                     <span>#${escapeHtml(activeCh.name)}</span>
-                    <span>· 접속 ${members.length}/${members.length}명</span>
+                    <span id="chat-header-member-count">· 접속 ${members.length}/${members.length}명</span>
                   </div>
                 </div>
               </div>
@@ -2016,7 +2221,7 @@
                 <button onclick="state.showRulesPanel = !state.showRulesPanel; render()" class="px-2.5 py-1.5 rounded-lg text-xs font-bold border transition ${state.showRulesPanel ? 'badge-sage' : 'bg-app-subtle border-app text-app-main'}">
                   규칙
                 </button>
-                <button onclick="state.showMembersSidebar = !state.showMembersSidebar; render()" class="px-2.5 py-1.5 rounded-lg text-xs font-bold border transition ${state.showMembersSidebar ? 'badge-mauve' : 'bg-app-subtle border-app text-app-main'}">
+                <button id="chat-btn-member-count" onclick="state.showMembersSidebar = !state.showMembersSidebar; render()" class="px-2.5 py-1.5 rounded-lg text-xs font-bold border transition ${state.showMembersSidebar ? 'badge-mauve' : 'bg-app-subtle border-app text-app-main'}">
                   멤버 (${members.length})
                 </button>
                 ${(isOwner || iAmAdmin) ? `
@@ -2073,36 +2278,11 @@
           ${state.showMembersSidebar ? `
             <aside class="w-64 hidden md:flex flex-col bg-app-surface border-l border-app p-4 overflow-y-auto flex-shrink-0">
               <div class="text-[11px] font-bold uppercase tracking-wider text-app-muted mb-3 flex items-center justify-between">
-                <span>참여자 목록 (${members.length}명)</span>
+                <span id="chat-sidebar-member-count">참여자 목록 (${members.length}명)</span>
                 <button onclick="state.showMembersSidebar = false; render()">✕</button>
               </div>
-              <div class="space-y-2">
-                ${members.map((m) => {
-                  const isMe = m.userId === u.id;
-                  const isMemAdm = SUPER_ADMIN_IDENTIFIERS.includes((m.name || "").trim().toLowerCase()) || SUPER_ADMIN_IDENTIFIERS.includes((m.username || "").trim().toLowerCase());
-                  return `
-                    <div class="p-2 rounded-xl flex items-center justify-between gap-2 bg-app-subtle border border-app">
-                      <button onclick="openUserProfile('${m.userId}')" class="flex items-center gap-2 min-w-0 flex-1 text-left">
-                        <img src="${m.avatarUrl || AVATAR_PRESETS[0]}" class="w-8 h-8 rounded-lg object-cover shrink-0" />
-                        <div class="min-w-0 flex-1">
-                          <div class="flex items-center gap-1 flex-wrap">
-                            <p class="font-bold text-xs truncate text-app-main">${escapeHtml(m.name)}</p>
-                            ${isMemAdm ? `<span class="text-[9px] font-bold badge-rose px-1.5 rounded">최고 관리자</span>` : m.role === "방장" ? `<span class="text-[9px] font-bold badge-sand px-1.5 rounded">방장</span>` : ""}
-                          </div>
-                          <p class="text-[10px] text-app-muted truncate">${escapeHtml(m.pronouns)}</p>
-                        </div>
-                      </button>
-                      <div class="flex items-center gap-1">
-                        ${iAmAdmin && !isMe && !isMemAdm ? `
-                          <button onclick="openAdminBan('${m.userId}')" class="px-2 py-1 rounded badge-rose text-[10px] font-bold">제재</button>
-                        ` : ""}
-                        ${(isOwner || iAmAdmin) && !isMe && m.role !== "방장" && !isMemAdm ? `
-                          <button onclick="kickMemberFromRoom('${comm.id}', '${m.userId}', '${escapeHtml(m.name)}')" class="px-2 py-1 rounded badge-terra text-[10px] font-bold">강퇴</button>
-                        ` : ""}
-                      </div>
-                    </div>
-                  `;
-                }).join("")}
+              <div id="chat-members-list-box" class="space-y-2">
+                ${renderChatMembersListInnerHtml()}
               </div>
             </aside>
           ` : ""}
@@ -2110,12 +2290,37 @@
       `;
     }
 
-    function renderDmRoom() {
+    function renderDmMessagesInnerHtml() {
       const target = state.activeDmUser;
       const u = state.currentUser;
       if (!target || !u) return "";
       const convId = [u.id, target.id].sort().join("__");
       const dms = state.dms[convId] || [];
+
+      if (dms.length === 0) {
+        return `
+          <div class="h-full flex flex-col items-center justify-center text-center p-8 text-app-muted space-y-1">
+            <p class="font-bold text-sm text-app-main">${escapeHtml(target.name)} 님과의 첫 1:1 대화입니다.</p>
+            <p class="text-xs">메시지를 보내 대화를 시작해 보세요.</p>
+          </div>
+        `;
+      }
+
+      return dms.map((m) => {
+        const isMe = m.senderId === u.id;
+        return `
+          <div class="flex items-start gap-2.5 ${isMe ? 'flex-row-reverse' : 'flex-row'}">
+            <div class="px-3.5 py-2 rounded-2xl text-sm leading-snug max-w-[75%] shadow-sm ${isMe ? 'btn-ash font-medium rounded-tr-sm' : 'bg-app-surface border border-app text-app-main rounded-tl-sm'}"><div class="whitespace-pre-wrap break-words">${escapeHtml(m.content)}</div></div>
+            <span class="text-[10px] text-app-muted self-end">${escapeHtml(m.timestamp)}</span>
+          </div>
+        `;
+      }).join("");
+    }
+
+    function renderDmRoom() {
+      const target = state.activeDmUser;
+      const u = state.currentUser;
+      if (!target || !u) return "";
 
       return `
         <div class="flex-1 flex flex-col h-full bg-app-canvas overflow-hidden">
@@ -2136,23 +2341,8 @@
             <button onclick="openUserProfile('${target.id}')" class="px-3 py-1.5 rounded-lg badge-ash text-xs font-bold">프로필 보기</button>
           </header>
 
-          <div class="flex-1 overflow-y-auto p-4 sm:p-6 space-y-4">
-            ${dms.length === 0 ? `
-              <div class="h-full flex flex-col items-center justify-center text-center p-8 text-app-muted space-y-1">
-                <p class="font-bold text-sm text-app-main">${escapeHtml(target.name)} 님과의 첫 1:1 대화입니다.</p>
-                <p class="text-xs">메시지를 보내 대화를 시작해 보세요.</p>
-              </div>
-            ` : dms.map((m) => {
-              const isMe = m.senderId === u.id;
-              return `
-                <div class="flex items-start gap-2.5 ${isMe ? 'flex-row-reverse' : 'flex-row'}">
-                  <div class="px-4 py-2.5 rounded-2xl text-sm max-w-[75%] shadow-sm ${isMe ? 'btn-ash font-medium' : 'bg-app-surface border border-app text-app-main'}">
-                    ${escapeHtml(m.content)}
-                  </div>
-                  <span class="text-[10px] text-app-muted self-end">${escapeHtml(m.timestamp)}</span>
-                </div>
-              `;
-            }).join("")}
+          <div id="dm-scroll-box" class="flex-1 overflow-y-auto p-4 sm:p-6 space-y-4">
+            ${renderDmMessagesInnerHtml()}
           </div>
 
           <form onsubmit="handleSendDm(event)" class="p-3 sm:p-4 bg-app-surface border-t border-app flex items-center gap-2">
@@ -2315,7 +2505,6 @@
               <button onclick="state.isCreateModalOpen = false; render()">✕</button>
             </div>
             <form onsubmit="handleCreateCommunity(event)" class="p-6 overflow-y-auto space-y-4">
-              <!-- Live Preview with Gallery Cover & Icon -->
               <div class="p-4 rounded-xl text-white flex items-center gap-3.5 border border-white/20 shadow-sm" style="${previewBgStyle}">
                 ${state.newCommIconImage ? `
                   <img src="${state.newCommIconImage}" class="w-12 h-12 rounded-xl object-cover border border-white/30 bg-[#3a4d61] shrink-0" />
@@ -2334,7 +2523,6 @@
                 <input id="create-comm-name-input" type="text" required value="${escapeHtml(state.newCommName)}" oninput="updateCreateCommPreview('newCommName', this.value)" placeholder="예: 북극늑대 & 개과 클라도테리안 라운지" class="w-full px-3.5 py-2 rounded-lg input-ash text-sm" />
               </div>
 
-              <!-- 방 대표 사진 & 방 커버 배경 사진 갤러리에서 불러오기 + 12종 저채도 배너 -->
               <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 p-3.5 rounded-xl bg-app-subtle border border-app">
                 <div class="space-y-2">
                   <div class="flex items-center justify-between">
@@ -2520,7 +2708,6 @@
               <button onclick="state.isProfileModalOpen = false; render()">✕</button>
             </div>
             <form onsubmit="handleSaveProfile(event)" class="p-6 overflow-y-auto space-y-5">
-              <!-- Current Profile Banner & Avatar Preview -->
               <div class="rounded-2xl overflow-hidden bg-app-subtle border border-app">
                 <div class="h-24 w-full relative" style="background: ${u.bannerUrl ? `url(${u.bannerUrl}) center/cover` : (u.bannerColor || BANNER_PRESETS[0].gradient)}">
                   <div class="absolute top-2.5 right-2.5 flex gap-1.5">
@@ -2545,7 +2732,6 @@
                 </div>
               </div>
 
-              <!-- 24 Diverse Low-Saturation Profile Avatars Picker -->
               <div class="p-4 rounded-xl bg-app-subtle border border-app space-y-2.5">
                 <div class="flex items-center justify-between">
                   <label class="text-xs font-bold text-app-main">기본 제공 프로필 사진 선택 (24종 저채도 알터휴먼 일러스트)</label>
@@ -2561,7 +2747,6 @@
                 </div>
               </div>
 
-              <!-- 12 Multi-Tone Low-Saturation Banner Presets Picker -->
               <div class="p-4 rounded-xl bg-app-subtle border border-app space-y-2">
                 <label class="block text-xs font-bold text-app-main">기본 제공 프로필 커버 배경 선택 (12종 저채도 컬러)</label>
                 <div class="grid grid-cols-4 sm:grid-cols-6 gap-1.5">
@@ -2758,6 +2943,7 @@
       state.activeDmUser = null;
       state.activeCommunityId = null;
       render();
+      syncWithCloud();
     };
 
     window.switchAuthTab = function(tab) {
@@ -2865,9 +3051,10 @@
       if (!state.currentUser) return;
       state.currentUser.avatarUrl = avUrl;
       state.usersDir[state.currentUser.username] = state.currentUser;
-      saveStorage(STORAGE_KEYS.ACTIVE_SESSION, state.currentUser);
+      saveActiveSession(state.currentUser);
       saveStorage(STORAGE_KEYS.USERS_DIR, state.usersDir);
       cloudPut(CLOUD_KEYS.USERS, state.usersDir);
+      broadcastEvent("USER_UPDATED", state.currentUser);
       render();
     };
 
@@ -2876,9 +3063,10 @@
       state.currentUser.bannerColor = gradient;
       state.currentUser.bannerUrl = "";
       state.usersDir[state.currentUser.username] = state.currentUser;
-      saveStorage(STORAGE_KEYS.ACTIVE_SESSION, state.currentUser);
+      saveActiveSession(state.currentUser);
       saveStorage(STORAGE_KEYS.USERS_DIR, state.usersDir);
       cloudPut(CLOUD_KEYS.USERS, state.usersDir);
+      broadcastEvent("USER_UPDATED", state.currentUser);
       render();
     };
 
@@ -2887,9 +3075,10 @@
       if (!file || !state.currentUser) return;
       state.currentUser.avatarUrl = await compressImageFromFile(file, 300, 300);
       state.usersDir[state.currentUser.username] = state.currentUser;
-      saveStorage(STORAGE_KEYS.ACTIVE_SESSION, state.currentUser);
+      saveActiveSession(state.currentUser);
       saveStorage(STORAGE_KEYS.USERS_DIR, state.usersDir);
       cloudPut(CLOUD_KEYS.USERS, state.usersDir);
+      broadcastEvent("USER_UPDATED", state.currentUser);
       render();
     };
 
@@ -2898,9 +3087,10 @@
       if (!file || !state.currentUser) return;
       state.currentUser.bannerUrl = await compressImageFromFile(file, 900, 360);
       state.usersDir[state.currentUser.username] = state.currentUser;
-      saveStorage(STORAGE_KEYS.ACTIVE_SESSION, state.currentUser);
+      saveActiveSession(state.currentUser);
       saveStorage(STORAGE_KEYS.USERS_DIR, state.usersDir);
       cloudPut(CLOUD_KEYS.USERS, state.usersDir);
+      broadcastEvent("USER_UPDATED", state.currentUser);
       render();
     };
 
@@ -2978,9 +3168,10 @@
       state.usersDir[uname] = newUser;
       saveStorage(STORAGE_KEYS.USERS_DIR, state.usersDir);
       state.currentUser = newUser;
-      saveStorage(STORAGE_KEYS.ACTIVE_SESSION, newUser);
+      saveActiveSession(newUser);
       render();
       await cloudPut(CLOUD_KEYS.USERS, state.usersDir);
+      broadcastEvent("USER_UPDATED", newUser);
     };
 
     window.handleLogin = async function(e) {
@@ -3005,15 +3196,13 @@
       }
       state.authError = "";
       state.currentUser = found;
-      saveStorage(STORAGE_KEYS.ACTIVE_SESSION, found);
+      saveActiveSession(found);
       render();
     };
 
     window.handleLogout = function() {
       state.currentUser = null;
-      try {
-        localStorage.removeItem(STORAGE_KEYS.ACTIVE_SESSION);
-      } catch (e) {}
+      clearActiveSession();
       state.loginUsername = "";
       state.loginPassword = "";
       state.isDrawerOpen = false;
@@ -3022,7 +3211,7 @@
       render();
     };
 
-    window.enterCommunity = function(commId) {
+    window.enterCommunity = async function(commId) {
       const comm = state.communities.find((c) => c.id === commId);
       if (!comm || !state.currentUser) return;
       if ((comm.kickedUserIds || []).includes(state.currentUser.id)) {
@@ -3051,40 +3240,41 @@
         memberAdded = true;
       }
 
+      state.activeDmUser = null;
+      state.activeCommunityId = commId;
+      state.activeChannelId = (comm.channels && comm.channels[0]) ? comm.channels[0].id : "general";
+
       const roomMsgs = state.messagesByComm[commId] || [];
-      let readChanged = false;
       roomMsgs.forEach((m) => {
         if (!Array.isArray(m.readUserIds)) m.readUserIds = [m.senderId];
         if (!m.readUserIds.includes(state.currentUser.id)) {
           m.readUserIds.push(state.currentUser.id);
-          readChanged = true;
         }
       });
-      if (readChanged) {
-        saveStorage(STORAGE_KEYS.MESSAGES, state.messagesByComm);
-        cloudPut(CLOUD_KEYS.MESSAGES, state.messagesByComm);
-      }
-      if (memberAdded) {
-        cloudPut(CLOUD_KEYS.COMMUNITIES, state.communities);
-      }
+      saveStorage(STORAGE_KEYS.MESSAGES, state.messagesByComm);
 
-      state.activeDmUser = null;
-      state.activeCommunityId = commId;
-      state.activeChannelId = (comm.channels && comm.channels[0]) ? comm.channels[0].id : "general";
       render();
       setTimeout(() => {
         const box = document.getElementById("chat-scroll-box");
         if (box) box.scrollTop = box.scrollHeight;
-      }, 30);
+      }, 20);
+
+      if (memberAdded) {
+        broadcastEvent("COMMUNITY_UPDATED", comm);
+        await cloudSaveCommunities();
+      }
+      await cloudSaveRoomMessages(commId, state.messagesByComm[commId] || []);
+      safeReactiveRender(true);
     };
 
-    window.handleSendChat = function(e) {
+    window.handleSendChat = async function(e) {
       e.preventDefault();
       const u = state.currentUser;
       const comm = state.communities.find((c) => c.id === state.activeCommunityId);
       if (!u || !comm) return;
       const text = state.chatInputText.trim();
-      if (!text && !state.chatPendingImage) return;
+      const pendingImg = state.chatPendingImage;
+      if (!text && !pendingImg) return;
 
       const isOwner = comm.createdById === u.id || comm.createdBy === u.name;
       const newMsg = {
@@ -3101,7 +3291,7 @@
         createdAt: new Date().toISOString(),
         readUserIds: [u.id],
         reactions: [],
-        attachmentUrl: state.chatPendingImage || undefined
+        attachmentUrl: pendingImg || undefined
       };
 
       if (!state.messagesByComm[comm.id]) state.messagesByComm[comm.id] = [];
@@ -3111,13 +3301,17 @@
       state.chatInputText = "";
       state.chatPendingImage = "";
       render();
-      cloudPut(CLOUD_KEYS.MESSAGES, state.messagesByComm);
       setTimeout(() => {
         const box = document.getElementById("chat-scroll-box");
         if (box) box.scrollTop = box.scrollHeight;
         const inp = document.getElementById("chat-msg-input");
         if (inp) inp.focus();
-      }, 20);
+      }, 15);
+
+      // 즉시 다른 탭과 클라우드에 실시간 브로드캐스트 및 원자적 병합 저장
+      broadcastEvent("NEW_MESSAGE", newMsg);
+      await cloudSaveRoomMessages(comm.id, state.messagesByComm[comm.id]);
+      safeReactiveRender(true);
     };
 
     window.handleChatImageUpload = async function(e) {
@@ -3127,14 +3321,15 @@
       render();
     };
 
-    window.deleteChatMessage = function(commId, msgId) {
+    window.deleteChatMessage = async function(commId, msgId) {
       state.messagesByComm[commId] = (state.messagesByComm[commId] || []).filter((m) => m.id !== msgId);
       saveStorage(STORAGE_KEYS.MESSAGES, state.messagesByComm);
-      cloudPut(CLOUD_KEYS.MESSAGES, state.messagesByComm);
+      broadcastEvent("MESSAGE_DELETED", { communityId: commId, messageId: msgId });
       render();
+      await cloudSaveRoomMessages(commId, state.messagesByComm[commId], msgId);
     };
 
-    window.claimOwnership = function(commId) {
+    window.claimOwnership = async function(commId) {
       const comm = state.communities.find((c) => c.id === commId);
       const u = state.currentUser;
       if (!comm || !u || !isSuperAdmin(u)) return;
@@ -3143,8 +3338,7 @@
       (comm.members || []).forEach((m) => {
         m.role = m.userId === u.id ? "방장" : "멤버";
       });
-      if (!state.messagesByComm[commId]) state.messagesByComm[commId] = [];
-      state.messagesByComm[commId].push({
+      const sysMsg = {
         id: "sys-" + Date.now(),
         communityId: commId,
         channelId: state.activeChannelId,
@@ -3152,16 +3346,21 @@
         senderName: "시스템",
         content: `최고 관리자(${u.name})님이 커뮤니티 방장 권한을 회수하여 신규 방장으로 지정되었습니다.`,
         timestamp: formatKoreanTime(),
+        createdAt: new Date().toISOString(),
         isSystem: true
-      });
+      };
+      if (!state.messagesByComm[commId]) state.messagesByComm[commId] = [];
+      state.messagesByComm[commId].push(sysMsg);
       saveStorage(STORAGE_KEYS.COMMUNITIES, state.communities);
       saveStorage(STORAGE_KEYS.MESSAGES, state.messagesByComm);
-      cloudPut(CLOUD_KEYS.COMMUNITIES, state.communities);
-      cloudPut(CLOUD_KEYS.MESSAGES, state.messagesByComm);
+      broadcastEvent("COMMUNITY_UPDATED", comm);
+      broadcastEvent("NEW_MESSAGE", sysMsg);
       render();
+      await cloudSaveCommunities();
+      await cloudSaveRoomMessages(commId, state.messagesByComm[commId]);
     };
 
-    window.deleteCommunityConfirm = function(commId) {
+    window.deleteCommunityConfirm = async function(commId) {
       if (!confirm("정말 이 커뮤니티와 모든 대화 내역을 삭제하시겠습니까?")) return;
       state.communities = state.communities.filter((c) => c.id !== commId);
       state.joinedCommunityIds = state.joinedCommunityIds.filter((id) => id !== commId);
@@ -3174,21 +3373,22 @@
       saveStorage(STORAGE_KEYS.DELETED_COMMS, state.deletedCommIds);
       saveStorage(STORAGE_KEYS.JOINED, state.joinedCommunityIds);
       saveStorage(STORAGE_KEYS.MESSAGES, state.messagesByComm);
-      cloudPut(CLOUD_KEYS.DELETED_COMMS, state.deletedCommIds);
-      cloudPut(CLOUD_KEYS.COMMUNITIES, state.communities);
-      cloudPut(CLOUD_KEYS.MESSAGES, state.messagesByComm);
+      broadcastEvent("COMMUNITY_DELETED", commId);
       render();
+      await cloudPut(CLOUD_KEYS.DELETED_COMMS, state.deletedCommIds);
+      await cloudPut(CLOUD_KEYS.COMMUNITIES, state.communities);
+      await cloudPut(CLOUD_KEYS.ROOM_MSG_PREFIX + commId, []);
+      await cloudPut(CLOUD_KEYS.MESSAGES, state.messagesByComm);
     };
 
-    window.kickMemberFromRoom = function(commId, targetUserId, targetName) {
+    window.kickMemberFromRoom = async function(commId, targetUserId, targetName) {
       if (!confirm(`${targetName} 님을 이 커뮤니티에서 강퇴하시겠습니까?`)) return;
       const comm = state.communities.find((c) => c.id === commId);
       if (!comm) return;
       comm.members = (comm.members || []).filter((m) => m.userId !== targetUserId);
       if (!comm.kickedUserIds) comm.kickedUserIds = [];
       comm.kickedUserIds.push(targetUserId);
-      if (!state.messagesByComm[commId]) state.messagesByComm[commId] = [];
-      state.messagesByComm[commId].push({
+      const sysMsg = {
         id: "sys-" + Date.now(),
         communityId: commId,
         channelId: state.activeChannelId,
@@ -3196,16 +3396,21 @@
         senderName: "시스템",
         content: `${targetName} 님이 커뮤니티에서 내보내졌습니다.`,
         timestamp: formatKoreanTime(),
+        createdAt: new Date().toISOString(),
         isSystem: true
-      });
+      };
+      if (!state.messagesByComm[commId]) state.messagesByComm[commId] = [];
+      state.messagesByComm[commId].push(sysMsg);
       saveStorage(STORAGE_KEYS.COMMUNITIES, state.communities);
       saveStorage(STORAGE_KEYS.MESSAGES, state.messagesByComm);
-      cloudPut(CLOUD_KEYS.COMMUNITIES, state.communities);
-      cloudPut(CLOUD_KEYS.MESSAGES, state.messagesByComm);
+      broadcastEvent("COMMUNITY_UPDATED", comm);
+      broadcastEvent("NEW_MESSAGE", sysMsg);
       render();
+      await cloudSaveCommunities();
+      await cloudSaveRoomMessages(commId, state.messagesByComm[commId]);
     };
 
-    window.handleCreateCommunity = function(e) {
+    window.handleCreateCommunity = async function(e) {
       e.preventDefault();
       const u = state.currentUser;
       if (!u || !state.newCommName.trim()) return;
@@ -3244,12 +3449,13 @@
       state.joinedCommunityIds.push(newComm.id);
       saveStorage(STORAGE_KEYS.COMMUNITIES, state.communities);
       saveStorage(STORAGE_KEYS.JOINED, state.joinedCommunityIds);
-      cloudPut(CLOUD_KEYS.COMMUNITIES, state.communities);
+      broadcastEvent("NEW_COMMUNITY", newComm);
       state.newCommName = "";
       state.newCommDesc = "";
       state.newCommIconImage = "";
       state.newCommBannerImage = "";
       state.isCreateModalOpen = false;
+      await cloudSaveCommunities();
       enterCommunity(newComm.id);
     };
 
@@ -3272,6 +3478,7 @@
       }
       saveStorage(STORAGE_KEYS.FOLLOWS, state.follows);
       cloudPut(CLOUD_KEYS.FOLLOWS, state.follows);
+      broadcastEvent("FOLLOW_UPDATED", state.follows);
       render();
     };
 
@@ -3286,22 +3493,27 @@
       render();
     };
 
-    window.handleSendDm = function(e) {
+    window.handleSendDm = async function(e) {
       e.preventDefault();
       const inp = document.getElementById("dm-msg-input");
       if (!inp || !inp.value.trim() || !state.currentUser || !state.activeDmUser) return;
       const convId = [state.currentUser.id, state.activeDmUser.id].sort().join("__");
       if (!state.dms[convId]) state.dms[convId] = [];
-      state.dms[convId].push({
+      const dmMsg = {
         id: "dm-" + Date.now() + "-" + Math.random().toString(36).slice(2, 6),
         senderId: state.currentUser.id,
         senderName: state.currentUser.name,
         content: filterProfanity(inp.value.trim()),
-        timestamp: formatKoreanTime()
-      });
+        timestamp: formatKoreanTime(),
+        createdAt: new Date().toISOString()
+      };
+      state.dms[convId].push(dmMsg);
       saveStorage(STORAGE_KEYS.DMS, state.dms);
-      cloudPut(CLOUD_KEYS.DMS, state.dms);
+      broadcastEvent("NEW_DM", { convId, message: dmMsg });
       render();
+      const dmInp = document.getElementById("dm-msg-input");
+      if (dmInp) dmInp.focus();
+      await cloudPut(CLOUD_KEYS.DMS, state.dms);
     };
 
     window.handlePostImageUpload = async function(e) {
@@ -3329,6 +3541,7 @@
       });
       saveStorage(STORAGE_KEYS.POSTS, state.posts);
       cloudPut(CLOUD_KEYS.POSTS, state.posts);
+      broadcastEvent("POST_UPDATED", state.posts);
       state.newPostContent = "";
       state.newPostImage = "";
       render();
@@ -3345,6 +3558,7 @@
       }
       saveStorage(STORAGE_KEYS.POSTS, state.posts);
       cloudPut(CLOUD_KEYS.POSTS, state.posts);
+      broadcastEvent("POST_UPDATED", state.posts);
       render();
     };
 
@@ -3352,6 +3566,7 @@
       state.posts = state.posts.filter((p) => p.id !== postId);
       saveStorage(STORAGE_KEYS.POSTS, state.posts);
       cloudPut(CLOUD_KEYS.POSTS, state.posts);
+      broadcastEvent("POST_UPDATED", state.posts);
       render();
     };
 
@@ -3364,9 +3579,10 @@
       u.statusMessage = document.getElementById("prof-status").value.trim();
       u.bio = document.getElementById("prof-bio").value.trim();
       state.usersDir[u.username] = u;
-      saveStorage(STORAGE_KEYS.ACTIVE_SESSION, u);
+      saveActiveSession(u);
       saveStorage(STORAGE_KEYS.USERS_DIR, state.usersDir);
       cloudPut(CLOUD_KEYS.USERS, state.usersDir);
+      broadcastEvent("USER_UPDATED", u);
       state.isProfileModalOpen = false;
       render();
     };
@@ -3406,6 +3622,7 @@
       }
       saveStorage(STORAGE_KEYS.USERS_DIR, state.usersDir);
       cloudPut(CLOUD_KEYS.USERS, state.usersDir);
+      broadcastEvent("USER_UPDATED", state.usersDir);
       alert(`[${state.adminBanningUser.name}] 유저에게 ${days}일 활동 정지 제재가 적용되었습니다.`);
       state.adminBanningUser = null;
       render();
@@ -3420,6 +3637,7 @@
       }
       saveStorage(STORAGE_KEYS.USERS_DIR, state.usersDir);
       cloudPut(CLOUD_KEYS.USERS, state.usersDir);
+      broadcastEvent("USER_UPDATED", state.usersDir);
       alert("활동 제한이 즉시 해제되었습니다.");
       state.adminBanningUser = null;
       render();
@@ -3459,7 +3677,12 @@
 
     render();
     syncWithCloud();
-    setInterval(syncWithCloud, 3500);
+    // 1.5초 주기로 클라우드 실시간 동기화 + 창 포커스 시 즉시 동기화
+    setInterval(syncWithCloud, 1500);
+    window.addEventListener("focus", syncWithCloud);
+    document.addEventListener("visibilitychange", () => {
+      if (!document.hidden) syncWithCloud();
+    });
   </script>
 </body>
 </html>
