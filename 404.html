@@ -3,7 +3,8 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
-  <title>알터휴먼 라운지 — 테리안 · 아더킨 실시간 커뮤니티</title>
+  <meta name="description" content="숲톡 — 테리안, 아더킨, 픽션킨, 아더하트 및 퀘스처닝을 위한 실시간 커뮤니티" />
+  <title>숲톡 — 테리안 · 아더킨 실시간 커뮤니티</title>
   <script src="https://www.gstatic.com/antigravity/web/dev/tailwindcss.min.js"></script>
   <script src="https://cdn.tailwindcss.com"></script>
   <style>
@@ -1062,6 +1063,7 @@
       showMembersSidebar: true,
       chatInputText: "",
       chatPendingImage: "",
+      activeReactionPickerMsgId: null,
 
       isDrawerOpen: false,
       isWikiModalOpen: false,
@@ -1126,10 +1128,15 @@
         const prev = map.get(m.id);
         if (prev) {
           const readSet = new Set([...(prev.readUserIds || []), ...(m.readUserIds || []), m.senderId].filter(Boolean));
+          const prevReactTs = Number(prev.reactionsUpdatedAt || 0);
+          const nextReactTs = Number(m.reactionsUpdatedAt || 0);
+          const useIncomingReact = nextReactTs >= prevReactTs && Array.isArray(m.reactions);
           map.set(m.id, {
             ...prev,
             ...m,
             readUserIds: Array.from(readSet),
+            reactions: useIncomingReact ? m.reactions : (prev.reactions || []),
+            reactionsUpdatedAt: Math.max(prevReactTs, nextReactTs),
             ...(prev._liveReceived || m._liveReceived ? { _liveReceived: true } : {})
           });
         } else {
@@ -1209,6 +1216,25 @@
         if (ackChanged) {
           saveStorage(STORAGE_KEYS.MESSAGES, state.messagesByComm);
           needsUpdate = true;
+        }
+      } else if (type === "MESSAGE_REACTION_UPDATED" && payload && payload.communityId && payload.messageId) {
+        const cid = String(payload.communityId);
+        const mid = String(payload.messageId);
+        const curList = state.messagesByComm[cid] || [];
+        const idx = curList.findIndex((m) => String(m.id) === mid);
+        if (idx >= 0) {
+          const incomingTs = Number(payload.reactionsUpdatedAt || Date.now());
+          const curTs = Number(curList[idx].reactionsUpdatedAt || 0);
+          if (incomingTs >= curTs) {
+            curList[idx] = {
+              ...curList[idx],
+              reactions: Array.isArray(payload.reactions) ? payload.reactions : [],
+              reactionsUpdatedAt: incomingTs
+            };
+            state.messagesByComm[cid] = curList;
+            saveStorage(STORAGE_KEYS.MESSAGES, state.messagesByComm);
+            needsUpdate = true;
+          }
         }
       } else if (type === "MESSAGE_DELETED" && payload) {
         const { communityId, messageId } = payload;
@@ -1597,7 +1623,7 @@
         try { bcChannel.postMessage({ type, payload, eventId, t: Date.now() }); } catch (e) {}
       }
       // 방 단위 메시지/삭제/읽음 이벤트는 해당 방 토픽으로만 브로드캐스팅, 커뮤니티 목록/DM/유저는 로비 토픽으로 브로드캐스팅
-      if ((type === "NEW_MESSAGE" || type === "MESSAGE_DELETED" || type === "ROOM_READ_ACK") && payload && payload.communityId) {
+      if ((type === "NEW_MESSAGE" || type === "MESSAGE_DELETED" || type === "ROOM_READ_ACK" || type === "MESSAGE_REACTION_UPDATED") && payload && payload.communityId) {
         roomSocket.publishTopic(`alterhuman/lounge/v2/room/${String(payload.communityId)}`, type, payload);
       } else if (type === "COMMUNITY_UPDATED" && payload && payload.id) {
         roomSocket.publishTopic(`alterhuman/lounge/v2/room/${String(payload.id)}`, type, payload);
@@ -1993,7 +2019,7 @@
             avatarUrl: m.avatarUrl || AVATAR_PRESETS[0],
             bannerUrl: "",
             bannerColor: BANNER_PRESETS[0].gradient,
-            bio: "알터휴먼 라운지 멤버",
+            bio: "숲톡 멤버",
             statusMessage: "온라인",
             status: "online"
           };
@@ -2028,7 +2054,7 @@
           <div class="sticky top-0 z-30 w-full px-3 sm:px-5 py-2.5 sm:py-3 bg-app-surface/95 border-b border-app backdrop-blur flex flex-wrap items-center justify-between gap-2">
             <div class="flex items-center gap-2 min-w-0">
               <div class="w-7 h-7 rounded-lg btn-ash flex items-center justify-center text-xs font-black shadow-sm shrink-0">ΘΔ</div>
-              <span class="font-bold text-xs sm:text-sm tracking-tight text-app-main truncate">알터휴먼 라운지 (Alterhuman Lounge)</span>
+              <span class="font-bold text-xs sm:text-sm tracking-tight text-app-main truncate">숲톡</span>
               <span class="hidden sm:inline-block px-2 py-0.5 rounded-md badge-sage text-[10px] font-semibold">테리안</span>
               <span class="hidden md:inline-block px-2 py-0.5 rounded-md badge-mauve text-[10px] font-semibold">아더킨</span>
               <span class="hidden md:inline-block px-2 py-0.5 rounded-md badge-rose text-[10px] font-semibold">아더하트</span>
@@ -2047,12 +2073,12 @@
             <div class="lg:col-span-5 hero-multitone-card rounded-2xl p-6 sm:p-8 shadow-lg space-y-6">
               <div class="space-y-3">
                 <div class="flex flex-wrap items-center gap-1.5">
-                  <span class="px-2.5 py-0.5 rounded-md bg-white/12 border border-white/20 text-[11px] font-semibold text-[#dce7f3]">ΘΔ ALTERHUMAN</span>
+                  <span class="px-2.5 py-0.5 rounded-md bg-white/12 border border-white/20 text-[11px] font-semibold text-[#dce7f3]">ΘΔ 숲톡</span>
                   <span class="px-2 py-0.5 rounded-md bg-[#73968a]/30 border border-[#9bc2b5]/30 text-[10px] font-semibold text-[#d4ebe3]">Therian</span>
                   <span class="px-2 py-0.5 rounded-md bg-[#9c7884]/30 border border-[#c7a1ad]/30 text-[10px] font-semibold text-[#f0d8df]">Otherkin</span>
                 </div>
                 <h1 class="text-2xl sm:text-3xl font-extrabold tracking-tight leading-snug text-white">
-                  알터휴먼 라운지
+                  숲톡
                 </h1>
                 <p class="text-xs sm:text-sm text-[#d2dce6] leading-relaxed">
                   테리안(Therian), 아더킨(Otherkin), 픽션킨(Fictionkin), 아더하트(Otherhearted) 및 퀘스처닝을 위한 독립 계정 기반 실시간 소통 공간입니다.
@@ -2060,7 +2086,7 @@
               </div>
 
               <div class="p-4 rounded-xl bg-[#1c222b]/70 border border-white/15 space-y-2 text-xs">
-                <div class="font-bold text-[#e6edf5]">알터휴먼 라운지 안내</div>
+                <div class="font-bold text-[#e6edf5]">숲톡 안내</div>
                 <ul class="space-y-1.5 text-[#c7d3e0] text-[11px] leading-relaxed">
                   <li>• 본인의 아이디(ID)와 비밀번호로 로그인하거나 새 계정을 만들어 입장합니다.</li>
                   <li>• 테리오타입(Theriotype), 킨타입(Kintype), 하트타입 및 대명사를 자유롭게 설정할 수 있습니다.</li>
@@ -2248,7 +2274,7 @@
               <div class="w-7 h-7 rounded-lg btn-ash flex items-center justify-center text-xs font-black shadow-sm shrink-0">ΘΔ</div>
               <div class="text-left hidden sm:block">
                 <div class="flex items-center gap-1.5">
-                  <span class="font-bold text-sm tracking-tight text-app-main">알터휴먼</span>
+                  <span class="font-bold text-sm tracking-tight text-app-main">숲톡</span>
                   ${iAmAdmin ? `<span class="px-1.5 py-0.5 rounded text-[10px] font-bold badge-rose">최고 관리자</span>` : ""}
                 </div>
               </div>
@@ -2397,12 +2423,12 @@
               <div class="flex flex-col md:flex-row md:items-center justify-between gap-5">
                 <div class="space-y-2 max-w-2xl">
                   <div class="flex flex-wrap items-center gap-1.5">
-                    <span class="px-2.5 py-0.5 rounded-md bg-white/12 border border-white/20 text-[11px] font-semibold text-[#e0eaf5]">ΘΔ ALTERHUMAN LOUNGE</span>
+                    <span class="px-2.5 py-0.5 rounded-md bg-white/12 border border-white/20 text-[11px] font-semibold text-[#e0eaf5]">ΘΔ 숲톡</span>
                     <span class="px-2 py-0.5 rounded-md bg-[#6b8f82]/35 border border-[#96bfb1]/30 text-[10px] font-semibold text-[#d7ede5]">테리안 · 시프트</span>
                     <span class="px-2 py-0.5 rounded-md bg-[#9c7380]/35 border border-[#c79da9]/30 text-[10px] font-semibold text-[#f2dce2]">아더킨 · 픽션킨</span>
                     <span class="px-2 py-0.5 rounded-md bg-[#998467]/35 border border-[#c4af91]/30 text-[10px] font-semibold text-[#f0e5d5]">쿼드러빅스 · 기어</span>
                   </div>
-                  <h1 class="text-xl sm:text-2xl font-extrabold tracking-tight text-white">알터휴먼 실시간 오픈 커뮤니티</h1>
+                  <h1 class="text-xl sm:text-2xl font-extrabold tracking-tight text-white">숲톡 실시간 오픈 커뮤니티</h1>
                   <p class="text-xs sm:text-sm text-[#d2dce6] leading-relaxed">
                     테리안(Therian), 아더킨(Otherkin), 픽션킨(Fictionkin), 아더하트(Otherhearted) 대화방에 참여하거나 직접 새로운 커뮤니티를 개설할 수 있습니다.
                   </p>
@@ -2661,14 +2687,23 @@
         const unreadCnt = Math.max(0, members.filter((m) => !readUsers.includes(m.userId)).length);
 
         const textHtml = msg.content ? `<div class="whitespace-pre-wrap break-words">${escapeHtml(msg.content)}</div>` : "";
-        const imgHtml = msg.attachmentUrl ? `<div class="${msg.content ? 'mt-2' : ''}"><img src="${msg.attachmentUrl}" onclick="state.lightboxImage = '${msg.attachmentUrl}'; render()" class="rounded-xl max-w-[240px] max-h-56 object-cover cursor-pointer border border-white/20" /></div>` : "";
+        const imgHtml = msg.attachmentUrl ? `<div class="${msg.content ? 'mt-2' : ''}"><img src="${msg.attachmentUrl}" onclick="event.stopPropagation(); state.lightboxImage = '${msg.attachmentUrl}'; render()" class="rounded-xl max-w-[240px] max-h-56 object-cover cursor-pointer border border-white/20" /></div>` : "";
+        const reactions = Array.isArray(msg.reactions) ? msg.reactions.filter((r) => r && Array.isArray(r.userIds) && r.userIds.length > 0) : [];
+        const isPickerOpen = state.activeReactionPickerMsgId === msg.id;
+        const reactionPalette = [
+          { emoji: "❤️", label: "좋아요" },
+          { emoji: "👍", label: "최고" },
+          { emoji: "😂", label: "웃김" },
+          { emoji: "😮", label: "놀람" },
+          { emoji: "😢", label: "슬픔" }
+        ];
 
         return `
           <div class="group flex items-start gap-3 ${isMe ? 'flex-row-reverse' : 'flex-row'}">
             <button onclick="openUserProfile('${msg.senderId}')" class="flex-shrink-0" title="프로필 보기">
               <img src="${msg.senderAvatar || AVATAR_PRESETS[0]}" class="w-9 h-9 rounded-xl bg-[#41566b] object-cover border border-app" />
             </button>
-            <div class="flex flex-col max-w-[78%] sm:max-w-[68%] ${isMe ? 'items-end' : 'items-start'}">
+            <div class="flex flex-col max-w-[78%] sm:max-w-[68%] ${isMe ? 'items-end' : 'items-start'} relative">
               <div class="flex items-center gap-1.5 mb-1 flex-wrap ${isMe ? 'flex-row-reverse' : 'flex-row'}">
                 <button onclick="openUserProfile('${msg.senderId}')" class="font-bold text-xs text-app-main hover:underline">${escapeHtml(msg.senderName)}</button>
                 ${msg.senderPronouns ? `<span class="px-1.5 py-0.5 rounded text-[10px] font-medium badge-mauve">${escapeHtml(msg.senderPronouns)}</span>` : ""}
@@ -2677,13 +2712,38 @@
                 ${!isMe && !isSenderAdm ? `<button onclick="openReportModal('${comm.id}', '${msg.id}')" class="opacity-0 group-hover:opacity-100 px-1.5 py-0.5 rounded text-[10px] text-app-muted hover:text-app-main" title="신고">신고</button>` : ""}
               </div>
 
+              ${isPickerOpen ? `
+                <div onclick="event.stopPropagation()" class="mb-1.5 px-2 py-1 rounded-full bg-app-surface border border-app shadow-lg flex items-center gap-1 z-20">
+                  ${reactionPalette.map((item) => `
+                    <button type="button" onclick="toggleMessageReaction('${comm.id}', '${msg.id}', '${item.emoji}')" title="${item.label}" class="w-8 h-8 sm:w-7 sm:h-7 rounded-full hover:bg-app-subtle active:scale-95 flex items-center justify-center text-base transition">
+                      ${item.emoji}
+                    </button>
+                  `).join("")}
+                </div>
+              ` : ""}
+
               <div class="flex items-end gap-1.5 ${isMe ? 'flex-row-reverse' : 'flex-row'}">
-                <div class="px-3.5 py-2 rounded-2xl text-sm leading-snug shadow-sm ${isMe ? 'btn-ash font-medium rounded-tr-sm' : 'bg-app-surface text-app-main border border-app rounded-tl-sm'}">${textHtml}${imgHtml}</div>
-                <div class="flex flex-col ${isMe ? 'items-end' : 'items-start'} text-[10px] flex-shrink-0">
+                <div onclick="toggleReactionPicker('${msg.id}', event)" title="탭하여 공감 남기기" class="cursor-pointer px-3.5 py-2 rounded-2xl text-sm leading-snug shadow-sm ${isMe ? 'btn-ash font-medium rounded-tr-sm' : 'bg-app-surface text-app-main border border-app rounded-tl-sm'}">${textHtml}${imgHtml}</div>
+                <div class="flex flex-col ${isMe ? 'items-end' : 'items-start'} text-[10px] flex-shrink-0 gap-0.5">
+                  <button type="button" onclick="toggleReactionPicker('${msg.id}', event)" title="공감 이모지 달기" class="opacity-60 sm:opacity-0 sm:group-hover:opacity-100 px-1.5 py-0.5 rounded-full bg-app-subtle border border-app text-[11px] text-app-muted hover:text-app-main transition">☺+</button>
                   ${unreadCnt > 0 ? `<span class="text-[#8c765c] dark:text-[#d9c3a5] font-bold text-[11px] leading-tight">${unreadCnt}</span>` : ""}
                   <span class="text-app-muted">${escapeHtml(msg.timestamp)}</span>
                 </div>
               </div>
+
+              ${reactions.length > 0 ? `
+                <div class="mt-1.5 flex flex-wrap gap-1 ${isMe ? 'justify-end' : 'justify-start'}">
+                  ${reactions.map((r) => {
+                    const reactedByMe = r.userIds.includes(u.id);
+                    return `
+                      <button type="button" onclick="toggleMessageReaction('${comm.id}', '${msg.id}', '${r.emoji}')" class="px-2 py-0.5 rounded-full text-[11px] font-semibold border flex items-center gap-1 transition active:scale-95 ${reactedByMe ? 'border-[#728ea8] bg-[#4f687d]/30 text-app-main shadow-xs' : 'border-app bg-app-surface text-app-muted hover:text-app-main'}">
+                        <span>${r.emoji}</span>
+                        <span>${r.userIds.length}</span>
+                      </button>
+                    `;
+                  }).join("")}
+                </div>
+              ` : ""}
             </div>
           </div>
         `;
@@ -3604,7 +3664,7 @@
               createdAt: inquiry.createdAt
             }
           : {
-              _subject: `[알터휴먼 라운지 ${category}] ${title}`,
+              _subject: `[숲톡 ${category}] ${title}`,
               _template: "table",
               _captcha: "false",
               접수번호: inquiry.id,
@@ -4213,6 +4273,62 @@
       broadcastEvent("MESSAGE_DELETED", { communityId: commId, messageId: msgId });
       render();
       await cloudSaveRoomMessages(commId, state.messagesByComm[commId], msgId);
+    };
+
+    window.toggleReactionPicker = function(msgId, event) {
+      if (event) event.stopPropagation();
+      state.activeReactionPickerMsgId = (state.activeReactionPickerMsgId === msgId) ? null : msgId;
+      safeReactiveRender(false);
+    };
+
+    window.toggleMessageReaction = async function(commId, msgId, emoji) {
+      const u = state.currentUser;
+      if (!u) return;
+      const cid = String(commId);
+      const mid = String(msgId);
+      const list = state.messagesByComm[cid] || [];
+      const idx = list.findIndex((m) => String(m.id) === mid);
+      if (idx < 0) return;
+
+      const msg = list[idx];
+      const reactions = Array.isArray(msg.reactions)
+        ? msg.reactions.map((r) => ({ ...r, userIds: [...(r.userIds || [])] }))
+        : [];
+      const rIdx = reactions.findIndex((r) => r.emoji === emoji);
+      if (rIdx >= 0) {
+        const hasReacted = reactions[rIdx].userIds.includes(u.id);
+        reactions[rIdx].userIds = hasReacted
+          ? reactions[rIdx].userIds.filter((id) => id !== u.id)
+          : [...reactions[rIdx].userIds, u.id];
+        if (reactions[rIdx].userIds.length === 0) {
+          reactions.splice(rIdx, 1);
+        }
+      } else {
+        reactions.push({ emoji, userIds: [u.id] });
+      }
+
+      const reactionsUpdatedAt = getUtcNowMs();
+      list[idx] = { ...msg, reactions, reactionsUpdatedAt };
+      state.messagesByComm[cid] = list;
+      state.activeReactionPickerMsgId = null;
+      saveStorage(STORAGE_KEYS.MESSAGES, state.messagesByComm);
+      safeReactiveRender(false);
+
+      broadcastEvent("MESSAGE_REACTION_UPDATED", {
+        communityId: cid,
+        messageId: mid,
+        reactions,
+        reactionsUpdatedAt
+      });
+
+      try {
+        await fetchWithTimeout(`${SUPPORT_API_BASE}/api/rooms/${encodeURIComponent(cid)}/messages/${encodeURIComponent(mid)}/reaction`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ userId: u.id, emoji })
+        }, 2500);
+      } catch {}
+      await cloudSaveRoomMessages(cid, state.messagesByComm[cid]);
     };
 
     window.claimOwnership = async function(commId) {

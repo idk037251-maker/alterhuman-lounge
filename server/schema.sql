@@ -1,5 +1,5 @@
--- Alterhuman Lounge Database Schema & Migration
--- Tracks public communities, per-user room entry timestamps (entered_at / joined_at), and messages.
+-- 숲톡 (SoopTalk) Database Schema & Migration
+-- Tracks public communities, per-user room entry timestamps (entered_at / joined_at), messages, and emoji reactions.
 
 CREATE TABLE IF NOT EXISTS communities (
   id VARCHAR(128) PRIMARY KEY,
@@ -38,6 +38,15 @@ CREATE TABLE IF NOT EXISTS messages (
 
 CREATE INDEX IF NOT EXISTS idx_messages_comm_created_at
   ON messages (community_id, created_at);
+
+CREATE TABLE IF NOT EXISTS message_reactions (
+  message_id VARCHAR(128) NOT NULL,
+  community_id VARCHAR(128) NOT NULL,
+  user_id VARCHAR(128) NOT NULL,
+  emoji VARCHAR(16) NOT NULL,
+  created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (message_id, user_id, emoji)
+);
 
 CREATE TABLE IF NOT EXISTS support_inquiries (
   id VARCHAR(128) PRIMARY KEY,

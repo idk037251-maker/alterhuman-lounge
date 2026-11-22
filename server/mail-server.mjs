@@ -5,7 +5,7 @@ const PORT = Number(process.env.PORT || 3001);
 const ADMIN_EMAIL = (process.env.ADMIN_EMAIL || "idk037251@gmail.com").trim();
 const RESEND_API_KEY = (process.env.RESEND_API_KEY || "").trim();
 // Resend 무료 플랜 테스트 시 반드시 허용된 발신자 주소(onboarding@resend.dev) 사용
-const FROM_EMAIL = (process.env.FROM_EMAIL || "Alterhuman Lounge <onboarding@resend.dev>").trim();
+const FROM_EMAIL = (process.env.FROM_EMAIL || "숲톡 <onboarding@resend.dev>").trim();
 const CLOUD_DB_URL = "https://kvdb.io/UJi5qrxjVL5oMcMYSXCvLC/alterhuman_cloud_inquiries_v1";
 const ROOM_MEMBERS_DB_URL = "https://kvdb.io/UJi5qrxjVL5oMcMYSXCvLC/alterhuman_cloud_room_members_v1";
 const ROOM_MSG_DB_PREFIX = "https://kvdb.io/UJi5qrxjVL5oMcMYSXCvLC/alterhuman_room_msgs_";
@@ -109,7 +109,7 @@ async function sendViaResendSdk(inquiry) {
   }
 
   const textBody = [
-    `[알터휴먼 라운지 비공개 문의/신고]`,
+    `[숲톡 비공개 문의/신고]`,
     `- 접수 번호: ${inquiry.id}`,
     `- 접수 시각: ${inquiry.createdAt}`,
     `- 문의 유형: ${inquiry.category}`,
@@ -125,7 +125,7 @@ async function sendViaResendSdk(inquiry) {
     from: FROM_EMAIL,
     to: [ADMIN_EMAIL],
     ...(inquiry.replyEmail ? { replyTo: inquiry.replyEmail } : {}),
-    subject: `[알터휴먼 라운지 ${inquiry.category}] ${inquiry.title}`,
+    subject: `[숲톡 ${inquiry.category}] ${inquiry.title}`,
     text: textBody
   });
 
@@ -290,6 +290,60 @@ const server = http.createServer((req, res) => {
           await saveRoomMembersMap(map);
         }
         return sendJson(res, 200, { ok: true, commId, userId });
+      })
+      .catch((err) => sendJson(res, 500, { ok: false, error: err.message }));
+    return;
+  }
+
+  // 메시지 이모지 공감(리액션) 토글 및 영구 저장
+  const reactionMatch = parsedUrl.pathname.match(/^\/api\/rooms\/([^/]+)\/messages\/([^/]+)\/reaction$/);
+  if (req.method === "POST" && reactionMatch) {
+    const commId = decodeURIComponent(reactionMatch[1]);
+    const msgId = decodeURIComponent(reactionMatch[2]);
+    readJsonBody(req)
+      .then(async (body) => {
+        const userId = String(body.userId || "").trim();
+        const emoji = String(body.emoji || "").trim();
+        if (!userId || !emoji) {
+          return sendJson(res, 400, { ok: false, error: "userId와 emoji가 필요합니다." });
+        }
+        const msgKeyUrl = `${ROOM_MSG_DB_PREFIX}${encodeURIComponent(commId)}`;
+        const msgRes = await fetch(`${msgKeyUrl}?_t=${Date.now()}`, { cache: "no-store" });
+        const allMsgs = msgRes.ok ? await msgRes.json().catch(() => []) : [];
+        const list = Array.isArray(allMsgs) ? allMsgs : [];
+        const idx = list.findIndex((m) => m && String(m.id) === String(msgId));
+        if (idx < 0) {
+          return sendJson(res, 404, { ok: false, error: "메시지를 찾을 수 없습니다." });
+        }
+        const msg = list[idx];
+        const reactions = Array.isArray(msg.reactions) ? msg.reactions.map((r) => ({ ...r, userIds: [...(r.userIds || [])] })) : [];
+        const rIdx = reactions.findIndex((r) => r.emoji === emoji);
+        if (rIdx >= 0) {
+          const exists = reactions[rIdx].userIds.includes(userId);
+          reactions[rIdx].userIds = exists
+            ? reactions[rIdx].userIds.filter((id) => id !== userId)
+            : [...reactions[rIdx].userIds, userId];
+          if (reactions[rIdx].userIds.length === 0) {
+            reactions.splice(rIdx, 1);
+          }
+        } else {
+          reactions.push({ emoji, userIds: [userId] });
+        }
+        msg.reactions = reactions;
+        msg.reactionsUpdatedAt = Date.now();
+        list[idx] = msg;
+        await fetch(msgKeyUrl, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(list)
+        });
+        return sendJson(res, 200, {
+          ok: true,
+          communityId: commId,
+          messageId: msgId,
+          reactions,
+          reactionsUpdatedAt: msg.reactionsUpdatedAt
+        });
       })
       .catch((err) => sendJson(res, 500, { ok: false, error: err.message }));
     return;
