@@ -2811,6 +2811,10 @@
                 <span>전체 커뮤니티 로비</span>
                 <span class="text-[10px] px-2 py-0.5 rounded badge-sand">${state.communities.length}개</span>
               </button>
+              <button onclick="toggleDrawer(false); state.isSupportModalOpen = true; render()" class="w-full py-2 px-3.5 rounded-xl bg-app-subtle border border-app text-xs font-bold flex items-center justify-between">
+                <span>비공개 1:1 문의 / 신고</span>
+                <span class="text-[10px] px-2 py-0.5 rounded badge-terra">메일 접수</span>
+              </button>
             </div>
 
             <div class="flex-1 overflow-y-auto px-4 py-2 space-y-1">
@@ -3199,24 +3203,134 @@
       `;
     }
 
+    const SUPPORT_MAIL_CONFIG = {
+      ADMIN_EMAIL: "idk037251@gmail.com",
+      // Render 등 백엔드 메일 서버 배포 시 아래 URL을 입력하세요 (예: "https://alterhuman-mail.onrender.com/api/support")
+      BACKEND_API_URL: "",
+      // 백엔드 서버 미연결 시에도 GitHub Pages에서 즉시 동작하는 HTTPS 메일 릴레이
+      FORMSUBMIT_AJAX_URL: "https://formsubmit.co/ajax/idk037251@gmail.com"
+    };
+
     function renderSupportModal() {
       if (!state.isSupportModalOpen) return "";
+      const isSending = !!state.supportSending;
       return `
         <div onclick="state.isSupportModalOpen = false; render()" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/65">
           <div onclick="event.stopPropagation()" class="w-full max-w-md bg-app-surface rounded-2xl p-6 shadow-2xl border border-app space-y-4">
             <div class="flex items-center justify-between">
-              <h3 class="font-bold text-base text-app-main">비공개 1:1 고객센터 & 문제 신고</h3>
-              <button onclick="state.isSupportModalOpen = false; render()">✕</button>
+              <div>
+                <h3 class="font-bold text-base text-app-main">비공개 1:1 고객센터 & 문제 신고</h3>
+                <p class="text-[11px] text-app-muted mt-0.5">최고 관리자 메일(${SUPPORT_MAIL_CONFIG.ADMIN_EMAIL})로 직접 전송됩니다.</p>
+              </div>
+              <button onclick="state.isSupportModalOpen = false; render()" class="p-1.5 rounded-lg hover:bg-app-subtle">✕</button>
             </div>
-            <form onsubmit="event.preventDefault(); alert('문의가 최고 관리자에게 비공개로 접수되었습니다.'); state.isSupportModalOpen = false; render();" class="space-y-3">
-              <input type="text" required placeholder="문의 또는 신고 제목" class="w-full px-3.5 py-2.5 rounded-lg input-ash text-xs" />
-              <textarea rows="4" required placeholder="상세 내용을 입력해 주세요" class="w-full px-3.5 py-2.5 rounded-lg input-ash text-xs"></textarea>
-              <button type="submit" class="w-full py-3 rounded-xl btn-ash text-xs font-bold">문의 접수하기</button>
+            ${state.supportFeedback ? `
+              <div class="p-3 rounded-xl text-xs font-semibold ${state.supportFeedback.ok ? 'badge-sage' : 'badge-rose'}">
+                ${escapeHtml(state.supportFeedback.message)}
+              </div>
+            ` : ""}
+            <form onsubmit="handleSubmitSupport(event)" class="space-y-3">
+              <div>
+                <label class="block text-xs font-bold mb-1">문의 유형</label>
+                <select id="support-category" class="w-full px-3.5 py-2 rounded-lg input-ash text-base sm:text-xs font-semibold">
+                  <option value="유저/커뮤니티 신고">유저/커뮤니티 신고</option>
+                  <option value="버그/오류 제보">버그/오류 제보</option>
+                  <option value="계정 및 권한 문의">계정 및 권한 문의</option>
+                  <option value="건의 및 기타">건의 및 기타</option>
+                </select>
+              </div>
+              <div>
+                <label class="block text-xs font-bold mb-1">답변받을 이메일 (선택)</label>
+                <input id="support-reply-email" type="email" placeholder="답변이 필요하면 이메일을 입력해 주세요" class="w-full px-3.5 py-2 rounded-lg input-ash text-base sm:text-xs" />
+              </div>
+              <div>
+                <label class="block text-xs font-bold mb-1">문의 또는 신고 제목 *</label>
+                <input id="support-title" type="text" required placeholder="제목을 입력해 주세요" class="w-full px-3.5 py-2.5 rounded-lg input-ash text-base sm:text-xs" />
+              </div>
+              <div>
+                <label class="block text-xs font-bold mb-1">상세 내용 *</label>
+                <textarea id="support-content" rows="4" required placeholder="상세 내용을 입력해 주세요" class="w-full px-3.5 py-2.5 rounded-lg input-ash text-base sm:text-xs"></textarea>
+              </div>
+              <button type="submit" ${isSending ? "disabled" : ""} class="w-full py-3 rounded-xl btn-ash text-xs font-bold disabled:opacity-60">
+                ${isSending ? "메일 전송 중..." : "관리자 이메일로 접수하기"}
+              </button>
             </form>
           </div>
         </div>
       `;
     }
+
+    window.handleSubmitSupport = async function(e) {
+      e.preventDefault();
+      const category = document.getElementById("support-category")?.value || "문의";
+      const replyEmail = document.getElementById("support-reply-email")?.value.trim() || "";
+      const title = document.getElementById("support-title")?.value.trim() || "";
+      const content = document.getElementById("support-content")?.value.trim() || "";
+      if (!title || !content) return;
+
+      const u = state.currentUser;
+      const senderInfo = u ? `${u.name} (@${u.displayId || u.username}) [${u.pronouns || ""}]` : "비로그인 방문자";
+
+      state.supportSending = true;
+      state.supportFeedback = null;
+      render();
+
+      try {
+        const endpoint = SUPPORT_MAIL_CONFIG.BACKEND_API_URL || SUPPORT_MAIL_CONFIG.FORMSUBMIT_AJAX_URL;
+        const payload = SUPPORT_MAIL_CONFIG.BACKEND_API_URL
+          ? {
+              to: SUPPORT_MAIL_CONFIG.ADMIN_EMAIL,
+              category,
+              replyEmail,
+              title,
+              content,
+              senderInfo
+            }
+          : {
+              _subject: `[알터휴먼 라운지 ${category}] ${title}`,
+              _template: "table",
+              _captcha: "false",
+              보낸사람: senderInfo,
+              답변이메일: replyEmail || "미입력",
+              문의유형: category,
+              제목: title,
+              내용: content
+            };
+
+        const res = await fetch(endpoint, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Accept": "application/json"
+          },
+          body: JSON.stringify(payload)
+        });
+
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok || data.success === "false" || data.ok === false) {
+          throw new Error(data.message || data.error || `HTTP ${res.status}`);
+        }
+
+        state.supportSending = false;
+        state.supportFeedback = {
+          ok: true,
+          message: `문의가 관리자 이메일(${SUPPORT_MAIL_CONFIG.ADMIN_EMAIL})로 정상 발송되었습니다!`
+        };
+        render();
+        setTimeout(() => {
+          state.isSupportModalOpen = false;
+          state.supportFeedback = null;
+          render();
+        }, 1800);
+      } catch (err) {
+        state.supportSending = false;
+        state.supportFeedback = {
+          ok: false,
+          message: `메일 발송에 실패했습니다: ${err.message || "네트워크 오류"}. 잠시 후 다시 시도해 주세요.`
+        };
+        render();
+      }
+    };
 
     function renderAdminBanModal() {
       const target = state.adminBanningUser;
