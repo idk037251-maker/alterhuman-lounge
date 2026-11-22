@@ -779,7 +779,8 @@
       ROOM_MSG_PREFIX: "alterhuman_room_msgs_v1_",
       POSTS: "alterhuman_cloud_posts_v1",
       FOLLOWS: "alterhuman_cloud_follows_v1",
-      DMS: "alterhuman_cloud_dms_v1"
+      DMS: "alterhuman_cloud_dms_v1",
+      INQUIRIES: "alterhuman_cloud_inquiries_v1"
     };
 
     const STORAGE_KEYS = {
@@ -792,6 +793,7 @@
       POSTS: "alterhuman_standalone_posts_v1",
       FOLLOWS: "alterhuman_standalone_follows_v1",
       DMS: "alterhuman_standalone_dms_v1",
+      INQUIRIES: "alterhuman_standalone_inquiries_v1",
       THEME: "alterhuman_standalone_theme_v1"
     };
 
@@ -1028,6 +1030,8 @@
       posts: loadCleanPosts(),
       follows: loadCleanFollows(),
       dms: loadStorage(STORAGE_KEYS.DMS, {}),
+      inquiries: loadStorage(STORAGE_KEYS.INQUIRIES, []),
+      supportTab: "write",
       cloudConnected: false,
 
       authTab: "login",
@@ -3205,60 +3209,123 @@
 
     const SUPPORT_MAIL_CONFIG = {
       ADMIN_EMAIL: "idk037251@gmail.com",
-      // Render 등 백엔드 메일 서버 배포 시 아래 URL을 입력하세요 (예: "https://alterhuman-mail.onrender.com/api/support")
+      // Render 등 백엔드 메일 서버(server/mail-server.mjs) 배포 시 아래 URL을 입력하세요 (예: "https://alterhuman-mail.onrender.com/api/support")
       BACKEND_API_URL: "",
-      // 백엔드 서버 미연결 시에도 GitHub Pages에서 즉시 동작하는 HTTPS 메일 릴레이
+      // 백엔드 URL 미입력 시 GitHub Pages에서 사용하는 HTTPS 릴레이 (idk037251@gmail.com 수신)
       FORMSUBMIT_AJAX_URL: "https://formsubmit.co/ajax/idk037251@gmail.com"
     };
+
+    async function saveInquiryBackupToDb(inquiry) {
+      try {
+        const localList = loadStorage(STORAGE_KEYS.INQUIRIES, []);
+        const mergedLocal = [inquiry, ...(Array.isArray(localList) ? localList.filter((x) => x && x.id !== inquiry.id) : [])].slice(0, 200);
+        state.inquiries = mergedLocal;
+        saveStorage(STORAGE_KEYS.INQUIRIES, mergedLocal);
+
+        const cloudList = await cloudGet(CLOUD_KEYS.INQUIRIES, []);
+        const map = new Map();
+        for (const item of [...mergedLocal, ...(Array.isArray(cloudList) ? cloudList : [])]) {
+          if (item && item.id) map.set(item.id, item);
+        }
+        const mergedCloud = Array.from(map.values())
+          .sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime())
+          .slice(0, 200);
+        state.inquiries = mergedCloud;
+        saveStorage(STORAGE_KEYS.INQUIRIES, mergedCloud);
+        await cloudPut(CLOUD_KEYS.INQUIRIES, mergedCloud);
+        return true;
+      } catch (err) {
+        console.error("[Support DB Backup Error]", err);
+        return false;
+      }
+    }
 
     function renderSupportModal() {
       if (!state.isSupportModalOpen) return "";
       const isSending = !!state.supportSending;
+      const iAmAdmin = state.currentUser && isSuperAdmin(state.currentUser);
+      const tab = iAmAdmin ? (state.supportTab || "write") : "write";
+
       return `
         <div onclick="state.isSupportModalOpen = false; render()" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/65">
-          <div onclick="event.stopPropagation()" class="w-full max-w-md bg-app-surface rounded-2xl p-6 shadow-2xl border border-app space-y-4">
+          <div onclick="event.stopPropagation()" class="w-full max-w-lg bg-app-surface rounded-2xl p-6 shadow-2xl border border-app space-y-4 max-h-[90vh] flex flex-col">
             <div class="flex items-center justify-between">
               <div>
                 <h3 class="font-bold text-base text-app-main">비공개 1:1 고객센터 & 문제 신고</h3>
-                <p class="text-[11px] text-app-muted mt-0.5">최고 관리자 메일(${SUPPORT_MAIL_CONFIG.ADMIN_EMAIL})로 직접 전송됩니다.</p>
+                <p class="text-[11px] text-app-muted mt-0.5">수신: ${SUPPORT_MAIL_CONFIG.ADMIN_EMAIL} · DB 자동 백업</p>
               </div>
               <button onclick="state.isSupportModalOpen = false; render()" class="p-1.5 rounded-lg hover:bg-app-subtle">✕</button>
             </div>
-            ${state.supportFeedback ? `
-              <div class="p-3 rounded-xl text-xs font-semibold ${state.supportFeedback.ok ? 'badge-sage' : 'badge-rose'}">
-                ${escapeHtml(state.supportFeedback.message)}
+
+            ${iAmAdmin ? `
+              <div class="flex gap-1.5 p-1 rounded-xl bg-app-subtle border border-app text-xs font-bold">
+                <button type="button" onclick="state.supportTab = 'write'; render()" class="flex-1 py-1.5 rounded-lg transition ${tab === 'write' ? 'btn-ash' : 'text-app-muted'}">문의/신고 작성</button>
+                <button type="button" onclick="state.supportTab = 'inbox'; syncInquiriesFromCloud();" class="flex-1 py-1.5 rounded-lg transition ${tab === 'inbox' ? 'btn-sage' : 'text-app-muted'}">관리자 DB 접수함 (${(state.inquiries || []).length})</button>
               </div>
             ` : ""}
-            <form onsubmit="handleSubmitSupport(event)" class="space-y-3">
-              <div>
-                <label class="block text-xs font-bold mb-1">문의 유형</label>
-                <select id="support-category" class="w-full px-3.5 py-2 rounded-lg input-ash text-base sm:text-xs font-semibold">
-                  <option value="유저/커뮤니티 신고">유저/커뮤니티 신고</option>
-                  <option value="버그/오류 제보">버그/오류 제보</option>
-                  <option value="계정 및 권한 문의">계정 및 권한 문의</option>
-                  <option value="건의 및 기타">건의 및 기타</option>
-                </select>
+
+            ${tab === "inbox" && iAmAdmin ? `
+              <div class="flex-1 overflow-y-auto space-y-2.5 pr-1">
+                ${(state.inquiries || []).length === 0 ? `
+                  <div class="py-10 text-center text-xs text-app-muted">아직 DB에 접수된 문의/신고 내역이 없습니다.</div>
+                ` : (state.inquiries || []).map((inq) => `
+                  <div class="p-3.5 rounded-xl bg-app-subtle border border-app space-y-1.5 text-xs">
+                    <div class="flex items-center justify-between gap-2">
+                      <span class="px-2 py-0.5 rounded badge-terra font-bold text-[10px]">${escapeHtml(inq.category || "문의")}</span>
+                      <span class="text-[10px] text-app-muted">${escapeHtml((inq.createdAt || "").slice(0, 16).replace("T", " "))}</span>
+                    </div>
+                    <div class="font-bold text-sm text-app-main">${escapeHtml(inq.title)}</div>
+                    <div class="text-[11px] text-app-muted">보낸 사람: ${escapeHtml(inq.senderInfo)} ${inq.replyEmail ? `· 답변메일: ${escapeHtml(inq.replyEmail)}` : ""}</div>
+                    <div class="p-2.5 rounded-lg bg-app-surface border border-app text-app-main whitespace-pre-wrap leading-relaxed">${escapeHtml(inq.content)}</div>
+                  </div>
+                `).join("")}
               </div>
-              <div>
-                <label class="block text-xs font-bold mb-1">답변받을 이메일 (선택)</label>
-                <input id="support-reply-email" type="email" placeholder="답변이 필요하면 이메일을 입력해 주세요" class="w-full px-3.5 py-2 rounded-lg input-ash text-base sm:text-xs" />
-              </div>
-              <div>
-                <label class="block text-xs font-bold mb-1">문의 또는 신고 제목 *</label>
-                <input id="support-title" type="text" required placeholder="제목을 입력해 주세요" class="w-full px-3.5 py-2.5 rounded-lg input-ash text-base sm:text-xs" />
-              </div>
-              <div>
-                <label class="block text-xs font-bold mb-1">상세 내용 *</label>
-                <textarea id="support-content" rows="4" required placeholder="상세 내용을 입력해 주세요" class="w-full px-3.5 py-2.5 rounded-lg input-ash text-base sm:text-xs"></textarea>
-              </div>
-              <button type="submit" ${isSending ? "disabled" : ""} class="w-full py-3 rounded-xl btn-ash text-xs font-bold disabled:opacity-60">
-                ${isSending ? "메일 전송 중..." : "관리자 이메일로 접수하기"}
-              </button>
-            </form>
+            ` : `
+              ${state.supportFeedback ? `
+                <div class="p-3 rounded-xl text-xs font-semibold ${state.supportFeedback.ok ? 'badge-sage' : 'badge-rose'}">
+                  ${escapeHtml(state.supportFeedback.message)}
+                </div>
+              ` : ""}
+              <form onsubmit="handleSubmitSupport(event)" class="space-y-3 overflow-y-auto">
+                <div>
+                  <label class="block text-xs font-bold mb-1">문의 유형</label>
+                  <select id="support-category" class="w-full px-3.5 py-2 rounded-lg input-ash text-base sm:text-xs font-semibold">
+                    <option value="유저/커뮤니티 신고">유저/커뮤니티 신고</option>
+                    <option value="버그/오류 제보">버그/오류 제보</option>
+                    <option value="계정 및 권한 문의">계정 및 권한 문의</option>
+                    <option value="건의 및 기타">건의 및 기타</option>
+                  </select>
+                </div>
+                <div>
+                  <label class="block text-xs font-bold mb-1">답변받을 이메일 (선택)</label>
+                  <input id="support-reply-email" type="email" placeholder="답변이 필요하면 이메일을 입력해 주세요" class="w-full px-3.5 py-2 rounded-lg input-ash text-base sm:text-xs" />
+                </div>
+                <div>
+                  <label class="block text-xs font-bold mb-1">문의 또는 신고 제목 *</label>
+                  <input id="support-title" type="text" required placeholder="제목을 입력해 주세요" class="w-full px-3.5 py-2.5 rounded-lg input-ash text-base sm:text-xs" />
+                </div>
+                <div>
+                  <label class="block text-xs font-bold mb-1">상세 내용 *</label>
+                  <textarea id="support-content" rows="4" required placeholder="상세 내용을 입력해 주세요" class="w-full px-3.5 py-2.5 rounded-lg input-ash text-base sm:text-xs"></textarea>
+                </div>
+                <button type="submit" ${isSending ? "disabled" : ""} class="w-full py-3 rounded-xl btn-ash text-xs font-bold disabled:opacity-60">
+                  ${isSending ? "DB 백업 및 메일 전송 중..." : "관리자 이메일로 접수하기"}
+                </button>
+              </form>
+            `}
           </div>
         </div>
       `;
     }
+
+    window.syncInquiriesFromCloud = async function() {
+      const cloudList = await cloudGet(CLOUD_KEYS.INQUIRIES, []);
+      if (Array.isArray(cloudList)) {
+        state.inquiries = cloudList;
+        saveStorage(STORAGE_KEYS.INQUIRIES, cloudList);
+      }
+      render();
+    };
 
     window.handleSubmitSupport = async function(e) {
       e.preventDefault();
@@ -3270,26 +3337,42 @@
 
       const u = state.currentUser;
       const senderInfo = u ? `${u.name} (@${u.displayId || u.username}) [${u.pronouns || ""}]` : "비로그인 방문자";
+      const inquiry = {
+        id: "inq-" + Date.now() + "-" + Math.random().toString(36).slice(2, 6),
+        category,
+        replyEmail,
+        title,
+        content,
+        senderInfo,
+        createdAt: new Date().toISOString()
+      };
 
       state.supportSending = true;
       state.supportFeedback = null;
       render();
 
+      // 1. 안전장치: 메일 발송 실패 시에도 신고 내역이 유실되지 않도록 DB에 무조건 먼저 백업 저장
+      const dbSaved = await saveInquiryBackupToDb(inquiry);
+
       try {
-        const endpoint = SUPPORT_MAIL_CONFIG.BACKEND_API_URL || SUPPORT_MAIL_CONFIG.FORMSUBMIT_AJAX_URL;
-        const payload = SUPPORT_MAIL_CONFIG.BACKEND_API_URL
+        const useBackend = !!SUPPORT_MAIL_CONFIG.BACKEND_API_URL;
+        const endpoint = useBackend ? SUPPORT_MAIL_CONFIG.BACKEND_API_URL : SUPPORT_MAIL_CONFIG.FORMSUBMIT_AJAX_URL;
+        const payload = useBackend
           ? {
+              id: inquiry.id,
               to: SUPPORT_MAIL_CONFIG.ADMIN_EMAIL,
               category,
               replyEmail,
               title,
               content,
-              senderInfo
+              senderInfo,
+              createdAt: inquiry.createdAt
             }
           : {
               _subject: `[알터휴먼 라운지 ${category}] ${title}`,
               _template: "table",
               _captcha: "false",
+              접수번호: inquiry.id,
               보낸사람: senderInfo,
               답변이메일: replyEmail || "미입력",
               문의유형: category,
@@ -3307,14 +3390,20 @@
         });
 
         const data = await res.json().catch(() => ({}));
-        if (!res.ok || data.success === "false" || data.ok === false) {
+        if (!res.ok || data.success === "false" || data.success === false || data.ok === false) {
+          console.error("[Support Mail Dispatch Error]", {
+            endpoint,
+            status: res.status,
+            responseData: data,
+            adminEmail: SUPPORT_MAIL_CONFIG.ADMIN_EMAIL
+          });
           throw new Error(data.message || data.error || `HTTP ${res.status}`);
         }
 
         state.supportSending = false;
         state.supportFeedback = {
           ok: true,
-          message: `문의가 관리자 이메일(${SUPPORT_MAIL_CONFIG.ADMIN_EMAIL})로 정상 발송되었습니다!`
+          message: `DB 백업 및 관리자 메일(${SUPPORT_MAIL_CONFIG.ADMIN_EMAIL}) 발송 요청이 완료되었습니다.`
         };
         render();
         setTimeout(() => {
@@ -3323,10 +3412,18 @@
           render();
         }, 1800);
       } catch (err) {
+        console.error("[Support Mail Exception]", {
+          errorMessage: err.message,
+          dbSaved,
+          adminEmail: SUPPORT_MAIL_CONFIG.ADMIN_EMAIL,
+          stack: err.stack
+        });
         state.supportSending = false;
         state.supportFeedback = {
           ok: false,
-          message: `메일 발송에 실패했습니다: ${err.message || "네트워크 오류"}. 잠시 후 다시 시도해 주세요.`
+          message: dbSaved
+            ? `문의 내용은 DB(관리자 접수함)에 안전하게 저장되었으나, 이메일 전송 중 오류가 발생했습니다: ${err.message}`
+            : `메일 발송에 실패했습니다: ${err.message}`
         };
         render();
       }

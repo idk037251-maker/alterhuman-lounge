@@ -1,0 +1,13 @@
+{
+  "name": "alterhuman-lounge-mail-server",
+  "version": "1.0.0",
+  "description": "Alterhuman Lounge Support Mail Backend (Resend SDK + KVDB Backup)",
+  "type": "module",
+  "main": "server/mail-server.mjs",
+  "scripts": {
+    "start": "node server/mail-server.mjs"
+  },
+  "dependencies": {
+    "resend": "^4.0.0"
+  }
+}
