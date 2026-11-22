@@ -1,0 +1,48 @@
+-- Alterhuman Lounge Database Schema & Migration
+-- Tracks per-user room entry timestamps (joined_at) so new members only see messages created >= joined_at.
+
+CREATE TABLE IF NOT EXISTS room_members (
+  community_id VARCHAR(128) NOT NULL,
+  user_id VARCHAR(128) NOT NULL,
+  joined_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (community_id, user_id)
+);
+
+-- Migration for existing deployments without joined_at
+ALTER TABLE room_members
+  ADD COLUMN IF NOT EXISTS joined_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP;
+
+CREATE TABLE IF NOT EXISTS messages (
+  id VARCHAR(128) PRIMARY KEY,
+  community_id VARCHAR(128) NOT NULL,
+  channel_id VARCHAR(64) NOT NULL DEFAULT 'general',
+  sender_id VARCHAR(128) NOT NULL,
+  content TEXT,
+  attachment_url TEXT,
+  is_system BOOLEAN NOT NULL DEFAULT FALSE,
+  created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_messages_comm_created_at
+  ON messages (community_id, created_at);
+
+CREATE TABLE IF NOT EXISTS support_inquiries (
+  id VARCHAR(128) PRIMARY KEY,
+  category VARCHAR(64) NOT NULL,
+  reply_email VARCHAR(255),
+  title VARCHAR(255) NOT NULL,
+  content TEXT NOT NULL,
+  sender_info VARCHAR(255),
+  mail_status VARCHAR(32) NOT NULL DEFAULT 'pending',
+  created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Query pattern used when loading room history for a specific user:
+-- SELECT m.*
+-- FROM messages m
+-- INNER JOIN room_members rm
+--   ON rm.community_id = m.community_id
+--  AND rm.user_id = $2
+-- WHERE m.community_id = $1
+--   AND m.created_at >= rm.joined_at
+-- ORDER BY m.created_at ASC;

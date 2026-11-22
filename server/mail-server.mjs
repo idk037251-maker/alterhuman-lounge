@@ -7,6 +7,8 @@ const RESEND_API_KEY = (process.env.RESEND_API_KEY || "").trim();
 // Resend 무료 플랜 테스트 시 반드시 허용된 발신자 주소(onboarding@resend.dev) 사용
 const FROM_EMAIL = (process.env.FROM_EMAIL || "Alterhuman Lounge <onboarding@resend.dev>").trim();
 const CLOUD_DB_URL = "https://kvdb.io/UJi5qrxjVL5oMcMYSXCvLC/alterhuman_cloud_inquiries_v1";
+const ROOM_MEMBERS_DB_URL = "https://kvdb.io/UJi5qrxjVL5oMcMYSXCvLC/alterhuman_cloud_room_members_v1";
+const ROOM_MSG_DB_PREFIX = "https://kvdb.io/UJi5qrxjVL5oMcMYSXCvLC/alterhuman_room_msgs_";
 
 const resend = RESEND_API_KEY ? new Resend(RESEND_API_KEY) : null;
 
@@ -14,10 +16,61 @@ function sendJson(res, status, data) {
   res.writeHead(status, {
     "Content-Type": "application/json; charset=utf-8",
     "Access-Control-Allow-Origin": "*",
-    "Access-Control-Allow-Methods": "POST, GET, OPTIONS",
+    "Access-Control-Allow-Methods": "POST, GET, DELETE, OPTIONS",
     "Access-Control-Allow-Headers": "Content-Type, Accept"
   });
   res.end(JSON.stringify(data));
+}
+
+function readJsonBody(req) {
+  return new Promise((resolve, reject) => {
+    let raw = "";
+    req.on("data", (chunk) => {
+      raw += chunk;
+      if (raw.length > 100000) req.destroy();
+    });
+    req.on("end", () => {
+      try {
+        resolve(JSON.parse(raw || "{}"));
+      } catch (err) {
+        reject(err);
+      }
+    });
+    req.on("error", reject);
+  });
+}
+
+function parseMessageTimestampMs(m) {
+  if (!m) return 0;
+  if (m.createdAt) {
+    const t = Date.parse(m.createdAt);
+    if (!Number.isNaN(t)) return t;
+  }
+  if (typeof m.id === "string") {
+    const match = m.id.match(/^msg-(\d+)-/);
+    if (match) return Number(match[1]) || 0;
+  }
+  return 0;
+}
+
+async function getRoomMembersMap() {
+  try {
+    const res = await fetch(`${ROOM_MEMBERS_DB_URL}?_t=${Date.now()}`, { cache: "no-store" });
+    if (!res.ok) return {};
+    const parsed = await res.json().catch(() => ({}));
+    return parsed && typeof parsed === "object" && !Array.isArray(parsed) ? parsed : {};
+  } catch {
+    return {};
+  }
+}
+
+async function saveRoomMembersMap(map) {
+  const res = await fetch(ROOM_MEMBERS_DB_URL, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(map)
+  });
+  return res.ok;
 }
 
 async function backupInquiryToDb(inquiry) {
@@ -96,6 +149,71 @@ const server = http.createServer((req, res) => {
       fromEmail: FROM_EMAIL,
       resendConfigured: !!RESEND_API_KEY
     });
+  }
+
+  const parsedUrl = new URL(req.url || "/", `http://${req.headers.host || "localhost"}`);
+  const roomJoinMatch = parsedUrl.pathname.match(/^\/api\/rooms\/([^/]+)\/join$/);
+  if (req.method === "POST" && roomJoinMatch) {
+    const commId = decodeURIComponent(roomJoinMatch[1]);
+    readJsonBody(req)
+      .then(async (body) => {
+        const userId = String(body.userId || "").trim();
+        if (!userId) return sendJson(res, 400, { ok: false, error: "userId가 필요합니다." });
+        const map = await getRoomMembersMap();
+        if (!map[commId] || typeof map[commId] !== "object") map[commId] = {};
+        // 이미 입장 기록이 있으면 joined_at을 덮어쓰지 않고 기존 입장 시점 유지
+        if (!map[commId][userId]) {
+          map[commId][userId] = body.joinedAt || new Date().toISOString();
+          await saveRoomMembersMap(map);
+        }
+        return sendJson(res, 200, { ok: true, commId, userId, joinedAt: map[commId][userId] });
+      })
+      .catch((err) => sendJson(res, 500, { ok: false, error: err.message }));
+    return;
+  }
+
+  const roomLeaveMatch = parsedUrl.pathname.match(/^\/api\/rooms\/([^/]+)\/leave$/);
+  if (req.method === "DELETE" && roomLeaveMatch) {
+    const commId = decodeURIComponent(roomLeaveMatch[1]);
+    readJsonBody(req)
+      .then(async (body) => {
+        const userId = String(body.userId || parsedUrl.searchParams.get("userId") || "").trim();
+        if (!userId) return sendJson(res, 400, { ok: false, error: "userId가 필요합니다." });
+        const map = await getRoomMembersMap();
+        if (map[commId] && map[commId][userId]) {
+          delete map[commId][userId];
+          await saveRoomMembersMap(map);
+        }
+        return sendJson(res, 200, { ok: true, commId, userId });
+      })
+      .catch((err) => sendJson(res, 500, { ok: false, error: err.message }));
+    return;
+  }
+
+  const roomMsgsMatch = parsedUrl.pathname.match(/^\/api\/rooms\/([^/]+)\/messages$/);
+  if (req.method === "GET" && roomMsgsMatch) {
+    const commId = decodeURIComponent(roomMsgsMatch[1]);
+    const userId = String(parsedUrl.searchParams.get("userId") || "").trim();
+    if (!userId) return sendJson(res, 400, { ok: false, error: "userId 쿼리가 필요합니다." });
+    (async () => {
+      try {
+        const map = await getRoomMembersMap();
+        const joinedAt = map[commId]?.[userId] || null;
+        if (!joinedAt) {
+          return sendJson(res, 200, { ok: true, joinedAt: null, messages: [] });
+        }
+        const joinedMs = Date.parse(joinedAt);
+        const msgRes = await fetch(`${ROOM_MSG_DB_PREFIX}${encodeURIComponent(commId)}?_t=${Date.now()}`, { cache: "no-store" });
+        const allMsgs = msgRes.ok ? await msgRes.json().catch(() => []) : [];
+        const filtered = Array.isArray(allMsgs) && !Number.isNaN(joinedMs)
+          ? allMsgs.filter((m) => parseMessageTimestampMs(m) >= joinedMs)
+          : [];
+        return sendJson(res, 200, { ok: true, joinedAt, messages: filtered });
+      } catch (err) {
+        return sendJson(res, 500, { ok: false, error: err.message });
+      }
+    })();
+    return;
   }
 
   if (req.method === "POST" && req.url === "/api/support") {
