@@ -1217,6 +1217,31 @@
           saveStorage(STORAGE_KEYS.MESSAGES, state.messagesByComm);
           needsUpdate = true;
         }
+      } else if (type === "STATE_COMMUNITIES" && Array.isArray(payload)) {
+        const deletedSet = new Set(state.deletedCommIds.map(String));
+        const commMap = new Map();
+        for (const c of [...payload, ...state.communities]) {
+          if (c && c.id && !AI_SEED_COMM_IDS.includes(String(c.id)) && !deletedSet.has(String(c.id))) {
+            const cid = String(c.id);
+            const existing = commMap.get(cid);
+            commMap.set(cid, existing ? mergeCommunityObjects(existing, { ...c, id: cid }) : { ...c, id: cid });
+          }
+        }
+        const merged = Array.from(commMap.values());
+        if (JSON.stringify(merged) !== JSON.stringify(state.communities)) {
+          state.communities = merged;
+          saveStorage(STORAGE_KEYS.COMMUNITIES, merged);
+          needsUpdate = true;
+        }
+      } else if (type === "STATE_DELETED_COMMS" && Array.isArray(payload)) {
+        const mergedDel = Array.from(new Set([...state.deletedCommIds.map(String), ...payload.map(String)]));
+        if (mergedDel.length !== state.deletedCommIds.length) {
+          state.deletedCommIds = mergedDel;
+          state.communities = state.communities.filter((c) => !mergedDel.includes(String(c.id)));
+          saveStorage(STORAGE_KEYS.DELETED_COMMS, mergedDel);
+          saveStorage(STORAGE_KEYS.COMMUNITIES, state.communities);
+          needsUpdate = true;
+        }
       } else if ((type === "COMMUNITY_UPDATED" || type === "NEW_COMMUNITY" || type === "community_created") && payload && payload.id) {
         const commId = String(payload.id);
         const normalizedPayload = { ...payload, id: commId };
@@ -1374,7 +1399,8 @@
 
       parseIncomingPackets() {
         while (this.rxBuffer.length >= 2) {
-          const type = this.rxBuffer[0] & 0xf0;
+          const headerByte = this.rxBuffer[0];
+          const type = headerByte & 0xf0;
           let multiplier = 1;
           let remLen = 0;
           let idx = 1;
@@ -1400,16 +1426,18 @@
             this.reconnectAttempts = 0;
             this.startHeartbeat();
             this.subscribeTopic("alterhuman/lounge/v2/lobby");
+            this.subscribeTopic("alterhuman/lounge/v2/state/communities");
+            this.subscribeTopic("alterhuman/lounge/v2/state/deleted_comms");
             if (this.activeRoomId) {
               this.subscribeTopic(`alterhuman/lounge/v2/room/${String(this.activeRoomId)}`);
             }
             if (Array.isArray(this.pendingPublishes) && this.pendingPublishes.length > 0) {
               const queued = this.pendingPublishes.splice(0, this.pendingPublishes.length);
-              queued.forEach((q) => this.publishTopic(q.topic, q.type, q.payload));
+              queued.forEach((q) => this.publishTopic(q.topic, q.type, q.payload, !!q.retain));
             }
           } else if (type === 0x30) {
             // PUBLISH
-            const qos = (this.rxBuffer[0] || 0) & 0x06;
+            const qos = (headerByte || 0) & 0x06;
             if (body.length >= 2) {
               const topicLen = (body[0] << 8) | body[1];
               let pos = 2 + topicLen;
@@ -1471,10 +1499,10 @@
         this.ws.send(this.buildPacket(0xa2, [pidBytes, tBytes]));
       }
 
-      publishTopic(topic, type, payload) {
+      publishTopic(topic, type, payload, retain = false) {
         if (!this.ws || this.ws.readyState !== WebSocket.OPEN || !this.connected) {
           if (this.pendingPublishes.length < 50) {
-            this.pendingPublishes.push({ topic, type, payload });
+            this.pendingPublishes.push({ topic, type, payload, retain });
           }
           this.connect();
           return;
@@ -1487,7 +1515,7 @@
           eventId: `${this.clientId}_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`
         };
         const pBytes = this.encoder.encode(JSON.stringify(msgObj));
-        this.ws.send(this.buildPacket(0x30, [tBytes, pBytes]));
+        this.ws.send(this.buildPacket(retain ? 0x31 : 0x30, [tBytes, pBytes]));
       }
 
       joinRoom(roomId) {
@@ -1579,9 +1607,43 @@
       }
     }
 
-    async function cloudGet(key, fallback) {
+    let kvdbBackoffUntil = 0;
+
+    async function fetchWithTimeout(url, options = {}, timeoutMs = 2500) {
+      const ctrl = new AbortController();
+      const timer = setTimeout(() => ctrl.abort(), timeoutMs);
       try {
-        const res = await fetch(`${CLOUD_API_BASE}/${key}?_t=${Date.now()}`, { cache: "no-store" });
+        return await fetch(url, { ...options, signal: ctrl.signal });
+      } finally {
+        clearTimeout(timer);
+      }
+    }
+
+    function toLightweightCommForWs(c) {
+      if (!c) return c;
+      return {
+        ...c,
+        id: String(c.id),
+        iconImageUrl: (c.iconImageUrl && c.iconImageUrl.length < 8000) ? c.iconImageUrl : "",
+        bannerImageUrl: (c.bannerImageUrl && c.bannerImageUrl.length < 8000) ? c.bannerImageUrl : ""
+      };
+    }
+
+    function publishRetainedCommunitiesState(commsList) {
+      try {
+        const liteList = (Array.isArray(commsList) ? commsList : []).slice(0, 60).map(toLightweightCommForWs);
+        roomSocket.publishTopic("alterhuman/lounge/v2/state/communities", "STATE_COMMUNITIES", liteList, true);
+      } catch {}
+    }
+
+    async function cloudGet(key, fallback) {
+      if (Date.now() < kvdbBackoffUntil) return fallback;
+      try {
+        const res = await fetchWithTimeout(`${CLOUD_API_BASE}/${key}?_t=${Date.now()}`, { cache: "no-store" }, 4000);
+        if (res.status === 429) {
+          kvdbBackoffUntil = Date.now() + 30000;
+          return fallback;
+        }
         if (res.ok) {
           state.cloudConnected = true;
           return await res.json();
@@ -1591,13 +1653,18 @@
     }
 
     async function cloudPut(key, data) {
+      if (Date.now() < kvdbBackoffUntil) return;
       try {
-        await fetch(`${CLOUD_API_BASE}/${key}`, {
+        const res = await fetchWithTimeout(`${CLOUD_API_BASE}/${key}`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(data)
-        });
-        state.cloudConnected = true;
+        }, 4000);
+        if (res.status === 429) {
+          kvdbBackoffUntil = Date.now() + 30000;
+          return;
+        }
+        if (res.ok) state.cloudConnected = true;
       } catch (e) {}
     }
 
@@ -1630,6 +1697,7 @@
       const mergedComms = Array.from(commMap.values());
       state.communities = mergedComms;
       saveStorage(STORAGE_KEYS.COMMUNITIES, mergedComms);
+      publishRetainedCommunitiesState(mergedComms);
       await cloudPut(CLOUD_KEYS.COMMUNITIES, mergedComms);
       return mergedComms;
     }
@@ -1736,7 +1804,7 @@
         // 3. Communities & Members (중앙 DB API + 클라우드 동기화로 모든 계정에 동일한 전체 공개 커뮤니티 반영)
         let apiComms = null;
         try {
-          const apiRes = await fetch(`${SUPPORT_API_BASE}/api/communities?_t=${Date.now()}`, { cache: "no-store" });
+          const apiRes = await fetchWithTimeout(`${SUPPORT_API_BASE}/api/communities?_t=${Date.now()}`, { cache: "no-store" }, 2500);
           if (apiRes.ok) {
             const apiJson = await apiRes.json().catch(() => null);
             if (apiJson && Array.isArray(apiJson.communities)) apiComms = apiJson.communities;
@@ -4192,9 +4260,11 @@
       saveStorage(STORAGE_KEYS.JOINED, state.joinedCommunityIds);
       saveStorage(STORAGE_KEYS.MESSAGES, state.messagesByComm);
       broadcastEvent("COMMUNITY_DELETED", String(commId));
+      publishRetainedCommunitiesState(state.communities);
+      try { roomSocket.publishTopic("alterhuman/lounge/v2/state/deleted_comms", "STATE_DELETED_COMMS", state.deletedCommIds, true); } catch {}
       render();
       try {
-        await fetch(`${SUPPORT_API_BASE}/api/communities/${encodeURIComponent(String(commId))}`, { method: "DELETE" });
+        await fetchWithTimeout(`${SUPPORT_API_BASE}/api/communities/${encodeURIComponent(String(commId))}`, { method: "DELETE" }, 2500);
       } catch {}
       await cloudPut(CLOUD_KEYS.DELETED_COMMS, state.deletedCommIds);
       await cloudPut(CLOUD_KEYS.COMMUNITIES, state.communities);
@@ -4282,23 +4352,23 @@
       state.newCommIconImage = "";
       state.newCommBannerImage = "";
       state.isCreateModalOpen = false;
+
+      // 1) 즉시 실시간 WebSocket 브로드캐스트 + MQTT Retained 상태 갱신 (다른 계정에 즉시 노출)
+      broadcastEvent("NEW_COMMUNITY", toLightweightCommForWs(newComm));
+      publishRetainedCommunitiesState(state.communities);
+
+      // 2) 생성한 사용자 화면 즉시 목록 반영 및 채팅방 입장 (네트워크 대기 없이 0ms 전환)
+      enterCommunity(cid);
+
+      // 3) 백엔드 중앙 DB API 및 클라우드 DB 비동기 영구 저장
       try {
-        await fetch(`${SUPPORT_API_BASE}/api/communities`, {
+        await fetchWithTimeout(`${SUPPORT_API_BASE}/api/communities`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ community: newComm })
-        });
+        }, 3000);
       } catch {}
       await cloudSaveCommunities();
-      // WebSocket 패킷 크기 제한을 피하기 위해 대용량 이미지 데이터는 제외하고 경량 메타데이터로 즉시 브로드캐스트
-      const wsCommPayload = {
-        ...newComm,
-        id: cid,
-        iconImageUrl: (newComm.iconImageUrl && newComm.iconImageUrl.length < 16000) ? newComm.iconImageUrl : "",
-        bannerImageUrl: (newComm.bannerImageUrl && newComm.bannerImageUrl.length < 16000) ? newComm.bannerImageUrl : ""
-      };
-      broadcastEvent("NEW_COMMUNITY", wsCommPayload);
-      enterCommunity(cid);
     };
 
     window.openUserProfile = function(userId) {
@@ -4519,8 +4589,8 @@
 
     render();
     syncWithCloud();
-    // 1.5초 주기로 클라우드 실시간 동기화 + 창 포커스 시 즉시 동기화
-    setInterval(syncWithCloud, 1500);
+    // 15초 주기로 클라우드 백업 동기화 (실시간 반영은 WebSocket이 즉시 처리) + 창 포커스 시 즉시 동기화
+    setInterval(syncWithCloud, 15000);
     window.addEventListener("focus", syncWithCloud);
     document.addEventListener("visibilitychange", () => {
       if (!document.hidden) syncWithCloud();
