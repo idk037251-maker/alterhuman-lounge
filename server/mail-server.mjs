@@ -9,6 +9,8 @@ const FROM_EMAIL = (process.env.FROM_EMAIL || "Alterhuman Lounge <onboarding@res
 const CLOUD_DB_URL = "https://kvdb.io/UJi5qrxjVL5oMcMYSXCvLC/alterhuman_cloud_inquiries_v1";
 const ROOM_MEMBERS_DB_URL = "https://kvdb.io/UJi5qrxjVL5oMcMYSXCvLC/alterhuman_cloud_room_members_v1";
 const ROOM_MSG_DB_PREFIX = "https://kvdb.io/UJi5qrxjVL5oMcMYSXCvLC/alterhuman_room_msgs_";
+const COMMUNITIES_DB_URL = "https://kvdb.io/UJi5qrxjVL5oMcMYSXCvLC/alterhuman_cloud_communities_v1";
+const DELETED_COMMS_DB_URL = "https://kvdb.io/UJi5qrxjVL5oMcMYSXCvLC/alterhuman_cloud_deleted_comms_v1";
 
 const resend = RESEND_API_KEY ? new Resend(RESEND_API_KEY) : null;
 
@@ -154,6 +156,101 @@ const server = http.createServer((req, res) => {
   }
 
   const parsedUrl = new URL(req.url || "/", `http://${req.headers.host || "localhost"}`);
+
+  // 공용 커뮤니티 목록 조회 (모든 계정에 동일한 전체 공개 커뮤니티 반환)
+  if (req.method === "GET" && parsedUrl.pathname === "/api/communities") {
+    (async () => {
+      try {
+        const [commsRes, delRes] = await Promise.all([
+          fetch(`${COMMUNITIES_DB_URL}?_t=${Date.now()}`, { cache: "no-store" }),
+          fetch(`${DELETED_COMMS_DB_URL}?_t=${Date.now()}`, { cache: "no-store" })
+        ]);
+        const rawComms = commsRes.ok ? await commsRes.json().catch(() => []) : [];
+        const rawDeleted = delRes.ok ? await delRes.json().catch(() => []) : [];
+        const deletedSet = new Set((Array.isArray(rawDeleted) ? rawDeleted : []).map(String));
+        const communities = (Array.isArray(rawComms) ? rawComms : []).filter(
+          (c) => c && c.id && !deletedSet.has(String(c.id))
+        );
+        return sendJson(res, 200, { ok: true, communities });
+      } catch (err) {
+        return sendJson(res, 500, { ok: false, error: err.message });
+      }
+    })();
+    return;
+  }
+
+  // 새 커뮤니티 생성 및 중앙 DB 영구 저장
+  if (req.method === "POST" && parsedUrl.pathname === "/api/communities") {
+    readJsonBody(req)
+      .then(async (body) => {
+        const comm = body && body.community ? body.community : body;
+        if (!comm || !comm.id || !comm.name) {
+          return sendJson(res, 400, { ok: false, error: "커뮤니티 ID와 이름이 필요합니다." });
+        }
+        const commId = String(comm.id);
+        const normalizedComm = { ...comm, id: commId };
+
+        const [commsRes, delRes] = await Promise.all([
+          fetch(`${COMMUNITIES_DB_URL}?_t=${Date.now()}`, { cache: "no-store" }),
+          fetch(`${DELETED_COMMS_DB_URL}?_t=${Date.now()}`, { cache: "no-store" })
+        ]);
+        const existing = commsRes.ok ? await commsRes.json().catch(() => []) : [];
+        const deleted = delRes.ok ? await delRes.json().catch(() => []) : [];
+        const deletedSet = new Set((Array.isArray(deleted) ? deleted : []).map(String));
+
+        const commMap = new Map();
+        commMap.set(commId, normalizedComm);
+        for (const c of (Array.isArray(existing) ? existing : [])) {
+          if (c && c.id && !deletedSet.has(String(c.id)) && !commMap.has(String(c.id))) {
+            commMap.set(String(c.id), { ...c, id: String(c.id) });
+          }
+        }
+        const merged = Array.from(commMap.values());
+        await fetch(COMMUNITIES_DB_URL, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(merged)
+        });
+        return sendJson(res, 201, { ok: true, community: normalizedComm, communities: merged });
+      })
+      .catch((err) => sendJson(res, 500, { ok: false, error: err.message }));
+    return;
+  }
+
+  // 커뮤니티 삭제
+  const commDeleteMatch = parsedUrl.pathname.match(/^\/api\/communities\/([^/]+)$/);
+  if (req.method === "DELETE" && commDeleteMatch) {
+    const commId = String(decodeURIComponent(commDeleteMatch[1]));
+    (async () => {
+      try {
+        const [commsRes, delRes] = await Promise.all([
+          fetch(`${COMMUNITIES_DB_URL}?_t=${Date.now()}`, { cache: "no-store" }),
+          fetch(`${DELETED_COMMS_DB_URL}?_t=${Date.now()}`, { cache: "no-store" })
+        ]);
+        const existing = commsRes.ok ? await commsRes.json().catch(() => []) : [];
+        const deleted = delRes.ok ? await delRes.json().catch(() => []) : [];
+        const nextDeleted = Array.from(new Set([...(Array.isArray(deleted) ? deleted.map(String) : []), commId]));
+        const nextComms = (Array.isArray(existing) ? existing : []).filter((c) => c && String(c.id) !== commId);
+        await Promise.all([
+          fetch(DELETED_COMMS_DB_URL, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(nextDeleted)
+          }),
+          fetch(COMMUNITIES_DB_URL, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(nextComms)
+          })
+        ]);
+        return sendJson(res, 200, { ok: true, deletedId: commId });
+      } catch (err) {
+        return sendJson(res, 500, { ok: false, error: err.message });
+      }
+    })();
+    return;
+  }
+
   const roomJoinMatch = parsedUrl.pathname.match(/^\/api\/rooms\/([^/]+)\/join$/);
   if (req.method === "POST" && roomJoinMatch) {
     const commId = decodeURIComponent(roomJoinMatch[1]);

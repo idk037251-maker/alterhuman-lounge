@@ -1,5 +1,18 @@
 -- Alterhuman Lounge Database Schema & Migration
--- Tracks per-user room entry timestamps (joined_at) so new members only see messages created >= joined_at.
+-- Tracks public communities, per-user room entry timestamps (entered_at / joined_at), and messages.
+
+CREATE TABLE IF NOT EXISTS communities (
+  id VARCHAR(128) PRIMARY KEY,
+  name VARCHAR(120) NOT NULL,
+  description TEXT,
+  category VARCHAR(64),
+  created_by VARCHAR(128),
+  created_by_id VARCHAR(128),
+  created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Public communities query (all accounts see the same public community list; no user_id filter):
+-- SELECT * FROM communities ORDER BY created_at DESC;
 
 CREATE TABLE IF NOT EXISTS room_members (
   community_id VARCHAR(128) NOT NULL,

@@ -1217,20 +1217,22 @@
           saveStorage(STORAGE_KEYS.MESSAGES, state.messagesByComm);
           needsUpdate = true;
         }
-      } else if ((type === "COMMUNITY_UPDATED" || type === "NEW_COMMUNITY") && payload && payload.id) {
-        const idx = state.communities.findIndex((c) => c.id === payload.id);
+      } else if ((type === "COMMUNITY_UPDATED" || type === "NEW_COMMUNITY" || type === "community_created") && payload && payload.id) {
+        const commId = String(payload.id);
+        const normalizedPayload = { ...payload, id: commId };
+        const idx = state.communities.findIndex((c) => String(c.id) === commId);
         if (idx >= 0) {
-          state.communities[idx] = mergeCommunityObjects(state.communities[idx], payload);
-        } else if (!state.deletedCommIds.includes(payload.id)) {
-          state.communities.unshift(payload);
+          state.communities[idx] = mergeCommunityObjects(state.communities[idx], normalizedPayload);
+        } else if (!state.deletedCommIds.map(String).includes(commId)) {
+          state.communities.unshift(normalizedPayload);
         }
         saveStorage(STORAGE_KEYS.COMMUNITIES, state.communities);
         needsUpdate = true;
       } else if (type === "COMMUNITY_DELETED" && payload) {
-        const commId = payload;
-        state.communities = state.communities.filter((c) => c.id !== commId);
-        if (!state.deletedCommIds.includes(commId)) state.deletedCommIds.push(commId);
-        if (state.activeCommunityId === commId) {
+        const commId = String(payload);
+        state.communities = state.communities.filter((c) => String(c.id) !== commId);
+        if (!state.deletedCommIds.map(String).includes(commId)) state.deletedCommIds.push(commId);
+        if (String(state.activeCommunityId || "") === commId) {
           roomSocket.leaveRoom(commId);
           state.activeCommunityId = null;
         }
@@ -1731,15 +1733,28 @@
           await cloudPut(CLOUD_KEYS.USERS, state.usersDir);
         }
 
-        // 3. Communities & Members (다른 계정이 방에 들어오거나 방을 만들었을 때 실시간 반영)
+        // 3. Communities & Members (중앙 DB API + 클라우드 동기화로 모든 계정에 동일한 전체 공개 커뮤니티 반영)
+        let apiComms = null;
+        try {
+          const apiRes = await fetch(`${SUPPORT_API_BASE}/api/communities?_t=${Date.now()}`, { cache: "no-store" });
+          if (apiRes.ok) {
+            const apiJson = await apiRes.json().catch(() => null);
+            if (apiJson && Array.isArray(apiJson.communities)) apiComms = apiJson.communities;
+          }
+        } catch {}
         const cloudComms = await cloudGet(CLOUD_KEYS.COMMUNITIES, null);
-        if (Array.isArray(cloudComms)) {
+        const combinedSource = [
+          ...(Array.isArray(apiComms) ? apiComms : []),
+          ...(Array.isArray(cloudComms) ? cloudComms : [])
+        ];
+        if (combinedSource.length > 0 || Array.isArray(cloudComms)) {
           const prevCommsJson = JSON.stringify(state.communities);
           const commMap = new Map();
-          for (const c of [...cloudComms, ...state.communities]) {
-            if (c && c.id && !AI_SEED_COMM_IDS.includes(c.id) && !state.deletedCommIds.includes(c.id)) {
-              const existing = commMap.get(c.id);
-              commMap.set(c.id, existing ? mergeCommunityObjects(existing, c) : c);
+          for (const c of [...combinedSource, ...state.communities]) {
+            if (c && c.id && !AI_SEED_COMM_IDS.includes(String(c.id)) && !state.deletedCommIds.map(String).includes(String(c.id))) {
+              const cid = String(c.id);
+              const existing = commMap.get(cid);
+              commMap.set(cid, existing ? mergeCommunityObjects(existing, { ...c, id: cid }) : { ...c, id: cid });
             }
           }
           const mergedComms = Array.from(commMap.values());
@@ -4176,8 +4191,11 @@
       saveStorage(STORAGE_KEYS.DELETED_COMMS, state.deletedCommIds);
       saveStorage(STORAGE_KEYS.JOINED, state.joinedCommunityIds);
       saveStorage(STORAGE_KEYS.MESSAGES, state.messagesByComm);
-      broadcastEvent("COMMUNITY_DELETED", commId);
+      broadcastEvent("COMMUNITY_DELETED", String(commId));
       render();
+      try {
+        await fetch(`${SUPPORT_API_BASE}/api/communities/${encodeURIComponent(String(commId))}`, { method: "DELETE" });
+      } catch {}
       await cloudPut(CLOUD_KEYS.DELETED_COMMS, state.deletedCommIds);
       await cloudPut(CLOUD_KEYS.COMMUNITIES, state.communities);
       await cloudPut(CLOUD_KEYS.ROOM_MSG_PREFIX + commId, []);
@@ -4254,18 +4272,33 @@
         localStorage.setItem(getEnteredAtStorageKey(newComm.id, u.id), ts);
         localStorage.setItem(getJoinedAtStorageKey(newComm.id, u.id), ts);
       } catch {}
+      const cid = String(newComm.id);
       state.communities.unshift(newComm);
-      state.joinedCommunityIds.push(newComm.id);
+      state.joinedCommunityIds.push(cid);
       saveStorage(STORAGE_KEYS.COMMUNITIES, state.communities);
       saveStorage(STORAGE_KEYS.JOINED, state.joinedCommunityIds);
-      broadcastEvent("NEW_COMMUNITY", newComm);
       state.newCommName = "";
       state.newCommDesc = "";
       state.newCommIconImage = "";
       state.newCommBannerImage = "";
       state.isCreateModalOpen = false;
+      try {
+        await fetch(`${SUPPORT_API_BASE}/api/communities`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ community: newComm })
+        });
+      } catch {}
       await cloudSaveCommunities();
-      enterCommunity(newComm.id);
+      // WebSocket 패킷 크기 제한을 피하기 위해 대용량 이미지 데이터는 제외하고 경량 메타데이터로 즉시 브로드캐스트
+      const wsCommPayload = {
+        ...newComm,
+        id: cid,
+        iconImageUrl: (newComm.iconImageUrl && newComm.iconImageUrl.length < 16000) ? newComm.iconImageUrl : "",
+        bannerImageUrl: (newComm.bannerImageUrl && newComm.bannerImageUrl.length < 16000) ? newComm.bannerImageUrl : ""
+      };
+      broadcastEvent("NEW_COMMUNITY", wsCommPayload);
+      enterCommunity(cid);
     };
 
     window.openUserProfile = function(userId) {
