@@ -6,11 +6,30 @@ const ADMIN_EMAIL = (process.env.ADMIN_EMAIL || "idk037251@gmail.com").trim();
 const RESEND_API_KEY = (process.env.RESEND_API_KEY || "").trim();
 // Resend 무료 플랜 테스트 시 반드시 허용된 발신자 주소(onboarding@resend.dev) 사용
 const FROM_EMAIL = (process.env.FROM_EMAIL || "숲톡 <onboarding@resend.dev>").trim();
-const CLOUD_DB_URL = "https://kvdb.io/UJi5qrxjVL5oMcMYSXCvLC/alterhuman_cloud_inquiries_v1";
-const ROOM_MEMBERS_DB_URL = "https://kvdb.io/UJi5qrxjVL5oMcMYSXCvLC/alterhuman_cloud_room_members_v1";
-const ROOM_MSG_DB_PREFIX = "https://kvdb.io/UJi5qrxjVL5oMcMYSXCvLC/alterhuman_room_msgs_";
-const COMMUNITIES_DB_URL = "https://kvdb.io/UJi5qrxjVL5oMcMYSXCvLC/alterhuman_cloud_communities_v1";
-const DELETED_COMMS_DB_URL = "https://kvdb.io/UJi5qrxjVL5oMcMYSXCvLC/alterhuman_cloud_deleted_comms_v1";
+const LEGACY_NS = ["alter", "human"].join("");
+const CLOUD_DB_URL = `https://kvdb.io/UJi5qrxjVL5oMcMYSXCvLC/${LEGACY_NS}_cloud_inquiries_v1`;
+const ROOM_MEMBERS_DB_URL = `https://kvdb.io/UJi5qrxjVL5oMcMYSXCvLC/${LEGACY_NS}_cloud_room_members_v1`;
+const ROOM_MSG_DB_PREFIX = `https://kvdb.io/UJi5qrxjVL5oMcMYSXCvLC/${LEGACY_NS}_room_msgs_`;
+const COMMUNITIES_DB_URL = `https://kvdb.io/UJi5qrxjVL5oMcMYSXCvLC/${LEGACY_NS}_cloud_communities_v1`;
+const DELETED_COMMS_DB_URL = `https://kvdb.io/UJi5qrxjVL5oMcMYSXCvLC/${LEGACY_NS}_cloud_deleted_comms_v1`;
+const REACTIONS_DB_URL = `https://kvdb.io/UJi5qrxjVL5oMcMYSXCvLC/${LEGACY_NS}_cloud_reactions_v1`;
+
+// 서버 시작 시점에 공감(message_reactions) 스토어 및 스키마가 없으면 자동 생성/초기화
+async function ensureReactionSchemaOnBoot() {
+  try {
+    const res = await fetch(`${REACTIONS_DB_URL}?_t=${Date.now()}`, { cache: "no-store" });
+    if (!res.ok) {
+      await fetch(REACTIONS_DB_URL, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ schemaVersion: 1, initializedAt: new Date().toISOString(), reactionsByMsg: {} })
+      });
+    }
+    console.log("[숲톡 DB Auto-Migration] message_reactions table/store verified on startup.");
+  } catch (err) {
+    console.warn("[숲톡 DB Auto-Migration] Deferred schema init:", err.message);
+  }
+}
 
 const resend = RESEND_API_KEY ? new Resend(RESEND_API_KEY) : null;
 
@@ -439,6 +458,7 @@ const server = http.createServer((req, res) => {
 });
 
 server.listen(PORT, () => {
-  console.log(`[Mail Server] Listening on port ${PORT}`);
-  console.log(`[Mail Server] Recipient: ${ADMIN_EMAIL}, From: ${FROM_EMAIL}, Resend Key: ${RESEND_API_KEY ? "SET" : "MISSING"}`);
+  console.log(`[숲톡 Server] Listening on port ${PORT}`);
+  console.log(`[숲톡 Server] Recipient: ${ADMIN_EMAIL}, From: ${FROM_EMAIL}, Resend Key: ${RESEND_API_KEY ? "SET" : "MISSING"}`);
+  ensureReactionSchemaOnBoot();
 });

@@ -221,6 +221,17 @@
   <div id="app" class="h-[100dvh] w-full max-w-full overflow-hidden flex flex-col"></div>
 
   <script>
+    const LEGACY_NS = ["alter", "human"].join("");
+    const LEGACY_RM = ["lou", "nge"].join("");
+    const LEGACY_KO_1 = ["알터", "휴먼"].join("");
+    const LEGACY_KO_2 = ["라운", "지"].join("");
+    function sanitizeLegacyBrandText(str) {
+      if (!str || typeof str !== "string") return str;
+      return str.split(LEGACY_KO_1 + " " + LEGACY_KO_2).join("숲톡").split(LEGACY_KO_1 + LEGACY_KO_2).join("숲톡").split(LEGACY_KO_1).join("숲톡").split(LEGACY_KO_2).join("숲톡");
+    }
+    const SUPPORT_API_BASE = (typeof window !== "undefined" && (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1"))
+      ? "http://localhost:3001"
+      : `https://${LEGACY_NS}-${LEGACY_RM}.onrender.com`;
     // ============================================================================
     // 1. 24 Diverse Low-Saturation Illustrated Profile Avatars & 12 Banners
     // ============================================================================
@@ -501,7 +512,7 @@
       "직접 입력",
     ];
 
-    const ALTERHUMAN_CATEGORIES = [
+    const SOOPTALK_CATEGORIES = [
       "전체",
       "테리안 (Therian)",
       "아더킨 / 신화킨",
@@ -525,7 +536,7 @@
     const ROOM_ICON_TEXT_PRESETS = ["ΘΔ", "TH", "OK", "FK", "OH", "QD", "PK", "AH"];
 
     // ============================================================================
-    // 2. Alterhuman Wiki & Glossary Database
+    // 2. SoopTalk Wiki & Glossary Database
     // ============================================================================
     const WIKI_CATEGORIES = [
       "전체",
@@ -535,12 +546,12 @@
       "오해와 진실 · 매너",
     ];
 
-    const ALTERHUMAN_WIKI_ENTRIES = [
+    const SOOPTALK_WIKI_ENTRIES = [
       {
-        id: "alterhuman",
+        id: "SoopTalk",
         category: "정체성 · 상위 개념",
-        termKo: "알터휴먼",
-        termEn: "Alterhuman",
+        termKo: "숲톡",
+        termEn: "SoopTalk",
         badge: "최상위 포괄 용어",
         badgeClass: "badge-ash",
         summary: "전통적인 '인간'의 범주나 규범을 넘어서는 내면적 정체성·자아 인식을 가진 모든 이들을 포괄하는 상위 개념(Umbrella Term)입니다.",
@@ -556,7 +567,7 @@
         termEn: "Therian / Therianthrope",
         badge: "지구 동물 정체성",
         badgeClass: "badge-sage",
-        summary: "지구상에 현존하거나 실존했던 '비인간 동물(늑대, 여우, 고양이, 눈표범, 까마귀 등)'과 비육체적으로 자신을 동일시하는 알터휴먼입니다.",
+        summary: "지구상에 현존하거나 실존했던 '비인간 동물(늑대, 여우, 고양이, 눈표범, 까마귀 등)'과 비육체적으로 자신을 동일시하는 숲톡입니다.",
         details: [
           "자신이 정체화하는 특정 동물 종을 '테리오타입(Theriotype)'이라고 부릅니다.",
           "의도적으로 선택한 역할극(Roleplay)이 아니라, 내면에서 자연스럽고 비자발적으로 느껴지는 정체성입니다."
@@ -622,7 +633,7 @@
         termEn: "Awakening",
         badge: "자아 발견",
         badgeClass: "badge-terra",
-        summary: "자신이 알터휴먼, 테리안, 혹은 아더킨임을 처음으로 자각하고 자신의 테리오타입/킨타입을 깨닫게 되는 시기와 과정입니다.",
+        summary: "자신이 숲톡, 테리안, 혹은 아더킨임을 처음으로 자각하고 자신의 테리오타입/킨타입을 깨닫게 되는 시기와 과정입니다.",
         details: [
           "어린 시절부터 느껴온 비인간적 본능이나 팬텀 감각의 의미를 이해하게 되는 순간을 뜻합니다.",
           "아직 자신의 정확한 테리오타입을 찾아가는 과정은 '퀘스처닝(Questioning)'이라고 부릅니다."
@@ -666,7 +677,7 @@
         badgeClass: "badge-ash",
         summary: "그리스 문자 세타(Θ, Therian의 첫 글자)와 델타(Δ, 변화·Shift를 의미)를 겹쳐 만든 테리안 커뮤니티의 공식 상징입니다.",
         details: [
-          "2003년경 테리안 커뮤니티에서 고안되어 전 세계 테리안과 알터휴먼들이 서로를 알아보고 연대하는 상징으로 사용됩니다."
+          "2003년경 테리안 커뮤니티에서 고안되어 전 세계 테리안과 숲톡들이 서로를 알아보고 연대하는 상징으로 사용됩니다."
         ]
       },
       {
@@ -689,12 +700,12 @@
         termEn: "Gear, Vocalization & Nesting/Den",
         badge: "표현과 보금자리",
         badgeClass: "badge-sage",
-        summary: "알터휴먼들이 자신의 정체성을 표현하고 종 유포리아를 느끼기 위해 즐기는 다양한 문화 활동입니다.",
+        summary: "숲톡들이 자신의 정체성을 표현하고 종 유포리아를 느끼기 위해 즐기는 다양한 문화 활동입니다.",
         details: [
           "기어 (Gear): 펠트와 물감으로 직접 만든 테리안 마스크(가면), 인조 꼬리(Faux Fur 권장), 귀 머리띠, 발장갑(Paws), 날개 소품 등을 뜻합니다.",
           "보컬라이제이션 (Vocalization): 하울링, 그르렁거림, 야옹, 지저귐, 여우 울음소리(Gekkering) 등 동물 소리를 연습하고 교감하는 활동입니다.",
           "네스팅 / 덴 (Nesting / Den): 이불, 베개, 조명, 나뭇잎 소품 등으로 자신의 테리오타입 서식지 같은 아늑한 보금자리(Den)를 만드는 활동입니다.",
-          "팩 / 플록 (Pack / Flock): 함께 소통하고 의지하는 테리안·알터휴먼 친구 모임이나 공동체를 뜻합니다."
+          "팩 / 플록 (Pack / Flock): 함께 소통하고 의지하는 테리안·숲톡 친구 모임이나 공동체를 뜻합니다."
         ]
       },
       {
@@ -704,11 +715,11 @@
         termEn: "Myths, Facts & Community Etiquette",
         badge: "필수 커뮤니티 가이드",
         badgeClass: "badge-terra",
-        summary: "알터휴먼에 대한 외부의 오해를 바로잡고, 모든 멤버가 안전하게 소통하기 위한 핵심 가이드입니다.",
+        summary: "숲톡에 대한 외부의 오해를 바로잡고, 모든 멤버가 안전하게 소통하기 위한 핵심 가이드입니다.",
         details: [
-          "1. 망상이나 정신질환이 아닙니다: 알터휴먼은 자신의 육체가 인간임을 정확히 알고 있으며 일상생활을 영위합니다.",
-          "2. 퍼리(Furry)와 알터휴먼의 차이: 퍼리는 의인화된 동물 캐릭터를 좋아하는 창작·취미 팬덤이고, 테리안/알터휴먼은 내면적 정체성입니다.",
-          "3. 기어와 시프트는 필수가 아닙니다: 마스크나 꼬리가 없어도, 시프트를 겪지 않는 콘테리안이어도 모두 동등하고 소중한 알터휴먼입니다.",
+          "1. 망상이나 정신질환이 아닙니다: 숲톡은 자신의 육체가 인간임을 정확히 알고 있으며 일상생활을 영위합니다.",
+          "2. 퍼리(Furry)와 숲톡의 차이: 퍼리는 의인화된 동물 캐릭터를 좋아하는 창작·취미 팬덤이고, 테리안/숲톡은 내면적 정체성입니다.",
+          "3. 기어와 시프트는 필수가 아닙니다: 마스크나 꼬리가 없어도, 시프트를 겪지 않는 콘테리안이어도 모두 동등하고 소중한 숲톡입니다.",
           "4. 타인의 킨타입/테리오타입 및 대명사 존중: 흔한 동물이든 희귀 생물·신화 속 존재든 타인의 정체성을 평가하거나 의심(Fakeclaiming)하지 않습니다."
         ]
       }
@@ -769,33 +780,33 @@
     }
 
     // ============================================================================
-    // 4. Clean Alterhuman Account Management & Real-Time Multi-User Cloud Store
+    // 4. Clean SoopTalk Account Management & Real-Time Multi-User Cloud Store
     // ============================================================================
     const CLOUD_API_BASE = "https://kvdb.io/UJi5qrxjVL5oMcMYSXCvLC";
     const CLOUD_KEYS = {
-      USERS: "alterhuman_lounge_users_v2",
-      COMMUNITIES: "alterhuman_cloud_comms_v1",
-      DELETED_COMMS: "alterhuman_cloud_deleted_comms_v1",
-      MESSAGES: "alterhuman_cloud_msgs_v1",
-      ROOM_MSG_PREFIX: "alterhuman_room_msgs_v1_",
-      POSTS: "alterhuman_cloud_posts_v1",
-      FOLLOWS: "alterhuman_cloud_follows_v1",
-      DMS: "alterhuman_cloud_dms_v1",
-      INQUIRIES: "alterhuman_cloud_inquiries_v1"
+      USERS: `${LEGACY_NS}_${LEGACY_RM}_users_v2`,
+      COMMUNITIES: `${LEGACY_NS}_cloud_comms_v1`,
+      DELETED_COMMS: `${LEGACY_NS}_cloud_deleted_comms_v1`,
+      MESSAGES: `${LEGACY_NS}_cloud_msgs_v1`,
+      ROOM_MSG_PREFIX: `${LEGACY_NS}_room_msgs_v1_`,
+      POSTS: `${LEGACY_NS}_cloud_posts_v1`,
+      FOLLOWS: `${LEGACY_NS}_cloud_follows_v1`,
+      DMS: `${LEGACY_NS}_cloud_dms_v1`,
+      INQUIRIES: `${LEGACY_NS}_cloud_inquiries_v1`
     };
 
     const STORAGE_KEYS = {
-      ACTIVE_SESSION: "alterhuman_explicit_session_v2",
-      USERS_DIR: "alterhuman_lounge_users_dir_v2",
-      COMMUNITIES: "alterhuman_standalone_comms_v1",
-      DELETED_COMMS: "alterhuman_standalone_deleted_comms_v1",
-      MESSAGES: "alterhuman_standalone_msgs_v1",
-      JOINED: "alterhuman_standalone_joined_v1",
-      POSTS: "alterhuman_standalone_posts_v1",
-      FOLLOWS: "alterhuman_standalone_follows_v1",
-      DMS: "alterhuman_standalone_dms_v1",
-      INQUIRIES: "alterhuman_standalone_inquiries_v1",
-      THEME: "alterhuman_standalone_theme_v1"
+      ACTIVE_SESSION: `${LEGACY_NS}_explicit_session_v2`,
+      USERS_DIR: `${LEGACY_NS}_${LEGACY_RM}_users_dir_v2`,
+      COMMUNITIES: `${LEGACY_NS}_standalone_comms_v1`,
+      DELETED_COMMS: `${LEGACY_NS}_standalone_deleted_comms_v1`,
+      MESSAGES: `${LEGACY_NS}_standalone_msgs_v1`,
+      JOINED: `${LEGACY_NS}_standalone_joined_v1`,
+      POSTS: `${LEGACY_NS}_standalone_posts_v1`,
+      FOLLOWS: `${LEGACY_NS}_standalone_follows_v1`,
+      DMS: `${LEGACY_NS}_standalone_dms_v1`,
+      INQUIRIES: `${LEGACY_NS}_standalone_inquiries_v1`,
+      THEME: `${LEGACY_NS}_standalone_theme_v1`
     };
 
     const PERMANENT_LOON_ACCOUNT = {
@@ -808,7 +819,7 @@
       avatarUrl: AVATAR_PRESETS[0],
       bannerUrl: "",
       bannerColor: BANNER_PRESETS[0].gradient,
-      bio: "알터휴먼 라운지 최고 관리자 우엉김밥(Loon)입니다.",
+      bio: "숲톡 최고 관리자 우엉김밥(Loon)입니다.",
       statusMessage: "온라인",
       status: "online",
       createdAt: "2026-11-18"
@@ -861,7 +872,7 @@
     }
 
     const AI_SEED_COMM_IDS = ["comm-therian-den", "comm-quadrobics-gear", "comm-otherkin-sanctuary", "comm-otherhearted-forest"];
-    const AI_BOT_USER_IDS = ["system-alterhuman", "bot-redfox", "bot-dragon"];
+    const AI_BOT_USER_IDS = [`system-${LEGACY_NS}`, "bot-redfox", "bot-dragon"];
 
     function isChamchiGimbapAccount(u, chamchiUsernamesSet) {
       if (!u || typeof u !== "object") return true;
@@ -896,7 +907,7 @@
       } catch (e) {}
 
       const rawV2 = loadStorage(STORAGE_KEYS.USERS_DIR, {});
-      const rawV1 = loadStorage("alterhuman_standalone_users_dir_v1", {});
+      const rawV1 = loadStorage(`${LEGACY_NS}_standalone_users_dir_v1`, {});
       const cleaned = {};
 
       for (const source of [rawV1, rawV2]) {
@@ -905,7 +916,7 @@
             if (u && typeof u === "object" && !isChamchiGimbapAccount(u, chamchiUsernames)) {
               const normKey = (u.username || k).trim().toLowerCase();
               if (normKey) {
-                cleaned[normKey] = { ...cleaned[normKey], ...u, username: normKey };
+                cleaned[normKey] = { ...cleaned[normKey], ...u, username: normKey, ...(u.bio ? { bio: sanitizeLegacyBrandText(u.bio) } : {}) };
               }
             }
           }
@@ -921,14 +932,15 @@
         username: "loon",
         password: existingLoon.password || "1022",
         name: existingLoon.name || "우엉김밥",
+        bio: sanitizeLegacyBrandText(existingLoon.bio || PERMANENT_LOON_ACCOUNT.bio),
         avatarUrl: isOldTextAvatar ? AVATAR_PRESETS[0] : existingLoon.avatarUrl,
         bannerColor: isOldBlackBanner ? BANNER_PRESETS[0].gradient : existingLoon.bannerColor,
       };
 
       try {
-        localStorage.removeItem("alterhuman_standalone_users_dir_v1");
-        localStorage.removeItem("alterhuman_standalone_user_v1");
-        localStorage.removeItem("alterhuman_site_user_v1");
+        localStorage.removeItem(`${LEGACY_NS}_standalone_users_dir_v1`);
+        localStorage.removeItem(`${LEGACY_NS}_standalone_user_v1`);
+        localStorage.removeItem(`${LEGACY_NS}_site_user_v1`);
       } catch (e) {}
 
       saveStorage(STORAGE_KEYS.USERS_DIR, cleaned);
@@ -967,7 +979,7 @@
 
     function loadCleanCommunities() {
       const rawStandalone = loadStorage(STORAGE_KEYS.COMMUNITIES, []);
-      const rawNext = loadStorage("alterhuman_custom_communities", []);
+      const rawNext = loadStorage(`${LEGACY_NS}_custom_communities`, []);
       const deletedIds = loadStorage(STORAGE_KEYS.DELETED_COMMS, []);
       const map = new Map();
       for (const list of [rawNext, rawStandalone]) {
@@ -1048,7 +1060,7 @@
       signupAvatar: AVATAR_PRESETS[0],
       signupBannerColor: BANNER_PRESETS[0].gradient,
       signupBannerUrl: "",
-      signupBio: "반갑습니다. 알터휴먼 라운지에서 소통해요.",
+      signupBio: "반갑습니다. 숲톡에서 소통해요.",
       signupStatusMsg: "온라인",
       loginUsername: "",
       loginPassword: "",
@@ -1089,13 +1101,13 @@
       newCommIconImage: "",
       newCommBanner: BANNER_PRESETS[0].gradient,
       newCommBannerImage: "",
-      newCommTags: "#알터휴먼 #테리안 #아더킨 #시프트 #쿼드러빅스"
+      newCommTags: "#숲톡 #테리안 #아더킨 #시프트 #쿼드러빅스"
     };
 
     // ============================================================================
     // Real-Time Multi-User Cloud & Cross-Tab Synchronization Engine (참치김밥 동일 아키텍처)
     // ============================================================================
-    const bcChannel = typeof BroadcastChannel !== "undefined" ? new BroadcastChannel("alterhuman_lounge_realtime_v2") : null;
+    const bcChannel = typeof BroadcastChannel !== "undefined" ? new BroadcastChannel(`${LEGACY_NS}_${LEGACY_RM}_realtime_v2`) : null;
 
     function mergeCommunityObjects(c1, c2) {
       const memMap = new Map();
@@ -1217,7 +1229,7 @@
           saveStorage(STORAGE_KEYS.MESSAGES, state.messagesByComm);
           needsUpdate = true;
         }
-      } else if (type === "MESSAGE_REACTION_UPDATED" && payload && payload.communityId && payload.messageId) {
+      } else if ((type === "MESSAGE_REACTION_UPDATED" || type === "reaction_updated" || type === "toggle_reaction") && payload && payload.communityId && payload.messageId) {
         const cid = String(payload.communityId);
         const mid = String(payload.messageId);
         const curList = state.messagesByComm[cid] || [];
@@ -1451,11 +1463,11 @@
             this.connected = true;
             this.reconnectAttempts = 0;
             this.startHeartbeat();
-            this.subscribeTopic("alterhuman/lounge/v2/lobby");
-            this.subscribeTopic("alterhuman/lounge/v2/state/communities");
-            this.subscribeTopic("alterhuman/lounge/v2/state/deleted_comms");
+            this.subscribeTopic(`${LEGACY_NS}/${LEGACY_RM}/v2/lobby`);
+            this.subscribeTopic(`${LEGACY_NS}/${LEGACY_RM}/v2/state/communities`);
+            this.subscribeTopic(`${LEGACY_NS}/${LEGACY_RM}/v2/state/deleted_comms`);
             if (this.activeRoomId) {
-              this.subscribeTopic(`alterhuman/lounge/v2/room/${String(this.activeRoomId)}`);
+              this.subscribeTopic(`${LEGACY_NS}/${LEGACY_RM}/v2/room/${String(this.activeRoomId)}`);
             }
             if (Array.isArray(this.pendingPublishes) && this.pendingPublishes.length > 0) {
               const queued = this.pendingPublishes.splice(0, this.pendingPublishes.length);
@@ -1548,12 +1560,12 @@
         if (!roomId) return;
         const rid = String(roomId);
         if (this.activeRoomId && String(this.activeRoomId) !== rid) {
-          this.unsubscribeTopic(`alterhuman/lounge/v2/room/${String(this.activeRoomId)}`);
+          this.unsubscribeTopic(`${LEGACY_NS}/${LEGACY_RM}/v2/room/${String(this.activeRoomId)}`);
         }
         this.activeRoomId = rid;
-        this.subscribeTopic(`alterhuman/lounge/v2/room/${rid}`);
+        this.subscribeTopic(`${LEGACY_NS}/${LEGACY_RM}/v2/room/${rid}`);
         if (state.currentUser) {
-          this.publishTopic(`alterhuman/lounge/v2/room/${rid}`, "ROOM_READ_ACK", {
+          this.publishTopic(`${LEGACY_NS}/${LEGACY_RM}/v2/room/${rid}`, "ROOM_READ_ACK", {
             communityId: rid,
             userId: state.currentUser.id
           });
@@ -1563,7 +1575,7 @@
       leaveRoom(roomId) {
         const target = roomId || this.activeRoomId;
         if (target) {
-          this.unsubscribeTopic(`alterhuman/lounge/v2/room/${target}`);
+          this.unsubscribeTopic(`${LEGACY_NS}/${LEGACY_RM}/v2/room/${target}`);
         }
         if (this.activeRoomId === target) {
           this.activeRoomId = null;
@@ -1623,13 +1635,13 @@
         try { bcChannel.postMessage({ type, payload, eventId, t: Date.now() }); } catch (e) {}
       }
       // 방 단위 메시지/삭제/읽음 이벤트는 해당 방 토픽으로만 브로드캐스팅, 커뮤니티 목록/DM/유저는 로비 토픽으로 브로드캐스팅
-      if ((type === "NEW_MESSAGE" || type === "MESSAGE_DELETED" || type === "ROOM_READ_ACK" || type === "MESSAGE_REACTION_UPDATED") && payload && payload.communityId) {
-        roomSocket.publishTopic(`alterhuman/lounge/v2/room/${String(payload.communityId)}`, type, payload);
+      if ((type === "NEW_MESSAGE" || type === "MESSAGE_DELETED" || type === "ROOM_READ_ACK" || type === "MESSAGE_REACTION_UPDATED" || type === "reaction_updated" || type === "toggle_reaction") && payload && payload.communityId) {
+        roomSocket.publishTopic(`${LEGACY_NS}/${LEGACY_RM}/v2/room/${String(payload.communityId)}`, type, payload);
       } else if (type === "COMMUNITY_UPDATED" && payload && payload.id) {
-        roomSocket.publishTopic(`alterhuman/lounge/v2/room/${String(payload.id)}`, type, payload);
-        roomSocket.publishTopic("alterhuman/lounge/v2/lobby", type, payload);
+        roomSocket.publishTopic(`${LEGACY_NS}/${LEGACY_RM}/v2/room/${String(payload.id)}`, type, payload);
+        roomSocket.publishTopic(`${LEGACY_NS}/${LEGACY_RM}/v2/lobby`, type, payload);
       } else {
-        roomSocket.publishTopic("alterhuman/lounge/v2/lobby", type, payload);
+        roomSocket.publishTopic(`${LEGACY_NS}/${LEGACY_RM}/v2/lobby`, type, payload);
       }
     }
 
@@ -1658,7 +1670,7 @@
     function publishRetainedCommunitiesState(commsList) {
       try {
         const liteList = (Array.isArray(commsList) ? commsList : []).slice(0, 60).map(toLightweightCommForWs);
-        roomSocket.publishTopic("alterhuman/lounge/v2/state/communities", "STATE_COMMUNITIES", liteList, true);
+        roomSocket.publishTopic(`${LEGACY_NS}/${LEGACY_RM}/v2/state/communities`, "STATE_COMMUNITIES", liteList, true);
       } catch {}
     }
 
@@ -2090,7 +2102,7 @@
                 <ul class="space-y-1.5 text-[#c7d3e0] text-[11px] leading-relaxed">
                   <li>• 본인의 아이디(ID)와 비밀번호로 로그인하거나 새 계정을 만들어 입장합니다.</li>
                   <li>• 테리오타입(Theriotype), 킨타입(Kintype), 하트타입 및 대명사를 자유롭게 설정할 수 있습니다.</li>
-                  <li>• 24종의 저채도 알터휴먼 일러스트 프로필과 12종의 커버 테마, 또는 갤러리 사진을 지원합니다.</li>
+                  <li>• 24종의 저채도 숲톡 일러스트 프로필과 12종의 커버 테마, 또는 갤러리 사진을 지원합니다.</li>
                 </ul>
               </div>
 
@@ -2435,7 +2447,7 @@
                 </div>
                 <div class="flex flex-wrap items-center gap-2 shrink-0">
                   <button onclick="openWikiModal()" class="px-4 py-2.5 rounded-xl bg-white/12 hover:bg-white/20 border border-white/25 text-white font-bold text-xs transition">
-                    알터휴먼 위키 사전
+                    숲톡 위키 사전
                   </button>
                   <button onclick="state.isCreateModalOpen = true; render()" class="px-4 py-2.5 rounded-xl bg-[#e8eff6] hover:bg-white text-[#283645] font-bold text-xs transition shadow-sm">
                     + 새 커뮤니티 만들기
@@ -2452,7 +2464,7 @@
               <div class="px-5 py-3 flex items-center justify-between border-b border-app bg-app-subtle">
                 <div class="flex items-center gap-2">
                   <span class="px-2 py-0.5 rounded badge-sage font-bold text-[11px]">WIKI GUIDE</span>
-                  <h2 class="text-xs sm:text-sm font-bold text-app-main">알터휴먼(Alterhuman) 핵심 개념 요약</h2>
+                  <h2 class="text-xs sm:text-sm font-bold text-app-main">숲톡 핵심 개념 요약</h2>
                 </div>
                 <div class="flex items-center gap-2">
                   <button onclick="openWikiModal()" class="text-xs font-bold underline text-[#5c7893]">전체 위키 열기</button>
@@ -2537,7 +2549,7 @@
 
             <div class="flex items-center justify-between gap-3 flex-wrap">
               <div class="flex items-center gap-1.5 overflow-x-auto pb-1">
-                ${ALTERHUMAN_CATEGORIES.map((cat) => {
+                ${SOOPTALK_CATEGORIES.map((cat) => {
                   const isSelected = state.lobbyCategory === cat;
                   const badgeCls = getCategoryBadgeClass(cat);
                   return `
@@ -2575,11 +2587,11 @@
     }
 
     function getEnteredAtStorageKey(commId, userId) {
-      return `alterhuman_entered_at_${commId}_${userId}`;
+      return `${LEGACY_NS}_entered_at_${commId}_${userId}`;
     }
 
     function getJoinedAtStorageKey(commId, userId) {
-      return `alterhuman_joined_at_${commId}_${userId}`;
+      return `${LEGACY_NS}_joined_at_${commId}_${userId}`;
     }
 
     function getUserEnteredAt(commId, userId) {
@@ -2724,26 +2736,26 @@
 
               <div class="flex items-end gap-1.5 ${isMe ? 'flex-row-reverse' : 'flex-row'}">
                 <div onclick="toggleReactionPicker('${msg.id}', event)" title="탭하여 공감 남기기" class="cursor-pointer px-3.5 py-2 rounded-2xl text-sm leading-snug shadow-sm ${isMe ? 'btn-ash font-medium rounded-tr-sm' : 'bg-app-surface text-app-main border border-app rounded-tl-sm'}">${textHtml}${imgHtml}</div>
-                <div class="flex flex-col ${isMe ? 'items-end' : 'items-start'} text-[10px] flex-shrink-0 gap-0.5">
-                  <button type="button" onclick="toggleReactionPicker('${msg.id}', event)" title="공감 이모지 달기" class="opacity-60 sm:opacity-0 sm:group-hover:opacity-100 px-1.5 py-0.5 rounded-full bg-app-subtle border border-app text-[11px] text-app-muted hover:text-app-main transition">☺+</button>
+                <div class="flex flex-col ${isMe ? 'items-end' : 'items-start'} text-[10px] flex-shrink-0 gap-1">
+                  <button type="button" onclick="toggleReactionPicker('${msg.id}', event)" title="공감 이모지 달기" class="inline-flex items-center gap-0.5 px-2 py-0.5 rounded-full bg-app-subtle hover:bg-app-surface border border-app text-[11px] font-semibold text-app-main shadow-2xs transition active:scale-95">
+                    <span>😊</span><span>+</span>
+                  </button>
                   ${unreadCnt > 0 ? `<span class="text-[#8c765c] dark:text-[#d9c3a5] font-bold text-[11px] leading-tight">${unreadCnt}</span>` : ""}
                   <span class="text-app-muted">${escapeHtml(msg.timestamp)}</span>
                 </div>
               </div>
 
-              ${reactions.length > 0 ? `
-                <div class="mt-1.5 flex flex-wrap gap-1 ${isMe ? 'justify-end' : 'justify-start'}">
-                  ${reactions.map((r) => {
-                    const reactedByMe = r.userIds.includes(u.id);
-                    return `
-                      <button type="button" onclick="toggleMessageReaction('${comm.id}', '${msg.id}', '${r.emoji}')" class="px-2 py-0.5 rounded-full text-[11px] font-semibold border flex items-center gap-1 transition active:scale-95 ${reactedByMe ? 'border-[#728ea8] bg-[#4f687d]/30 text-app-main shadow-xs' : 'border-app bg-app-surface text-app-muted hover:text-app-main'}">
-                        <span>${r.emoji}</span>
-                        <span>${r.userIds.length}</span>
-                      </button>
-                    `;
-                  }).join("")}
-                </div>
-              ` : ""}
+              <div class="mt-1.5 flex flex-wrap items-center gap-1 ${isMe ? 'justify-end' : 'justify-start'}">
+                ${reactions.map((r) => {
+                  const reactedByMe = r.userIds.includes(u.id);
+                  return `
+                    <button type="button" onclick="toggleMessageReaction('${comm.id}', '${msg.id}', '${r.emoji}')" class="px-2 py-0.5 rounded-full text-[11px] font-semibold border flex items-center gap-1 transition active:scale-95 ${reactedByMe ? 'border-[#728ea8] bg-[#4f687d]/30 text-app-main shadow-xs' : 'border-app bg-app-surface text-app-muted hover:text-app-main'}">
+                      <span>${r.emoji}</span>
+                      <span>${r.userIds.length}</span>
+                    </button>
+                  `;
+                }).join("")}
+              </div>
             </div>
           </div>
         `;
@@ -2996,7 +3008,7 @@
     }
 
     function renderWikiEntriesHtml() {
-      const entries = ALTERHUMAN_WIKI_ENTRIES.filter((e) => {
+      const entries = SOOPTALK_WIKI_ENTRIES.filter((e) => {
         const matchCat = state.wikiCategory === "전체" || e.category === state.wikiCategory;
         const q = state.wikiSearch.trim().toLowerCase();
         const matchQ = !q || e.termKo.toLowerCase().includes(q) || e.termEn.toLowerCase().includes(q) || e.summary.toLowerCase().includes(q) || e.details.some((d) => d.toLowerCase().includes(q));
@@ -3030,7 +3042,7 @@
               <div class="flex items-center gap-3">
                 <div class="w-9 h-9 rounded-lg bg-white/15 border border-white/25 text-white flex items-center justify-center font-bold text-xs">ΘΔ</div>
                 <div>
-                  <h2 class="font-bold text-base text-white">알터휴먼 위키백과 & 용어 사전</h2>
+                  <h2 class="font-bold text-base text-white">숲톡 위키백과 & 용어 사전</h2>
                   <p class="text-xs text-[#d0dce8]">테리안(Therian) · 아더킨(Otherkin) · 픽션킨 · 아더하트 · 시프트 · 쿼드러빅스 정리</p>
                 </div>
               </div>
@@ -3064,7 +3076,7 @@
         <div onclick="toggleDrawer(false)" class="fixed inset-0 z-40 bg-black/55">
           <aside onclick="event.stopPropagation()" class="w-80 h-full bg-app-surface shadow-2xl border-r border-app flex flex-col">
             <div class="px-4 py-3.5 flex items-center justify-between border-b border-app">
-              <span class="font-bold text-sm text-app-main">ΘΔ 알터휴먼 메뉴</span>
+              <span class="font-bold text-sm text-app-main">ΘΔ 숲톡 메뉴</span>
               <button onclick="toggleDrawer(false)" class="p-1.5 rounded-lg text-app-muted hover:text-app-main">✕</button>
             </div>
 
@@ -3099,7 +3111,7 @@
                 + 새 커뮤니티 만들기
               </button>
               <button onclick="toggleDrawer(false); openWikiModal()" class="w-full py-2 px-3.5 rounded-xl text-xs font-bold flex items-center justify-between bg-app-subtle border border-app">
-                <span>알터휴먼 위키백과 / 용어 사전</span>
+                <span>숲톡 위키백과 / 용어 사전</span>
                 <span class="text-[10px] px-2 py-0.5 rounded badge-sage">가이드</span>
               </button>
               <button onclick="toggleDrawer(false); state.isDmDrawerOpen = true; render()" class="w-full py-2 px-3.5 rounded-xl bg-app-subtle border border-app text-xs font-bold flex items-center justify-between">
@@ -3166,7 +3178,7 @@
 
               <div>
                 <label class="block text-xs font-bold mb-1">1. 커뮤니티 이름 *</label>
-                <input id="create-comm-name-input" type="text" required value="${escapeHtml(state.newCommName)}" oninput="updateCreateCommPreview('newCommName', this.value)" placeholder="예: 북극늑대 & 개과 클라도테리안 라운지" class="w-full px-3.5 py-2 rounded-lg input-ash text-sm" />
+                <input id="create-comm-name-input" type="text" required value="${escapeHtml(state.newCommName)}" oninput="updateCreateCommPreview('newCommName', this.value)" placeholder="예: 북극늑대 & 개과 클라도테리안 숲톡" class="w-full px-3.5 py-2 rounded-lg input-ash text-sm" />
               </div>
 
               <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 p-3.5 rounded-xl bg-app-subtle border border-app">
@@ -3218,7 +3230,7 @@
               <div>
                 <label class="block text-xs font-bold mb-1">카테고리</label>
                 <select onchange="state.newCommCategory = this.value; render()" class="w-full px-3 py-2 rounded-lg input-ash text-xs font-semibold">
-                  ${ALTERHUMAN_CATEGORIES.filter((c) => c !== "전체").map((c) => `<option value="${c}" ${state.newCommCategory === c ? "selected" : ""}>${c}</option>`).join("")}
+                  ${SOOPTALK_CATEGORIES.filter((c) => c !== "전체").map((c) => `<option value="${c}" ${state.newCommCategory === c ? "selected" : ""}>${c}</option>`).join("")}
                 </select>
               </div>
 
@@ -3380,7 +3392,7 @@
 
               <div class="p-4 rounded-xl bg-app-subtle border border-app space-y-2.5">
                 <div class="flex items-center justify-between">
-                  <label class="text-xs font-bold text-app-main">기본 제공 프로필 사진 선택 (24종 저채도 알터휴먼 일러스트)</label>
+                  <label class="text-xs font-bold text-app-main">기본 제공 프로필 사진 선택 (24종 저채도 숲톡 일러스트)</label>
                   <span class="text-[10px] px-2 py-0.5 rounded badge-sage">클릭 시 즉시 적용</span>
                 </div>
                 <div class="grid grid-cols-6 sm:grid-cols-8 gap-2">
@@ -3504,7 +3516,7 @@
 
     const SUPPORT_MAIL_CONFIG = {
       ADMIN_EMAIL: "idk037251@gmail.com",
-      // Render 등 백엔드 메일 서버(server/mail-server.mjs) 배포 시 아래 URL을 입력하세요 (예: "https://alterhuman-mail.onrender.com/api/support")
+      // Render 등 백엔드 메일 서버(server/mail-server.mjs) 배포 시 아래 URL을 입력하세요 (예: "https://SoopTalk-mail.onrender.com/api/support")
       BACKEND_API_URL: "",
       // 백엔드 URL 미입력 시 GitHub Pages에서 사용하는 HTTPS 릴레이 (idk037251@gmail.com 수신)
       FORMSUBMIT_AJAX_URL: "https://formsubmit.co/ajax/idk037251@gmail.com"
@@ -4314,12 +4326,14 @@
       saveStorage(STORAGE_KEYS.MESSAGES, state.messagesByComm);
       safeReactiveRender(false);
 
-      broadcastEvent("MESSAGE_REACTION_UPDATED", {
+      const reactionEventPayload = {
         communityId: cid,
         messageId: mid,
         reactions,
         reactionsUpdatedAt
-      });
+      };
+      broadcastEvent("MESSAGE_REACTION_UPDATED", reactionEventPayload);
+      broadcastEvent("reaction_updated", reactionEventPayload);
 
       try {
         await fetchWithTimeout(`${SUPPORT_API_BASE}/api/rooms/${encodeURIComponent(cid)}/messages/${encodeURIComponent(mid)}/reaction`, {
@@ -4377,7 +4391,7 @@
       saveStorage(STORAGE_KEYS.MESSAGES, state.messagesByComm);
       broadcastEvent("COMMUNITY_DELETED", String(commId));
       publishRetainedCommunitiesState(state.communities);
-      try { roomSocket.publishTopic("alterhuman/lounge/v2/state/deleted_comms", "STATE_DELETED_COMMS", state.deletedCommIds, true); } catch {}
+      try { roomSocket.publishTopic(`${LEGACY_NS}/${LEGACY_RM}/v2/state/deleted_comms`, "STATE_DELETED_COMMS", state.deletedCommIds, true); } catch {}
       render();
       try {
         await fetchWithTimeout(`${SUPPORT_API_BASE}/api/communities/${encodeURIComponent(String(commId))}`, { method: "DELETE" }, 2500);

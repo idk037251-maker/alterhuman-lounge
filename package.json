@@ -1,7 +1,7 @@
 {
-  "name": "alterhuman-lounge-mail-server",
+  "name": "sooptalk-mail-server",
   "version": "1.0.0",
-  "description": "Alterhuman Lounge Support Mail Backend (Resend SDK + KVDB Backup)",
+  "description": "숲톡 Support Mail & Realtime Chat Backend (Resend SDK + KVDB Backup)",
   "type": "module",
   "main": "server/mail-server.mjs",
   "scripts": {

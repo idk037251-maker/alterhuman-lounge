@@ -33,8 +33,16 @@ CREATE TABLE IF NOT EXISTS messages (
   content TEXT,
   attachment_url TEXT,
   is_system BOOLEAN NOT NULL DEFAULT FALSE,
+  reactions JSONB NOT NULL DEFAULT '[]'::jsonb,
+  reactions_updated_at BIGINT NOT NULL DEFAULT 0,
   created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
+
+-- Auto-migration for existing messages table on deployment servers
+ALTER TABLE messages
+  ADD COLUMN IF NOT EXISTS reactions JSONB NOT NULL DEFAULT '[]'::jsonb;
+ALTER TABLE messages
+  ADD COLUMN IF NOT EXISTS reactions_updated_at BIGINT NOT NULL DEFAULT 0;
 
 CREATE INDEX IF NOT EXISTS idx_messages_comm_created_at
   ON messages (community_id, created_at);
