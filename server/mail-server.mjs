@@ -161,12 +161,18 @@ const server = http.createServer((req, res) => {
         if (!userId) return sendJson(res, 400, { ok: false, error: "userId가 필요합니다." });
         const map = await getRoomMembersMap();
         if (!map[commId] || typeof map[commId] !== "object") map[commId] = {};
-        // 이미 입장 기록이 있으면 joined_at을 덮어쓰지 않고 기존 입장 시점 유지
+        // 이미 입장 기록이 있으면 enteredAt(joined_at)을 덮어쓰지 않고 기존 입장 시점 유지
         if (!map[commId][userId]) {
-          map[commId][userId] = body.joinedAt || new Date().toISOString();
+          map[commId][userId] = body.enteredAt || body.joinedAt || new Date().toISOString();
           await saveRoomMembersMap(map);
         }
-        return sendJson(res, 200, { ok: true, commId, userId, joinedAt: map[commId][userId] });
+        return sendJson(res, 200, {
+          ok: true,
+          commId,
+          userId,
+          enteredAt: map[commId][userId],
+          joinedAt: map[commId][userId]
+        });
       })
       .catch((err) => sendJson(res, 500, { ok: false, error: err.message }));
     return;
@@ -198,17 +204,17 @@ const server = http.createServer((req, res) => {
     (async () => {
       try {
         const map = await getRoomMembersMap();
-        const joinedAt = map[commId]?.[userId] || null;
-        if (!joinedAt) {
-          return sendJson(res, 200, { ok: true, joinedAt: null, messages: [] });
+        const enteredAt = map[commId]?.[userId] || null;
+        if (!enteredAt) {
+          return sendJson(res, 200, { ok: true, enteredAt: null, joinedAt: null, messages: [] });
         }
-        const joinedMs = Date.parse(joinedAt);
+        const enteredMs = Date.parse(enteredAt);
         const msgRes = await fetch(`${ROOM_MSG_DB_PREFIX}${encodeURIComponent(commId)}?_t=${Date.now()}`, { cache: "no-store" });
         const allMsgs = msgRes.ok ? await msgRes.json().catch(() => []) : [];
-        const filtered = Array.isArray(allMsgs) && !Number.isNaN(joinedMs)
-          ? allMsgs.filter((m) => parseMessageTimestampMs(m) >= joinedMs)
+        const filtered = Array.isArray(allMsgs) && !Number.isNaN(enteredMs)
+          ? allMsgs.filter((m) => parseMessageTimestampMs(m) >= enteredMs)
           : [];
-        return sendJson(res, 200, { ok: true, joinedAt, messages: filtered });
+        return sendJson(res, 200, { ok: true, enteredAt, joinedAt: enteredAt, messages: filtered });
       } catch (err) {
         return sendJson(res, 500, { ok: false, error: err.message });
       }

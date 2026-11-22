@@ -1098,7 +1098,14 @@
     function mergeCommunityObjects(c1, c2) {
       const memMap = new Map();
       for (const m of [...(c1.members || []), ...(c2.members || [])]) {
-        if (m && m.userId) memMap.set(m.userId, m);
+        if (!m || !m.userId) continue;
+        const prev = memMap.get(m.userId);
+        const preservedEnteredAt = (prev && (prev.enteredAt || prev.joinedAt)) || m.enteredAt || m.joinedAt || null;
+        memMap.set(m.userId, {
+          ...(prev || {}),
+          ...m,
+          ...(preservedEnteredAt ? { enteredAt: preservedEnteredAt, joinedAt: preservedEnteredAt } : {})
+        });
       }
       const kickedSet = new Set([...(c1.kickedUserIds || []), ...(c2.kickedUserIds || [])]);
       const mergedMembers = Array.from(memMap.values()).filter((m) => !kickedSet.has(m.userId));
@@ -1147,6 +1154,14 @@
 
       if (type === "NEW_MESSAGE" && payload && payload.communityId) {
         const cid = payload.communityId;
+        const uid = state.currentUser && state.currentUser.id;
+        if (uid) {
+          const enteredAt = getUserEnteredAt(cid, uid);
+          const enteredMs = enteredAt ? Date.parse(enteredAt) : NaN;
+          if (!enteredAt || Number.isNaN(enteredMs) || parseMessageTimestampMs(payload) < enteredMs) {
+            return;
+          }
+        }
         const curList = state.messagesByComm[cid] || [];
         // 방 단위 수신 보장: 현재 입장해 있는 방이거나 이미 참여한 방의 메시지만 처리
         if (curList.some((m) => m.id === payload.id)) {
@@ -1161,7 +1176,7 @@
             }
           });
         }
-        state.messagesByComm[cid] = nextList;
+        state.messagesByComm[cid] = uid ? filterMessagesSinceEnteredAt(cid, uid, nextList) : [];
         saveStorage(STORAGE_KEYS.MESSAGES, state.messagesByComm);
         needsUpdate = true;
       } else if (type === "ROOM_READ_ACK" && payload && payload.communityId && payload.userId) {
@@ -1560,10 +1575,13 @@
       const cloudRoomMsgs = await cloudGet(roomKey, []);
       const deletedSet = deletedMsgId ? new Set([deletedMsgId]) : null;
       const merged = mergeMessageArrays(cloudRoomMsgs, localRoomMsgs, deletedSet);
-      state.messagesByComm[commId] = merged;
+      const uid = state.currentUser && state.currentUser.id;
+      state.messagesByComm[commId] = uid ? filterMessagesSinceEnteredAt(commId, uid, merged) : [];
       saveStorage(STORAGE_KEYS.MESSAGES, state.messagesByComm);
       await cloudPut(roomKey, merged);
-      await cloudPut(CLOUD_KEYS.MESSAGES, state.messagesByComm);
+      const cloudAllMsgs = await cloudGet(CLOUD_KEYS.MESSAGES, {});
+      const nextCloudAll = (cloudAllMsgs && typeof cloudAllMsgs === "object") ? { ...cloudAllMsgs, [commId]: merged } : { [commId]: merged };
+      await cloudPut(CLOUD_KEYS.MESSAGES, nextCloudAll);
       return merged;
     }
 
@@ -1728,8 +1746,10 @@
               });
             }
 
-            if (JSON.stringify(mergedRoom) !== prevRoomJson || readUpdated) {
-              state.messagesByComm[cid] = mergedRoom;
+            const uid = state.currentUser && state.currentUser.id;
+            const visibleRoom = uid ? filterMessagesSinceEnteredAt(cid, uid, mergedRoom) : [];
+            if (JSON.stringify(visibleRoom) !== prevRoomJson || readUpdated) {
+              state.messagesByComm[cid] = visibleRoom;
               saveStorage(STORAGE_KEYS.MESSAGES, state.messagesByComm);
               changed = true;
             }
@@ -1741,14 +1761,16 @@
           }
         }
 
-        // 5. All Communities Messages Map
+        // 5. All Communities Messages Map (현재 사용자 입장 시각 이후 메시지만 로컬 캐시에 저장)
         const cloudMsgs = await cloudGet(CLOUD_KEYS.MESSAGES, null);
         if (cloudMsgs && typeof cloudMsgs === "object") {
           const prevMsgsJson = JSON.stringify(state.messagesByComm);
           const mergedMsgs = { ...state.messagesByComm };
+          const uid = state.currentUser && state.currentUser.id;
           for (const [cid, list] of Object.entries(cloudMsgs)) {
             if (AI_SEED_COMM_IDS.includes(cid) || state.deletedCommIds.includes(cid)) continue;
-            mergedMsgs[cid] = mergeMessageArrays(mergedMsgs[cid] || [], Array.isArray(list) ? list : []);
+            const combined = mergeMessageArrays(mergedMsgs[cid] || [], Array.isArray(list) ? list : []);
+            mergedMsgs[cid] = uid ? filterMessagesSinceEnteredAt(cid, uid, combined) : [];
           }
           if (JSON.stringify(mergedMsgs) !== prevMsgsJson) {
             state.messagesByComm = mergedMsgs;
@@ -2413,35 +2435,47 @@
       return 0;
     }
 
+    function getEnteredAtStorageKey(commId, userId) {
+      return `alterhuman_entered_at_${commId}_${userId}`;
+    }
+
     function getJoinedAtStorageKey(commId, userId) {
       return `alterhuman_joined_at_${commId}_${userId}`;
     }
 
-    function getUserJoinedAt(commId, userId) {
+    function getUserEnteredAt(commId, userId) {
       if (!commId || !userId) return null;
       const comm = state.communities.find((c) => c.id === commId);
       const member = comm && Array.isArray(comm.members)
         ? comm.members.find((m) => m.userId === userId)
         : null;
-      if (member && member.joinedAt) {
-        try { localStorage.setItem(getJoinedAtStorageKey(commId, userId), member.joinedAt); } catch {}
-        return member.joinedAt;
+      const memberTs = member && (member.enteredAt || member.joinedAt);
+      if (memberTs) {
+        try {
+          localStorage.setItem(getEnteredAtStorageKey(commId, userId), memberTs);
+          localStorage.setItem(getJoinedAtStorageKey(commId, userId), memberTs);
+        } catch {}
+        return memberTs;
       }
       try {
-        const saved = localStorage.getItem(getJoinedAtStorageKey(commId, userId));
+        const saved = localStorage.getItem(getEnteredAtStorageKey(commId, userId)) || localStorage.getItem(getJoinedAtStorageKey(commId, userId));
         if (saved) return saved;
       } catch {}
       return null;
     }
 
-    function filterMessagesSinceJoinedAt(commId, userId, msgs) {
+    const getUserJoinedAt = getUserEnteredAt;
+
+    function filterMessagesSinceEnteredAt(commId, userId, msgs) {
       if (!Array.isArray(msgs)) return [];
-      const joinedAt = getUserJoinedAt(commId, userId);
-      if (!joinedAt) return msgs;
-      const joinedMs = Date.parse(joinedAt);
-      if (Number.isNaN(joinedMs)) return msgs;
-      return msgs.filter((m) => parseMessageTimestampMs(m) >= joinedMs);
+      const enteredAt = getUserEnteredAt(commId, userId);
+      if (!enteredAt) return [];
+      const enteredMs = Date.parse(enteredAt);
+      if (Number.isNaN(enteredMs)) return [];
+      return msgs.filter((m) => parseMessageTimestampMs(m) >= enteredMs);
     }
+
+    const filterMessagesSinceJoinedAt = filterMessagesSinceEnteredAt;
 
     function renderChatMessagesInnerHtml() {
       const comm = state.communities.find((c) => c.id === state.activeCommunityId);
@@ -2451,7 +2485,7 @@
       const isOwner = comm.createdById === u.id || comm.createdBy === u.name || comm.createdBy === u.username;
       const activeCh = (comm.channels || []).find((ch) => ch.id === state.activeChannelId) || (comm.channels || [])[0];
       const channelMsgs = (state.messagesByComm[comm.id] || []).filter((m) => (m.channelId || "general") === activeCh.id);
-      const allMsgs = filterMessagesSinceJoinedAt(comm.id, u.id, channelMsgs);
+      const allMsgs = filterMessagesSinceEnteredAt(comm.id, u.id, channelMsgs);
       const members = comm.members && comm.members.length > 0 ? comm.members : [{
         userId: u.id, username: u.username, name: u.name, pronouns: u.pronouns, avatarUrl: u.avatarUrl, role: "방장"
       }];
@@ -3838,9 +3872,14 @@
       comm.members = (comm.members || []).filter((m) => m.userId !== uid);
       comm.memberCount = comm.members.length;
       state.joinedCommunityIds = state.joinedCommunityIds.filter((id) => id !== commId);
-      try { localStorage.removeItem(getJoinedAtStorageKey(commId, uid)); } catch {}
+      state.messagesByComm[commId] = [];
+      try {
+        localStorage.removeItem(getEnteredAtStorageKey(commId, uid));
+        localStorage.removeItem(getJoinedAtStorageKey(commId, uid));
+      } catch {}
       saveStorage(STORAGE_KEYS.COMMUNITIES, state.communities);
       saveStorage(STORAGE_KEYS.JOINED, state.joinedCommunityIds);
+      saveStorage(STORAGE_KEYS.MESSAGES, state.messagesByComm);
 
       if (state.activeCommunityId === commId) {
         roomSocket.leaveRoom();
@@ -3874,7 +3913,7 @@
       let memberAdded = false;
       const existingMember = members.find((m) => m.userId === state.currentUser.id);
       if (!existingMember) {
-        const joinedAt = new Date().toISOString();
+        const enteredAt = new Date().toISOString();
         members.push({
           userId: state.currentUser.id,
           username: state.currentUser.username,
@@ -3882,32 +3921,47 @@
           pronouns: state.currentUser.pronouns,
           avatarUrl: state.currentUser.avatarUrl,
           role: comm.createdById === state.currentUser.id ? "방장" : "멤버",
-          joinedAt
+          enteredAt,
+          joinedAt: enteredAt
         });
         comm.members = members;
         comm.memberCount = members.length;
-        try { localStorage.setItem(getJoinedAtStorageKey(commId, state.currentUser.id), joinedAt); } catch {}
+        try {
+          localStorage.setItem(getEnteredAtStorageKey(commId, state.currentUser.id), enteredAt);
+          localStorage.setItem(getJoinedAtStorageKey(commId, state.currentUser.id), enteredAt);
+        } catch {}
         saveStorage(STORAGE_KEYS.COMMUNITIES, state.communities);
         memberAdded = true;
-      } else if (!existingMember.joinedAt) {
-        let savedJoinedAt = null;
-        try { savedJoinedAt = localStorage.getItem(getJoinedAtStorageKey(commId, state.currentUser.id)); } catch {}
-        existingMember.joinedAt = savedJoinedAt || new Date().toISOString();
-        try { localStorage.setItem(getJoinedAtStorageKey(commId, state.currentUser.id), existingMember.joinedAt); } catch {}
+      } else if (!existingMember.enteredAt && !existingMember.joinedAt) {
+        let savedEnteredAt = null;
+        try {
+          savedEnteredAt = localStorage.getItem(getEnteredAtStorageKey(commId, state.currentUser.id))
+            || localStorage.getItem(getJoinedAtStorageKey(commId, state.currentUser.id));
+        } catch {}
+        const fallbackTs = savedEnteredAt || new Date().toISOString();
+        existingMember.enteredAt = fallbackTs;
+        existingMember.joinedAt = fallbackTs;
+        try {
+          localStorage.setItem(getEnteredAtStorageKey(commId, state.currentUser.id), fallbackTs);
+          localStorage.setItem(getJoinedAtStorageKey(commId, state.currentUser.id), fallbackTs);
+        } catch {}
         saveStorage(STORAGE_KEYS.COMMUNITIES, state.communities);
         memberAdded = true;
+      } else if (!existingMember.enteredAt && existingMember.joinedAt) {
+        existingMember.enteredAt = existingMember.joinedAt;
       }
 
-      const activeJoinedAt = getUserJoinedAt(commId, state.currentUser.id);
+      const activeEnteredAt = getUserEnteredAt(commId, state.currentUser.id);
       state.activeDmUser = null;
       state.activeCommunityId = commId;
       state.activeChannelId = (comm.channels && comm.channels[0]) ? comm.channels[0].id : "general";
       // 방 단위 WebSocket 토픽 구독 (해당 방에 입장한 유저에게만 실시간 메시지 브로드캐스트)
       roomSocket.joinRoom(commId);
 
-      // 방 입장 시 입장 시점(joined_at) 이후 메시지만 읽음 처리 및 화면 렌더링 대상으로 필터링
+      // 방 입장 시 로컬 캐시에서 입장 시각 이전의 과거 메시지를 즉시 제거
       const existingRoomMsgs = state.messagesByComm[commId] || [];
-      const filteredRoomMsgs = filterMessagesSinceJoinedAt(commId, state.currentUser.id, existingRoomMsgs);
+      const filteredRoomMsgs = filterMessagesSinceEnteredAt(commId, state.currentUser.id, existingRoomMsgs);
+      state.messagesByComm[commId] = filteredRoomMsgs;
       let readChanged = false;
       filteredRoomMsgs.forEach((m) => {
         if (!Array.isArray(m.readUserIds)) m.readUserIds = [m.senderId];
@@ -3916,9 +3970,7 @@
           readChanged = true;
         }
       });
-      if (readChanged) {
-        saveStorage(STORAGE_KEYS.MESSAGES, state.messagesByComm);
-      }
+      saveStorage(STORAGE_KEYS.MESSAGES, state.messagesByComm);
 
       render();
       setTimeout(() => {
@@ -3930,16 +3982,25 @@
         await fetch(`${SUPPORT_API_BASE}/api/rooms/${encodeURIComponent(commId)}/join`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ userId: state.currentUser.id, joinedAt: activeJoinedAt })
+          body: JSON.stringify({ userId: state.currentUser.id, enteredAt: activeEnteredAt, joinedAt: activeEnteredAt })
         });
+        const srvRes = await fetch(`${SUPPORT_API_BASE}/api/rooms/${encodeURIComponent(commId)}/messages?userId=${encodeURIComponent(state.currentUser.id)}`);
+        if (srvRes.ok) {
+          const srvData = await srvRes.json().catch(() => null);
+          if (srvData && Array.isArray(srvData.messages)) {
+            const mergedSrv = mergeMessageArrays(state.messagesByComm[commId] || [], srvData.messages);
+            state.messagesByComm[commId] = filterMessagesSinceEnteredAt(commId, state.currentUser.id, mergedSrv);
+            saveStorage(STORAGE_KEYS.MESSAGES, state.messagesByComm);
+          }
+        }
       } catch {}
 
       if (memberAdded) {
         broadcastEvent("COMMUNITY_UPDATED", comm);
         await cloudSaveCommunities();
       }
-      if (readChanged && existingRoomMsgs.length > 0) {
-        await cloudSaveRoomMessages(commId, existingRoomMsgs);
+      if (readChanged && filteredRoomMsgs.length > 0) {
+        await cloudSaveRoomMessages(commId, filteredRoomMsgs);
       }
       safeReactiveRender(true);
     };
@@ -4118,10 +4179,16 @@
           pronouns: u.pronouns,
           avatarUrl: u.avatarUrl,
           role: "방장",
+          enteredAt: new Date().toISOString(),
           joinedAt: new Date().toISOString()
         }],
         kickedUserIds: []
       };
+      try {
+        const ts = newComm.members[0].enteredAt;
+        localStorage.setItem(getEnteredAtStorageKey(newComm.id, u.id), ts);
+        localStorage.setItem(getJoinedAtStorageKey(newComm.id, u.id), ts);
+      } catch {}
       state.communities.unshift(newComm);
       state.joinedCommunityIds.push(newComm.id);
       saveStorage(STORAGE_KEYS.COMMUNITIES, state.communities);
