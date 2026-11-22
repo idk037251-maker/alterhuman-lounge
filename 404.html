@@ -1126,7 +1126,12 @@
         const prev = map.get(m.id);
         if (prev) {
           const readSet = new Set([...(prev.readUserIds || []), ...(m.readUserIds || []), m.senderId].filter(Boolean));
-          map.set(m.id, { ...prev, ...m, readUserIds: Array.from(readSet) });
+          map.set(m.id, {
+            ...prev,
+            ...m,
+            readUserIds: Array.from(readSet),
+            ...(prev._liveReceived || m._liveReceived ? { _liveReceived: true } : {})
+          });
         } else {
           map.set(m.id, m);
         }
@@ -1153,22 +1158,33 @@
       let needsUpdate = false;
 
       if (type === "NEW_MESSAGE" && payload && payload.communityId) {
-        const cid = payload.communityId;
+        const cid = String(payload.communityId);
         const uid = state.currentUser && state.currentUser.id;
+        const isInRoom = String(state.activeCommunityId || "") === cid || state.joinedCommunityIds.map(String).includes(cid);
         if (uid) {
-          const enteredAt = getUserEnteredAt(cid, uid);
+          let enteredAt = getUserEnteredAt(cid, uid);
+          if (!enteredAt && isInRoom) {
+            const msgMs = parseMessageTimestampMs(payload);
+            const fallbackIso = new Date(msgMs > 0 ? Math.min(getUtcNowMs(), msgMs) : getUtcNowMs()).toISOString();
+            try {
+              localStorage.setItem(getEnteredAtStorageKey(cid, uid), fallbackIso);
+              localStorage.setItem(getJoinedAtStorageKey(cid, uid), fallbackIso);
+            } catch {}
+            enteredAt = fallbackIso;
+          }
           const enteredMs = enteredAt ? Date.parse(enteredAt) : NaN;
-          if (!enteredAt || Number.isNaN(enteredMs) || parseMessageTimestampMs(payload) < enteredMs) {
+          if (!isInRoom && (!enteredAt || Number.isNaN(enteredMs) || parseMessageTimestampMs(payload) < enteredMs)) {
             return;
           }
         }
+        const livePayload = { ...payload, communityId: cid, _liveReceived: true };
         const curList = state.messagesByComm[cid] || [];
-        // 방 단위 수신 보장: 현재 입장해 있는 방이거나 이미 참여한 방의 메시지만 처리
-        if (curList.some((m) => m.id === payload.id)) {
+        // 방 단위 수신 보장: 중복 메시지 렌더링 방지 후 실시간 메시지 즉시 반영
+        if (curList.some((m) => m.id === livePayload.id)) {
           return;
         }
-        const nextList = mergeMessageArrays(curList, [payload]);
-        if (state.activeCommunityId === cid && state.currentUser) {
+        const nextList = mergeMessageArrays(curList, [livePayload]);
+        if (String(state.activeCommunityId || "") === cid && state.currentUser) {
           nextList.forEach((m) => {
             if (!Array.isArray(m.readUserIds)) m.readUserIds = [m.senderId];
             if (!m.readUserIds.includes(state.currentUser.id)) {
@@ -1176,7 +1192,7 @@
             }
           });
         }
-        state.messagesByComm[cid] = uid ? filterMessagesSinceEnteredAt(cid, uid, nextList) : [];
+        state.messagesByComm[cid] = uid ? filterMessagesSinceEnteredAt(cid, uid, nextList) : nextList;
         saveStorage(STORAGE_KEYS.MESSAGES, state.messagesByComm);
         needsUpdate = true;
       } else if (type === "ROOM_READ_ACK" && payload && payload.communityId && payload.userId) {
@@ -1230,10 +1246,12 @@
         saveStorage(STORAGE_KEYS.DMS, state.dms);
         needsUpdate = true;
       } else {
-        // Fallback full storage reload
+        // Fallback full storage reload (현재 사용자 enteredAt 기준으로 필터링 유지)
         state.usersDir = loadAndRestoreUsersDirectory();
         state.communities = loadCleanCommunities();
-        state.messagesByComm = loadCleanMessages();
+        const rawLoadedMsgs = loadCleanMessages();
+        const uid = state.currentUser && state.currentUser.id;
+        state.messagesByComm = uid ? filterAllRoomsByEnteredAt(uid, rawLoadedMsgs) : {};
         state.posts = loadCleanPosts();
         state.follows = loadCleanFollows();
         state.dms = loadStorage(STORAGE_KEYS.DMS, {});
@@ -1261,6 +1279,7 @@
         this.pingTimer = null;
         this.packetId = 1;
         this.activeRoomId = null;
+        this.pendingPublishes = [];
         this.clientId = "ah_" + Math.random().toString(36).slice(2, 10) + "_" + Date.now().toString(36);
         this.encoder = new TextEncoder();
         this.decoder = new TextDecoder();
@@ -1380,7 +1399,11 @@
             this.startHeartbeat();
             this.subscribeTopic("alterhuman/lounge/v2/lobby");
             if (this.activeRoomId) {
-              this.subscribeTopic(`alterhuman/lounge/v2/room/${this.activeRoomId}`);
+              this.subscribeTopic(`alterhuman/lounge/v2/room/${String(this.activeRoomId)}`);
+            }
+            if (Array.isArray(this.pendingPublishes) && this.pendingPublishes.length > 0) {
+              const queued = this.pendingPublishes.splice(0, this.pendingPublishes.length);
+              queued.forEach((q) => this.publishTopic(q.topic, q.type, q.payload));
             }
           } else if (type === 0x30) {
             // PUBLISH
@@ -1447,7 +1470,13 @@
       }
 
       publishTopic(topic, type, payload) {
-        if (!this.ws || this.ws.readyState !== WebSocket.OPEN || !this.connected) return;
+        if (!this.ws || this.ws.readyState !== WebSocket.OPEN || !this.connected) {
+          if (this.pendingPublishes.length < 50) {
+            this.pendingPublishes.push({ topic, type, payload });
+          }
+          this.connect();
+          return;
+        }
         const tBytes = this.encodeUtf8Str(topic);
         const msgObj = {
           type,
@@ -1461,14 +1490,15 @@
 
       joinRoom(roomId) {
         if (!roomId) return;
-        if (this.activeRoomId && this.activeRoomId !== roomId) {
-          this.unsubscribeTopic(`alterhuman/lounge/v2/room/${this.activeRoomId}`);
+        const rid = String(roomId);
+        if (this.activeRoomId && String(this.activeRoomId) !== rid) {
+          this.unsubscribeTopic(`alterhuman/lounge/v2/room/${String(this.activeRoomId)}`);
         }
-        this.activeRoomId = roomId;
-        this.subscribeTopic(`alterhuman/lounge/v2/room/${roomId}`);
+        this.activeRoomId = rid;
+        this.subscribeTopic(`alterhuman/lounge/v2/room/${rid}`);
         if (state.currentUser) {
-          this.publishTopic(`alterhuman/lounge/v2/room/${roomId}`, "ROOM_READ_ACK", {
-            communityId: roomId,
+          this.publishTopic(`alterhuman/lounge/v2/room/${rid}`, "ROOM_READ_ACK", {
+            communityId: rid,
             userId: state.currentUser.id
           });
         }
@@ -1538,9 +1568,9 @@
       }
       // 방 단위 메시지/삭제/읽음 이벤트는 해당 방 토픽으로만 브로드캐스팅, 커뮤니티 목록/DM/유저는 로비 토픽으로 브로드캐스팅
       if ((type === "NEW_MESSAGE" || type === "MESSAGE_DELETED" || type === "ROOM_READ_ACK") && payload && payload.communityId) {
-        roomSocket.publishTopic(`alterhuman/lounge/v2/room/${payload.communityId}`, type, payload);
+        roomSocket.publishTopic(`alterhuman/lounge/v2/room/${String(payload.communityId)}`, type, payload);
       } else if (type === "COMMUNITY_UPDATED" && payload && payload.id) {
-        roomSocket.publishTopic(`alterhuman/lounge/v2/room/${payload.id}`, type, payload);
+        roomSocket.publishTopic(`alterhuman/lounge/v2/room/${String(payload.id)}`, type, payload);
         roomSocket.publishTopic("alterhuman/lounge/v2/lobby", type, payload);
       } else {
         roomSocket.publishTopic("alterhuman/lounge/v2/lobby", type, payload);
@@ -2466,13 +2496,43 @@
 
     const getUserJoinedAt = getUserEnteredAt;
 
+    let serverTimeOffsetMs = 0;
+    function getUtcNowMs() {
+      return Date.now() + serverTimeOffsetMs;
+    }
+    function getUtcNowIso() {
+      return new Date(getUtcNowMs()).toISOString();
+    }
+    (async function syncServerUtcClock() {
+      try {
+        const t0 = Date.now();
+        const res = await fetch(`${SUPPORT_API_BASE}/health`, { cache: "no-store" });
+        const t1 = Date.now();
+        if (res.ok) {
+          const data = await res.json().catch(() => null);
+          if (data && typeof data.serverTimeMs === "number") {
+            serverTimeOffsetMs = data.serverTimeMs - Math.round((t0 + t1) / 2);
+          }
+        }
+      } catch {}
+    })();
+
     function filterMessagesSinceEnteredAt(commId, userId, msgs) {
       if (!Array.isArray(msgs)) return [];
-      const enteredAt = getUserEnteredAt(commId, userId);
+      const enteredAt = getUserEnteredAt(String(commId), userId);
       if (!enteredAt) return [];
       const enteredMs = Date.parse(enteredAt);
       if (Number.isNaN(enteredMs)) return [];
-      return msgs.filter((m) => parseMessageTimestampMs(m) >= enteredMs);
+      return msgs.filter((m) => m && (m._liveReceived === true || parseMessageTimestampMs(m) >= enteredMs));
+    }
+
+    function filterAllRoomsByEnteredAt(userId, msgsMap) {
+      const out = {};
+      if (!userId || !msgsMap || typeof msgsMap !== "object") return out;
+      for (const [cid, list] of Object.entries(msgsMap)) {
+        out[cid] = filterMessagesSinceEnteredAt(cid, userId, Array.isArray(list) ? list : []);
+      }
+      return out;
     }
 
     const filterMessagesSinceJoinedAt = filterMessagesSinceEnteredAt;
@@ -3845,6 +3905,8 @@
       }
       state.authError = "";
       state.currentUser = found;
+      state.messagesByComm = filterAllRoomsByEnteredAt(found.id, loadCleanMessages());
+      saveStorage(STORAGE_KEYS.MESSAGES, state.messagesByComm);
       saveActiveSession(found);
       render();
     };
@@ -3854,6 +3916,7 @@
         roomSocket.leaveRoom(state.activeCommunityId);
       }
       state.currentUser = null;
+      state.messagesByComm = {};
       clearActiveSession();
       state.loginUsername = "";
       state.loginPassword = "";
@@ -3913,7 +3976,7 @@
       let memberAdded = false;
       const existingMember = members.find((m) => m.userId === state.currentUser.id);
       if (!existingMember) {
-        const enteredAt = new Date().toISOString();
+        const enteredAt = getUtcNowIso();
         members.push({
           userId: state.currentUser.id,
           username: state.currentUser.username,
@@ -4015,9 +4078,10 @@
       if (!text && !pendingImg) return;
 
       const isOwner = comm.createdById === u.id || comm.createdBy === u.name;
+      const nowUtcMs = getUtcNowMs();
       const newMsg = {
-        id: "msg-" + Date.now() + "-" + Math.random().toString(36).slice(2, 6),
-        communityId: comm.id,
+        id: "msg-" + nowUtcMs + "-" + Math.random().toString(36).slice(2, 6),
+        communityId: String(comm.id),
         channelId: state.activeChannelId || "general",
         senderId: u.id,
         senderName: u.name,
@@ -4026,10 +4090,11 @@
         senderRole: isSuperAdmin(u) ? "관리자" : isOwner ? "방장" : "멤버",
         content: filterProfanity(text),
         timestamp: formatKoreanTime(),
-        createdAt: new Date().toISOString(),
+        createdAt: new Date(nowUtcMs).toISOString(),
         readUserIds: [u.id],
         reactions: [],
-        attachmentUrl: pendingImg || undefined
+        attachmentUrl: pendingImg || undefined,
+        _liveReceived: true
       };
 
       if (!state.messagesByComm[comm.id]) state.messagesByComm[comm.id] = [];

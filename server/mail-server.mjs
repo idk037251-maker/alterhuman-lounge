@@ -147,7 +147,9 @@ const server = http.createServer((req, res) => {
       ok: true,
       adminEmail: ADMIN_EMAIL,
       fromEmail: FROM_EMAIL,
-      resendConfigured: !!RESEND_API_KEY
+      resendConfigured: !!RESEND_API_KEY,
+      serverTimeMs: Date.now(),
+      serverUtc: new Date().toISOString()
     });
   }
 
