@@ -14,7 +14,8 @@
       max-width: 100%;
       height: 100dvh;
       max-height: 100dvh;
-      overflow-x: hidden;
+      overflow: hidden;
+      overscroll-behavior: none;
       margin: 0;
       padding: 0;
       -webkit-text-size-adjust: 100%;
@@ -25,6 +26,11 @@
       height: 100dvh;
       max-height: 100dvh;
       overflow: hidden;
+    }
+    #chat-scroll-box, #dm-scroll-box, #lobby-scroll-box {
+      overflow-anchor: none;
+      overscroll-behavior-y: contain;
+      -webkit-overflow-scrolling: touch;
     }
     @media (max-width: 768px) {
       input, textarea, select {
@@ -1269,6 +1275,7 @@
         }
       }
       let needsUpdate = false;
+      let hasNewChatMessage = false;
 
       if (type === "NEW_MESSAGE" && payload && payload.communityId) {
         const cid = String(payload.communityId);
@@ -1308,6 +1315,9 @@
         state.messagesByComm[cid] = uid ? filterMessagesSinceEnteredAt(cid, uid, nextList) : nextList;
         saveStorage(STORAGE_KEYS.MESSAGES, state.messagesByComm);
         needsUpdate = true;
+        if (String(state.activeCommunityId || "") === cid) {
+          hasNewChatMessage = true;
+        }
       } else if (type === "ROOM_READ_ACK" && payload && payload.communityId && payload.userId) {
         const cid = payload.communityId;
         const curList = state.messagesByComm[cid] || [];
@@ -1428,7 +1438,7 @@
       }
 
       if (needsUpdate) {
-        safeReactiveRender(true);
+        safeReactiveRender(hasNewChatMessage);
       }
     }
 
@@ -1889,42 +1899,56 @@
       return mergedComms;
     }
 
-    // 키보드 포커스를 절대 잃지 않으면서 채팅 메시지, 참여자 목록, 헤더 인원수, 로비 카드를 실시간 갱신
+    function updateChatRoomStreamInPlace(autoScrollIfNearBottom = false) {
+      const box = document.getElementById("chat-scroll-box");
+      if (!box || !state.activeCommunityId) return false;
+      const prevScrollTop = box.scrollTop;
+      const wasNearBottom = (box.scrollHeight - prevScrollTop - box.clientHeight) < 120;
+      box.innerHTML = renderChatMessagesInnerHtml();
+      if (autoScrollIfNearBottom && wasNearBottom) {
+        box.scrollTop = box.scrollHeight;
+      } else {
+        box.scrollTop = prevScrollTop;
+      }
+      const membersBox = document.getElementById("chat-members-list-box");
+      if (membersBox) {
+        const prevMemScroll = membersBox.scrollTop;
+        membersBox.innerHTML = renderChatMembersListInnerHtml();
+        membersBox.scrollTop = prevMemScroll;
+      }
+      const comm = state.communities.find((c) => c.id === state.activeCommunityId);
+      if (comm) {
+        const cnt = Math.max((comm.members || []).length, 1);
+        const headerCntEl = document.getElementById("chat-header-member-count");
+        if (headerCntEl) headerCntEl.textContent = `· 접속 ${cnt}/${cnt}명`;
+        const btnCntEl = document.getElementById("chat-btn-member-count");
+        if (btnCntEl) btnCntEl.textContent = `멤버 (${cnt})`;
+        const sideCntEl = document.getElementById("chat-sidebar-member-count");
+        if (sideCntEl) sideCntEl.textContent = `참여자 목록 (${cnt}명)`;
+      }
+      return true;
+    }
+
+    // 키보드 포커스와 현재 스크롤 위치를 절대 잃지 않으면서 채팅 메시지, 참여자 목록, 헤더 인원수, 로비 카드를 실시간 갱신
     function safeReactiveRender(autoScrollIfNearBottom = false) {
       const activeEl = document.activeElement;
       const activeId = activeEl ? activeEl.id : "";
       const isInputFocused = activeEl && ["INPUT", "TEXTAREA", "SELECT"].includes((activeEl.tagName || "").toUpperCase());
 
-      // 채팅방 안에서 입력창에 포커스가 있을 때: 입력창 DOM은 건드리지 않고 메시지 스트림, 참여자 사이드바, 상단 인원수를 모두 실시간 업데이트!
-      if (isInputFocused && activeId === "chat-msg-input" && state.activeCommunityId) {
-        const box = document.getElementById("chat-scroll-box");
-        if (box) {
-          const wasNearBottom = box.scrollHeight - box.scrollTop - box.clientHeight < 140;
-          box.innerHTML = renderChatMessagesInnerHtml();
-          if (wasNearBottom || autoScrollIfNearBottom) box.scrollTop = box.scrollHeight;
-        }
-        const membersBox = document.getElementById("chat-members-list-box");
-        if (membersBox) {
-          membersBox.innerHTML = renderChatMembersListInnerHtml();
-        }
-        const comm = state.communities.find((c) => c.id === state.activeCommunityId);
-        if (comm) {
-          const cnt = Math.max((comm.members || []).length, 1);
-          const headerCntEl = document.getElementById("chat-header-member-count");
-          if (headerCntEl) headerCntEl.textContent = `· 접속 ${cnt}/${cnt}명`;
-          const btnCntEl = document.getElementById("chat-btn-member-count");
-          if (btnCntEl) btnCntEl.textContent = `멤버 (${cnt})`;
-          const sideCntEl = document.getElementById("chat-sidebar-member-count");
-          if (sideCntEl) sideCntEl.textContent = `참여자 목록 (${cnt}명)`;
-        }
+      // 현재 채팅방 화면이 열려 있고 모달이 없는 경우: 전체 DOM을 재생성하지 않고 메시지 영역만 제자리 갱신하여 스크롤 0 초기화 원천 차단
+      const hasOpenModal = state.isWikiModalOpen || state.isCreateModalOpen || state.isProfileModalOpen || state.isDmDrawerOpen || state.isSupportModalOpen || state.isAdminDbModalOpen || state.inspectedUser || state.reportingMessage || state.adminBanningUser || state.lightboxImage || state.isDrawerOpen;
+      if (state.activeCommunityId && !state.activeDmUser && !hasOpenModal && document.getElementById("chat-scroll-box")) {
+        updateChatRoomStreamInPlace(autoScrollIfNearBottom);
         return;
       }
 
       if (isInputFocused && activeId === "dm-msg-input" && state.activeDmUser) {
         const dmBox = document.getElementById("dm-scroll-box");
         if (dmBox) {
+          const prevDmScroll = dmBox.scrollTop;
+          const wasNearBottom = (dmBox.scrollHeight - prevDmScroll - dmBox.clientHeight) < 120;
           dmBox.innerHTML = renderDmMessagesInnerHtml();
-          dmBox.scrollTop = dmBox.scrollHeight;
+          dmBox.scrollTop = (autoScrollIfNearBottom && wasNearBottom) ? dmBox.scrollHeight : prevDmScroll;
         }
         return;
       }
@@ -1946,6 +1970,7 @@
       isSyncingCloud = true;
       try {
         let changed = false;
+        let activeRoomNewMsgAdded = false;
 
         // 1. Deleted community tombstones
         const cloudDeleted = await cloudGet(CLOUD_KEYS.DELETED_COMMS, []);
@@ -2054,6 +2079,9 @@
 
             const uid = state.currentUser && state.currentUser.id;
             const visibleRoom = uid ? filterMessagesSinceEnteredAt(cid, uid, mergedRoom) : [];
+            if (visibleRoom.length > localList.length) {
+              activeRoomNewMsgAdded = true;
+            }
             if (JSON.stringify(visibleRoom) !== prevRoomJson || readUpdated) {
               state.messagesByComm[cid] = visibleRoom;
               saveStorage(STORAGE_KEYS.MESSAGES, state.messagesByComm);
@@ -2115,7 +2143,7 @@
         }
 
         if (changed) {
-          safeReactiveRender(true);
+          safeReactiveRender(activeRoomNewMsgAdded);
         }
       } catch (e) {
       } finally {
@@ -2890,9 +2918,9 @@
               </div>
 
               ${isPickerOpen ? `
-                <div onclick="event.stopPropagation()" class="mb-1.5 px-2 py-1 rounded-full bg-app-surface border border-app shadow-lg flex items-center gap-1 z-20">
+                <div onclick="event.stopPropagation()" onmousedown="event.preventDefault()" class="mb-1.5 px-2 py-1 rounded-full bg-app-surface border border-app shadow-lg flex items-center gap-1 z-20">
                   ${reactionPalette.map((item) => `
-                    <button type="button" onclick="toggleMessageReaction('${comm.id}', '${msg.id}', '${item.emoji}')" title="${item.label}" class="w-8 h-8 sm:w-7 sm:h-7 rounded-full hover:bg-app-subtle active:scale-95 flex items-center justify-center text-base transition">
+                    <button type="button" onmousedown="event.preventDefault()" onclick="toggleMessageReaction('${comm.id}', '${msg.id}', '${item.emoji}', event)" title="${item.label}" class="w-8 h-8 sm:w-7 sm:h-7 rounded-full hover:bg-app-subtle active:scale-95 flex items-center justify-center text-base transition">
                       ${item.emoji}
                     </button>
                   `).join("")}
@@ -2902,7 +2930,7 @@
               <div class="flex items-end gap-1.5 ${isMe ? 'flex-row-reverse' : 'flex-row'}">
                 <div onclick="toggleReactionPicker('${msg.id}', event)" title="탭하여 공감 남기기" class="cursor-pointer px-3.5 py-2 rounded-2xl text-sm leading-snug shadow-sm ${isMe ? 'btn-ash font-medium rounded-tr-sm' : 'bg-app-surface text-app-main border border-app rounded-tl-sm'}">${textHtml}${imgHtml}</div>
                 <div class="flex flex-col ${isMe ? 'items-end' : 'items-start'} text-[10px] flex-shrink-0 gap-1">
-                  <button type="button" onclick="toggleReactionPicker('${msg.id}', event)" title="공감 이모지 달기" class="inline-flex items-center gap-0.5 px-2 py-0.5 rounded-full bg-app-subtle hover:bg-app-surface border border-app text-[11px] font-semibold text-app-main shadow-2xs transition active:scale-95">
+                  <button type="button" onmousedown="event.preventDefault()" onclick="toggleReactionPicker('${msg.id}', event)" title="공감 이모지 달기" class="inline-flex items-center gap-0.5 px-2 py-0.5 rounded-full bg-app-subtle hover:bg-app-surface border border-app text-[11px] font-semibold text-app-main shadow-2xs transition active:scale-95">
                     <span>😊</span><span>+</span>
                   </button>
                   ${unreadCnt > 0 ? `<span class="text-[#8c765c] dark:text-[#d9c3a5] font-bold text-[11px] leading-tight">${unreadCnt}</span>` : ""}
@@ -2914,7 +2942,7 @@
                 ${reactions.map((r) => {
                   const reactedByMe = r.userIds.includes(u.id);
                   return `
-                    <button type="button" onclick="toggleMessageReaction('${comm.id}', '${msg.id}', '${r.emoji}')" class="px-2 py-0.5 rounded-full text-[11px] font-semibold border flex items-center gap-1 transition active:scale-95 ${reactedByMe ? 'border-[#728ea8] bg-[#4f687d]/30 text-app-main shadow-xs' : 'border-app bg-app-surface text-app-muted hover:text-app-main'}">
+                    <button type="button" onmousedown="event.preventDefault()" onclick="toggleMessageReaction('${comm.id}', '${msg.id}', '${r.emoji}', event)" class="px-2 py-0.5 rounded-full text-[11px] font-semibold border flex items-center gap-1 transition active:scale-95 ${reactedByMe ? 'border-[#728ea8] bg-[#4f687d]/30 text-app-main shadow-xs' : 'border-app bg-app-surface text-app-muted hover:text-app-main'}">
                       <span>${r.emoji}</span>
                       <span>${r.userIds.length}</span>
                     </button>
@@ -4504,20 +4532,25 @@
       state.messagesByComm[comm.id].push(newMsg);
       saveStorage(STORAGE_KEYS.MESSAGES, state.messagesByComm);
 
+      const hadPendingImg = !!state.chatPendingImage;
       state.chatInputText = "";
       state.chatPendingImage = "";
-      render();
-      setTimeout(() => {
+      const inp = document.getElementById("chat-msg-input");
+      if (inp && !hadPendingImg) {
+        inp.value = "";
+        updateChatRoomStreamInPlace(false);
         const box = document.getElementById("chat-scroll-box");
         if (box) box.scrollTop = box.scrollHeight;
-        const inp = document.getElementById("chat-msg-input");
-        if (inp) inp.focus();
-      }, 15);
+      } else {
+        render();
+        const box = document.getElementById("chat-scroll-box");
+        if (box) box.scrollTop = box.scrollHeight;
+      }
 
       // 즉시 다른 탭과 클라우드에 실시간 브로드캐스트 및 원자적 병합 저장
       broadcastEvent("NEW_MESSAGE", newMsg);
       await cloudSaveRoomMessages(comm.id, state.messagesByComm[comm.id]);
-      safeReactiveRender(true);
+      safeReactiveRender(false);
     };
 
     window.handleChatImageUpload = async function(e) {
@@ -4531,17 +4564,26 @@
       state.messagesByComm[commId] = (state.messagesByComm[commId] || []).filter((m) => m.id !== msgId);
       saveStorage(STORAGE_KEYS.MESSAGES, state.messagesByComm);
       broadcastEvent("MESSAGE_DELETED", { communityId: commId, messageId: msgId });
-      render();
+      if (!updateChatRoomStreamInPlace(false)) render();
       await cloudSaveRoomMessages(commId, state.messagesByComm[commId], msgId);
     };
 
     window.toggleReactionPicker = function(msgId, event) {
-      if (event) event.stopPropagation();
+      if (event) {
+        event.preventDefault();
+        event.stopPropagation();
+      }
       state.activeReactionPickerMsgId = (state.activeReactionPickerMsgId === msgId) ? null : msgId;
-      safeReactiveRender(false);
+      if (!updateChatRoomStreamInPlace(false)) {
+        safeReactiveRender(false);
+      }
     };
 
-    window.toggleMessageReaction = async function(commId, msgId, emoji) {
+    window.toggleMessageReaction = async function(commId, msgId, emoji, event) {
+      if (event) {
+        event.preventDefault();
+        event.stopPropagation();
+      }
       const u = state.currentUser;
       if (!u) return;
       const cid = String(commId);
@@ -4572,7 +4614,9 @@
       state.messagesByComm[cid] = list;
       state.activeReactionPickerMsgId = null;
       saveStorage(STORAGE_KEYS.MESSAGES, state.messagesByComm);
-      safeReactiveRender(false);
+      if (!updateChatRoomStreamInPlace(false)) {
+        safeReactiveRender(false);
+      }
 
       const reactionEventPayload = {
         communityId: cid,
@@ -4936,6 +4980,12 @@
         return;
       }
 
+      // 리렌더링 전 현재 스크롤 위치를 정확히 캡처하여 0(최상단)으로 튀는 현상 방지
+      const prevChatBox = document.getElementById("chat-scroll-box");
+      const savedChatScrollTop = prevChatBox ? prevChatBox.scrollTop : null;
+      const prevDmBox = document.getElementById("dm-scroll-box");
+      const savedDmScrollTop = prevDmBox ? prevDmBox.scrollTop : null;
+
       let mainView = "";
       if (state.activeDmUser) {
         mainView = renderDmRoom();
@@ -4960,6 +5010,15 @@
         ${renderAdminBanModal()}
         ${renderLightbox()}
       `;
+
+      if (savedChatScrollTop !== null) {
+        const nextChatBox = document.getElementById("chat-scroll-box");
+        if (nextChatBox) nextChatBox.scrollTop = savedChatScrollTop;
+      }
+      if (savedDmScrollTop !== null) {
+        const nextDmBox = document.getElementById("dm-scroll-box");
+        if (nextDmBox) nextDmBox.scrollTop = savedDmScrollTop;
+      }
     }
 
     render();
@@ -4971,19 +5030,30 @@
       if (!document.hidden) syncWithCloud();
     });
 
-    // 모바일 가상 키보드 올라올 때 동적 뷰포트 높이(visualViewport) 동기화 및 채팅 스크롤 유지
+    // 모바일 가상 키보드 올라올 때 동적 뷰포트 높이(visualViewport) 동기화 및 현재 보던 스크롤 위치 유지
     if (window.visualViewport) {
+      let lastViewportHeight = window.visualViewport.height;
       const syncViewportHeight = () => {
         const appEl = document.getElementById("app");
+        const chatBox = document.getElementById("chat-scroll-box");
+        const prevScrollTop = chatBox ? chatBox.scrollTop : 0;
+        const heightDelta = lastViewportHeight - window.visualViewport.height;
+        lastViewportHeight = window.visualViewport.height;
+
         if (appEl && window.visualViewport) {
           appEl.style.height = window.visualViewport.height + "px";
+          appEl.style.maxHeight = window.visualViewport.height + "px";
         }
-        const chatBox = document.getElementById("chat-scroll-box");
-        if (chatBox && document.activeElement && document.activeElement.id === "chat-msg-input") {
-          chatBox.scrollTop = chatBox.scrollHeight;
+        if (chatBox) {
+          // 키보드가 올라온 만큼만 보정하여 현재 보고 있던 대화 위치가 위로 튀지 않게 고정
+          chatBox.scrollTop = Math.max(0, prevScrollTop + (heightDelta > 0 ? heightDelta : 0));
         }
+        window.scrollTo(0, 0);
       };
       window.visualViewport.addEventListener("resize", syncViewportHeight);
+      window.visualViewport.addEventListener("scroll", () => {
+        window.scrollTo(0, 0);
+      });
     }
   </script>
 </body>
