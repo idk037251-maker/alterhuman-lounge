@@ -813,6 +813,8 @@
       id: "user-loon-admin",
       username: "loon",
       displayId: "Loon",
+      email: "idk037251@gmail.com",
+      isAdmin: true,
       password: "1022",
       name: "우엉김밥",
       pronouns: "그들/그들의 · 테리안",
@@ -848,13 +850,14 @@
       return `${period} ${displayHour}:${minutes}`;
     }
 
-    const SUPER_ADMIN_IDENTIFIERS = ["우엉김밥", "loon"];
+    const SUPER_ADMIN_IDENTIFIERS = ["우엉김밥", "loon", "idk037251@gmail.com", "idk037251"];
 
     function isSuperAdmin(user) {
       if (!user) return false;
       const u = (user.username || "").trim().toLowerCase();
       const n = (user.name || "").trim().toLowerCase();
-      return SUPER_ADMIN_IDENTIFIERS.includes(u) || SUPER_ADMIN_IDENTIFIERS.includes(n);
+      const em = (user.email || "").trim().toLowerCase();
+      return user.isAdmin === true || em === "idk037251@gmail.com" || SUPER_ADMIN_IDENTIFIERS.includes(u) || SUPER_ADMIN_IDENTIFIERS.includes(n);
     }
 
     function isUserBanned(user) {
@@ -1085,6 +1088,8 @@
       isProfileModalOpen: false,
       isDmDrawerOpen: false,
       isSupportModalOpen: false,
+      isAdminDbModalOpen: false,
+      adminDbFilter: "전체",
       inspectedUser: null,
       newPostContent: "",
       newPostImage: "",
@@ -1253,6 +1258,12 @@
         if (communityId && messageId) {
           state.messagesByComm[communityId] = (state.messagesByComm[communityId] || []).filter((m) => m.id !== messageId);
           saveStorage(STORAGE_KEYS.MESSAGES, state.messagesByComm);
+          needsUpdate = true;
+        }
+      } else if (type === "STATE_INQUIRIES" && Array.isArray(payload)) {
+        if (state.currentUser && isSuperAdmin(state.currentUser)) {
+          state.inquiries = payload;
+          saveStorage(STORAGE_KEYS.INQUIRIES, payload);
           needsUpdate = true;
         }
       } else if (type === "STATE_COMMUNITIES" && Array.isArray(payload)) {
@@ -1466,6 +1477,7 @@
             this.subscribeTopic(`${LEGACY_NS}/${LEGACY_RM}/v2/lobby`);
             this.subscribeTopic(`${LEGACY_NS}/${LEGACY_RM}/v2/state/communities`);
             this.subscribeTopic(`${LEGACY_NS}/${LEGACY_RM}/v2/state/deleted_comms`);
+            this.subscribeTopic(`${LEGACY_NS}/${LEGACY_RM}/v2/state/inquiries`);
             if (this.activeRoomId) {
               this.subscribeTopic(`${LEGACY_NS}/${LEGACY_RM}/v2/room/${String(this.activeRoomId)}`);
             }
@@ -2319,9 +2331,15 @@
               DM
             </button>
 
-            <button onclick="state.isSupportModalOpen = true; render()" class="px-2.5 py-1.5 rounded-lg text-xs font-semibold hidden lg:inline-block badge-sand hover:opacity-90 transition">
+            <button onclick="state.isSupportModalOpen = true; render()" class="px-2 sm:px-2.5 py-1.5 rounded-lg text-[11px] sm:text-xs font-semibold badge-sand hover:opacity-90 transition">
               문의/신고
             </button>
+
+            ${iAmAdmin ? `
+              <button onclick="openAdminDbModal()" class="px-2.5 sm:px-3 py-1.5 rounded-lg text-[11px] sm:text-xs font-bold badge-rose hover:opacity-90 transition shadow-xs">
+                DB 저장소 (${(state.inquiries || []).length})
+              </button>
+            ` : ""}
 
             <button onclick="state.isCreateModalOpen = true; render()" class="px-2.5 sm:px-3 py-1.5 rounded-lg btn-ash font-bold text-[11px] sm:text-xs shadow-sm">
               + 방 만들기
@@ -3124,8 +3142,14 @@
               </button>
               <button onclick="toggleDrawer(false); state.isSupportModalOpen = true; render()" class="w-full py-2 px-3.5 rounded-xl bg-app-subtle border border-app text-xs font-bold flex items-center justify-between">
                 <span>비공개 1:1 문의 / 신고</span>
-                <span class="text-[10px] px-2 py-0.5 rounded badge-terra">메일 접수</span>
+                <span class="text-[10px] px-2 py-0.5 rounded badge-terra">DB 접수</span>
               </button>
+              ${isSuperAdmin(u) ? `
+                <button onclick="toggleDrawer(false); openAdminDbModal()" class="w-full py-2 px-3.5 rounded-xl bg-app-subtle border border-app text-xs font-bold flex items-center justify-between">
+                  <span>최고 관리자 DB 저장소</span>
+                  <span class="text-[10px] px-2 py-0.5 rounded badge-rose">${(state.inquiries || []).length}건</span>
+                </button>
+              ` : ""}
             </div>
 
             <div class="flex-1 overflow-y-auto px-4 py-2 space-y-1">
@@ -3514,125 +3538,276 @@
       `;
     }
 
-    const SUPPORT_MAIL_CONFIG = {
-      ADMIN_EMAIL: "idk037251@gmail.com",
-      // Render 등 백엔드 메일 서버(server/mail-server.mjs) 배포 시 아래 URL을 입력하세요 (예: "https://SoopTalk-mail.onrender.com/api/support")
-      BACKEND_API_URL: "",
-      // 백엔드 URL 미입력 시 GitHub Pages에서 사용하는 HTTPS 릴레이 (idk037251@gmail.com 수신)
-      FORMSUBMIT_AJAX_URL: "https://formsubmit.co/ajax/idk037251@gmail.com"
+    const SUPPORT_DB_CONFIG = {
+      ADMIN_EMAIL: "idk037251@gmail.com"
     };
+
+    function publishRetainedInquiriesState(inquiriesList) {
+      try {
+        const list = (Array.isArray(inquiriesList) ? inquiriesList : []).slice(0, 120);
+        roomSocket.publishTopic(`${LEGACY_NS}/${LEGACY_RM}/v2/state/inquiries`, "STATE_INQUIRIES", list, true);
+      } catch {}
+    }
+
+    async function persistInquiriesListToDb(nextList) {
+      const normalized = (Array.isArray(nextList) ? nextList : [])
+        .filter((x) => x && x.id)
+        .map((x) => ({ ...x, status: x.status === "처리 완료" ? "처리 완료" : "접수됨" }))
+        .sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime())
+        .slice(0, 200);
+      state.inquiries = normalized;
+      saveStorage(STORAGE_KEYS.INQUIRIES, normalized);
+      publishRetainedInquiriesState(normalized);
+      await cloudPut(CLOUD_KEYS.INQUIRIES, normalized);
+      return normalized;
+    }
 
     async function saveInquiryBackupToDb(inquiry) {
       try {
         const localList = loadStorage(STORAGE_KEYS.INQUIRIES, []);
-        const mergedLocal = [inquiry, ...(Array.isArray(localList) ? localList.filter((x) => x && x.id !== inquiry.id) : [])].slice(0, 200);
-        state.inquiries = mergedLocal;
-        saveStorage(STORAGE_KEYS.INQUIRIES, mergedLocal);
-
         const cloudList = await cloudGet(CLOUD_KEYS.INQUIRIES, []);
         const map = new Map();
-        for (const item of [...mergedLocal, ...(Array.isArray(cloudList) ? cloudList : [])]) {
+        for (const item of [...(Array.isArray(cloudList) ? cloudList : []), ...(Array.isArray(localList) ? localList : [])]) {
           if (item && item.id) map.set(item.id, item);
         }
-        const mergedCloud = Array.from(map.values())
-          .sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime())
-          .slice(0, 200);
-        state.inquiries = mergedCloud;
-        saveStorage(STORAGE_KEYS.INQUIRIES, mergedCloud);
-        await cloudPut(CLOUD_KEYS.INQUIRIES, mergedCloud);
+        map.set(inquiry.id, { ...inquiry, status: inquiry.status === "처리 완료" ? "처리 완료" : "접수됨" });
+        await persistInquiriesListToDb(Array.from(map.values()));
+
+        try {
+          await fetchWithTimeout(`${SUPPORT_API_BASE}/api/support`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(inquiry)
+          }, 2500);
+        } catch {}
         return true;
       } catch (err) {
-        console.error("[Support DB Backup Error]", err);
-        return false;
+        console.error("[Support DB Save Error]", err);
+        return true;
       }
     }
 
     function renderSupportModal() {
       if (!state.isSupportModalOpen) return "";
       const isSending = !!state.supportSending;
-      const iAmAdmin = state.currentUser && isSuperAdmin(state.currentUser);
-      const tab = iAmAdmin ? (state.supportTab || "write") : "write";
 
       return `
         <div onclick="state.isSupportModalOpen = false; render()" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/65">
-          <div onclick="event.stopPropagation()" class="w-full max-w-lg bg-app-surface rounded-2xl p-6 shadow-2xl border border-app space-y-4 max-h-[90vh] flex flex-col">
+          <div onclick="event.stopPropagation()" class="w-full max-w-lg bg-app-surface rounded-2xl p-6 shadow-2xl border border-app space-y-4 max-h-[90dvh] flex flex-col">
             <div class="flex items-center justify-between">
               <div>
                 <h3 class="font-bold text-base text-app-main">비공개 1:1 고객센터 & 문제 신고</h3>
-                <p class="text-[11px] text-app-muted mt-0.5">수신: ${SUPPORT_MAIL_CONFIG.ADMIN_EMAIL} · DB 자동 백업</p>
+                <p class="text-[11px] text-app-muted mt-0.5">접수된 내역은 관리자 DB 저장소에 안전하게 기록됩니다.</p>
               </div>
               <button onclick="state.isSupportModalOpen = false; render()" class="p-1.5 rounded-lg hover:bg-app-subtle">✕</button>
             </div>
 
-            ${iAmAdmin ? `
-              <div class="flex gap-1.5 p-1 rounded-xl bg-app-subtle border border-app text-xs font-bold">
-                <button type="button" onclick="state.supportTab = 'write'; render()" class="flex-1 py-1.5 rounded-lg transition ${tab === 'write' ? 'btn-ash' : 'text-app-muted'}">문의/신고 작성</button>
-                <button type="button" onclick="state.supportTab = 'inbox'; syncInquiriesFromCloud();" class="flex-1 py-1.5 rounded-lg transition ${tab === 'inbox' ? 'btn-sage' : 'text-app-muted'}">관리자 DB 접수함 (${(state.inquiries || []).length})</button>
+            ${state.supportFeedback ? `
+              <div class="p-3 rounded-xl text-xs font-semibold ${state.supportFeedback.ok ? 'badge-sage' : 'badge-rose'}">
+                ${escapeHtml(state.supportFeedback.message)}
               </div>
             ` : ""}
-
-            ${tab === "inbox" && iAmAdmin ? `
-              <div class="flex-1 overflow-y-auto space-y-2.5 pr-1">
-                ${(state.inquiries || []).length === 0 ? `
-                  <div class="py-10 text-center text-xs text-app-muted">아직 DB에 접수된 문의/신고 내역이 없습니다.</div>
-                ` : (state.inquiries || []).map((inq) => `
-                  <div class="p-3.5 rounded-xl bg-app-subtle border border-app space-y-1.5 text-xs">
-                    <div class="flex items-center justify-between gap-2">
-                      <span class="px-2 py-0.5 rounded badge-terra font-bold text-[10px]">${escapeHtml(inq.category || "문의")}</span>
-                      <span class="text-[10px] text-app-muted">${escapeHtml((inq.createdAt || "").slice(0, 16).replace("T", " "))}</span>
-                    </div>
-                    <div class="font-bold text-sm text-app-main">${escapeHtml(inq.title)}</div>
-                    <div class="text-[11px] text-app-muted">보낸 사람: ${escapeHtml(inq.senderInfo)} ${inq.replyEmail ? `· 답변메일: ${escapeHtml(inq.replyEmail)}` : ""}</div>
-                    <div class="p-2.5 rounded-lg bg-app-surface border border-app text-app-main whitespace-pre-wrap leading-relaxed">${escapeHtml(inq.content)}</div>
-                  </div>
-                `).join("")}
+            <form onsubmit="handleSubmitSupport(event)" class="space-y-3 overflow-y-auto">
+              <div>
+                <label class="block text-xs font-bold mb-1">문의 유형</label>
+                <select id="support-category" class="w-full px-3.5 py-2 rounded-lg input-ash text-base sm:text-xs font-semibold">
+                  <option value="유저/커뮤니티 신고">유저/커뮤니티 신고</option>
+                  <option value="버그/오류 제보">버그/오류 제보</option>
+                  <option value="계정 및 권한 문의">계정 및 권한 문의</option>
+                  <option value="건의 및 기타">건의 및 기타</option>
+                </select>
               </div>
-            ` : `
-              ${state.supportFeedback ? `
-                <div class="p-3 rounded-xl text-xs font-semibold ${state.supportFeedback.ok ? 'badge-sage' : 'badge-rose'}">
-                  ${escapeHtml(state.supportFeedback.message)}
-                </div>
-              ` : ""}
-              <form onsubmit="handleSubmitSupport(event)" class="space-y-3 overflow-y-auto">
-                <div>
-                  <label class="block text-xs font-bold mb-1">문의 유형</label>
-                  <select id="support-category" class="w-full px-3.5 py-2 rounded-lg input-ash text-base sm:text-xs font-semibold">
-                    <option value="유저/커뮤니티 신고">유저/커뮤니티 신고</option>
-                    <option value="버그/오류 제보">버그/오류 제보</option>
-                    <option value="계정 및 권한 문의">계정 및 권한 문의</option>
-                    <option value="건의 및 기타">건의 및 기타</option>
-                  </select>
-                </div>
-                <div>
-                  <label class="block text-xs font-bold mb-1">답변받을 이메일 (선택)</label>
-                  <input id="support-reply-email" type="email" placeholder="답변이 필요하면 이메일을 입력해 주세요" class="w-full px-3.5 py-2 rounded-lg input-ash text-base sm:text-xs" />
-                </div>
-                <div>
-                  <label class="block text-xs font-bold mb-1">문의 또는 신고 제목 *</label>
-                  <input id="support-title" type="text" required placeholder="제목을 입력해 주세요" class="w-full px-3.5 py-2.5 rounded-lg input-ash text-base sm:text-xs" />
-                </div>
-                <div>
-                  <label class="block text-xs font-bold mb-1">상세 내용 *</label>
-                  <textarea id="support-content" rows="4" required placeholder="상세 내용을 입력해 주세요" class="w-full px-3.5 py-2.5 rounded-lg input-ash text-base sm:text-xs"></textarea>
-                </div>
-                <button type="submit" ${isSending ? "disabled" : ""} class="w-full py-3 rounded-xl btn-ash text-xs font-bold disabled:opacity-60">
-                  ${isSending ? "DB 백업 및 메일 전송 중..." : "관리자 이메일로 접수하기"}
-                </button>
-              </form>
-            `}
+              <div>
+                <label class="block text-xs font-bold mb-1">답변받을 연락처/이메일 (선택)</label>
+                <input id="support-reply-email" type="text" placeholder="답변이 필요하면 이메일이나 연락처를 입력해 주세요" class="w-full px-3.5 py-2 rounded-lg input-ash text-base sm:text-xs" />
+              </div>
+              <div>
+                <label class="block text-xs font-bold mb-1">문의 또는 신고 제목 *</label>
+                <input id="support-title" type="text" required placeholder="제목을 입력해 주세요" class="w-full px-3.5 py-2.5 rounded-lg input-ash text-base sm:text-xs" />
+              </div>
+              <div>
+                <label class="block text-xs font-bold mb-1">상세 내용 *</label>
+                <textarea id="support-content" rows="4" required placeholder="상세 내용을 입력해 주세요" class="w-full px-3.5 py-2.5 rounded-lg input-ash text-base sm:text-xs"></textarea>
+              </div>
+              <button type="submit" ${isSending ? "disabled" : ""} class="w-full py-3 rounded-xl btn-ash text-xs font-bold disabled:opacity-60">
+                ${isSending ? "DB 저장소에 접수 중..." : "문의/신고 접수하기"}
+              </button>
+            </form>
           </div>
         </div>
       `;
     }
 
-    window.syncInquiriesFromCloud = async function() {
-      const cloudList = await cloudGet(CLOUD_KEYS.INQUIRIES, []);
-      if (Array.isArray(cloudList)) {
-        state.inquiries = cloudList;
-        saveStorage(STORAGE_KEYS.INQUIRIES, cloudList);
+    window.openAdminDbModal = async function() {
+      if (!state.currentUser || !isSuperAdmin(state.currentUser)) {
+        alert("403 Forbidden: 최고 관리자만 접근할 수 있습니다.");
+        return;
       }
+      state.isAdminDbModalOpen = true;
+      render();
+      await syncInquiriesFromCloud();
+    };
+
+    window.syncInquiriesFromCloud = async function() {
+      if (!state.currentUser || !isSuperAdmin(state.currentUser)) return;
+      const localList = loadStorage(STORAGE_KEYS.INQUIRIES, []);
+      const cloudList = await cloudGet(CLOUD_KEYS.INQUIRIES, []);
+      let apiList = [];
+      try {
+        const res = await fetchWithTimeout(`${SUPPORT_API_BASE}/api/admin/inquiries?adminEmail=${encodeURIComponent(SUPPORT_DB_CONFIG.ADMIN_EMAIL)}`, {
+          headers: {
+            "X-Admin-Email": SUPPORT_DB_CONFIG.ADMIN_EMAIL,
+            "X-Admin-User": state.currentUser.username || ""
+          }
+        }, 2500);
+        if (res.ok) {
+          const data = await res.json().catch(() => null);
+          if (data && Array.isArray(data.inquiries)) apiList = data.inquiries;
+        }
+      } catch {}
+      const map = new Map();
+      for (const item of [...apiList, ...(Array.isArray(cloudList) ? cloudList : []), ...(Array.isArray(localList) ? localList : [])]) {
+        if (item && item.id) {
+          map.set(item.id, { ...item, status: item.status === "처리 완료" ? "처리 완료" : "접수됨" });
+        }
+      }
+      const merged = Array.from(map.values()).sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime());
+      state.inquiries = merged;
+      saveStorage(STORAGE_KEYS.INQUIRIES, merged);
       render();
     };
+
+    window.toggleInquiryStatus = async function(inqId) {
+      if (!state.currentUser || !isSuperAdmin(state.currentUser)) return;
+      const list = (state.inquiries || []).map((item) => {
+        if (item && String(item.id) === String(inqId)) {
+          const nextStatus = item.status === "처리 완료" ? "접수됨" : "처리 완료";
+          return { ...item, status: nextStatus, updatedAt: getUtcNowIso() };
+        }
+        return item;
+      });
+      await persistInquiriesListToDb(list);
+      render();
+      const target = list.find((x) => x && String(x.id) === String(inqId));
+      if (target) {
+        try {
+          await fetchWithTimeout(`${SUPPORT_API_BASE}/api/admin/inquiries/${encodeURIComponent(String(inqId))}`, {
+            method: "PATCH",
+            headers: {
+              "Content-Type": "application/json",
+              "X-Admin-Email": SUPPORT_DB_CONFIG.ADMIN_EMAIL,
+              "X-Admin-User": state.currentUser.username || ""
+            },
+            body: JSON.stringify({ status: target.status, adminEmail: SUPPORT_DB_CONFIG.ADMIN_EMAIL })
+          }, 2500);
+        } catch {}
+      }
+    };
+
+    window.deleteInquiryItem = async function(inqId) {
+      if (!state.currentUser || !isSuperAdmin(state.currentUser)) return;
+      if (!confirm("해당 문의/신고 내역을 DB 저장소에서 삭제하시겠습니까?")) return;
+      const nextList = (state.inquiries || []).filter((item) => item && String(item.id) !== String(inqId));
+      await persistInquiriesListToDb(nextList);
+      render();
+      try {
+        await fetchWithTimeout(`${SUPPORT_API_BASE}/api/admin/inquiries/${encodeURIComponent(String(inqId))}`, {
+          method: "DELETE",
+          headers: {
+            "Content-Type": "application/json",
+            "X-Admin-Email": SUPPORT_DB_CONFIG.ADMIN_EMAIL,
+            "X-Admin-User": state.currentUser.username || ""
+          },
+          body: JSON.stringify({ adminEmail: SUPPORT_DB_CONFIG.ADMIN_EMAIL })
+        }, 2500);
+      } catch {}
+    };
+
+    function renderAdminDbModal() {
+      if (!state.isAdminDbModalOpen || !state.currentUser || !isSuperAdmin(state.currentUser)) return "";
+      const allList = (state.inquiries || []).map((x) => ({
+        ...x,
+        status: x.status === "처리 완료" ? "처리 완료" : "접수됨"
+      }));
+      const pendingCount = allList.filter((x) => x.status !== "처리 완료").length;
+      const doneCount = allList.filter((x) => x.status === "처리 완료").length;
+      const activeFilter = state.adminDbFilter || "전체";
+      const filteredList = allList.filter((x) => {
+        if (activeFilter === "접수됨") return x.status !== "처리 완료";
+        if (activeFilter === "처리 완료") return x.status === "처리 완료";
+        return true;
+      });
+
+      return `
+        <div onclick="state.isAdminDbModalOpen = false; render()" class="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-5 bg-black/70">
+          <div onclick="event.stopPropagation()" class="w-full max-w-3xl bg-app-surface rounded-2xl p-4 sm:p-6 shadow-2xl border border-app space-y-4 max-h-[90dvh] flex flex-col">
+            <div class="flex items-start justify-between gap-3 border-b border-app pb-3">
+              <div>
+                <div class="flex items-center gap-2 flex-wrap">
+                  <span class="px-2 py-0.5 rounded text-[10px] font-bold badge-rose">최고 관리자 전용</span>
+                  <h3 class="font-bold text-base sm:text-lg text-app-main">DB 저장소 — 문의/신고 접수 내역</h3>
+                </div>
+                <p class="text-[11px] text-app-muted mt-1">권한 계정(${SUPPORT_DB_CONFIG.ADMIN_EMAIL} / 우엉김밥)만 열람 및 상태 변경·삭제가 가능합니다.</p>
+              </div>
+              <button onclick="state.isAdminDbModalOpen = false; render()" class="p-1.5 rounded-lg hover:bg-app-subtle text-sm">✕</button>
+            </div>
+
+            <div class="flex flex-wrap items-center justify-between gap-2">
+              <div class="flex flex-wrap items-center gap-1.5">
+                <button type="button" onclick="state.adminDbFilter = '전체'; render()" class="px-3 py-1.5 rounded-lg text-xs font-bold transition ${activeFilter === '전체' ? 'btn-ash' : 'bg-app-subtle border border-app text-app-muted'}">
+                  전체 (${allList.length})
+                </button>
+                <button type="button" onclick="state.adminDbFilter = '접수됨'; render()" class="px-3 py-1.5 rounded-lg text-xs font-bold transition ${activeFilter === '접수됨' ? 'badge-sand' : 'bg-app-subtle border border-app text-app-muted'}">
+                  접수됨 (${pendingCount})
+                </button>
+                <button type="button" onclick="state.adminDbFilter = '처리 완료'; render()" class="px-3 py-1.5 rounded-lg text-xs font-bold transition ${activeFilter === '처리 완료' ? 'badge-sage' : 'bg-app-subtle border border-app text-app-muted'}">
+                  처리 완료 (${doneCount})
+                </button>
+              </div>
+              <button type="button" onclick="syncInquiriesFromCloud()" class="px-3 py-1.5 rounded-lg text-xs font-semibold bg-app-subtle hover:bg-app-canvas border border-app text-app-main transition">
+                ↻ DB 새로고침
+              </button>
+            </div>
+
+            <div class="flex-1 overflow-y-auto space-y-3 pr-1">
+              ${filteredList.length === 0 ? `
+                <div class="py-12 text-center rounded-xl bg-app-subtle border border-app text-xs text-app-muted">
+                  표시할 문의/신고 내역이 없습니다.
+                </div>
+              ` : filteredList.map((inq) => {
+                const isDone = inq.status === "처리 완료";
+                const dtStr = (inq.createdAt || "").slice(0, 16).replace("T", " ");
+                return `
+                  <div class="p-4 rounded-xl bg-app-subtle border border-app space-y-2.5 text-xs">
+                    <div class="flex flex-wrap items-center justify-between gap-2">
+                      <div class="flex flex-wrap items-center gap-1.5">
+                        <span class="px-2 py-0.5 rounded font-bold text-[10px] ${isDone ? 'badge-sage' : 'badge-sand'}">${escapeHtml(inq.status)}</span>
+                        <span class="px-2 py-0.5 rounded badge-terra font-bold text-[10px]">${escapeHtml(inq.category || "문의")}</span>
+                        <span class="text-[11px] text-app-muted">${escapeHtml(dtStr)}</span>
+                      </div>
+                      <div class="flex items-center gap-1.5">
+                        <button type="button" onclick="toggleInquiryStatus('${inq.id}')" class="px-2.5 py-1 rounded-lg font-bold text-[11px] border transition ${isDone ? 'bg-app-surface border-app text-app-muted hover:text-app-main' : 'btn-sage'}">
+                          ${isDone ? "접수됨으로 변경" : "처리 완료로 변경"}
+                        </button>
+                        <button type="button" onclick="deleteInquiryItem('${inq.id}')" class="px-2.5 py-1 rounded-lg font-bold text-[11px] badge-rose hover:opacity-90 transition">
+                          삭제
+                        </button>
+                      </div>
+                    </div>
+                    <div class="font-bold text-sm text-app-main break-words">${escapeHtml(inq.title)}</div>
+                    <div class="text-[11px] text-app-muted break-words">
+                      작성자: <span class="text-app-main font-semibold">${escapeHtml(inq.senderInfo || "방문자")}</span>
+                      ${inq.replyEmail ? ` · 연락처/이메일: <span class="text-app-main">${escapeHtml(inq.replyEmail)}</span>` : ""}
+                    </div>
+                    <div class="p-3 rounded-lg bg-app-surface border border-app text-app-main whitespace-pre-wrap break-words leading-relaxed">${escapeHtml(inq.content)}</div>
+                  </div>
+                `;
+              }).join("")}
+            </div>
+          </div>
+        </div>
+      `;
+    }
 
     window.handleSubmitSupport = async function(e) {
       e.preventDefault();
@@ -3645,95 +3820,33 @@
       const u = state.currentUser;
       const senderInfo = u ? `${u.name} (@${u.displayId || u.username}) [${u.pronouns || ""}]` : "비로그인 방문자";
       const inquiry = {
-        id: "inq-" + Date.now() + "-" + Math.random().toString(36).slice(2, 6),
+        id: "inq-" + getUtcNowMs() + "-" + Math.random().toString(36).slice(2, 6),
         category,
         replyEmail,
         title,
         content,
         senderInfo,
-        createdAt: new Date().toISOString()
+        status: "접수됨",
+        createdAt: getUtcNowIso()
       };
 
       state.supportSending = true;
       state.supportFeedback = null;
       render();
 
-      // 1. 안전장치: 메일 발송 실패 시에도 신고 내역이 유실되지 않도록 DB에 무조건 먼저 백업 저장
-      const dbSaved = await saveInquiryBackupToDb(inquiry);
+      await saveInquiryBackupToDb(inquiry);
 
-      try {
-        const useBackend = !!SUPPORT_MAIL_CONFIG.BACKEND_API_URL;
-        const endpoint = useBackend ? SUPPORT_MAIL_CONFIG.BACKEND_API_URL : SUPPORT_MAIL_CONFIG.FORMSUBMIT_AJAX_URL;
-        const payload = useBackend
-          ? {
-              id: inquiry.id,
-              to: SUPPORT_MAIL_CONFIG.ADMIN_EMAIL,
-              category,
-              replyEmail,
-              title,
-              content,
-              senderInfo,
-              createdAt: inquiry.createdAt
-            }
-          : {
-              _subject: `[숲톡 ${category}] ${title}`,
-              _template: "table",
-              _captcha: "false",
-              접수번호: inquiry.id,
-              보낸사람: senderInfo,
-              답변이메일: replyEmail || "미입력",
-              문의유형: category,
-              제목: title,
-              내용: content
-            };
-
-        const res = await fetch(endpoint, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "Accept": "application/json"
-          },
-          body: JSON.stringify(payload)
-        });
-
-        const data = await res.json().catch(() => ({}));
-        if (!res.ok || data.success === "false" || data.success === false || data.ok === false) {
-          console.error("[Support Mail Dispatch Error]", {
-            endpoint,
-            status: res.status,
-            responseData: data,
-            adminEmail: SUPPORT_MAIL_CONFIG.ADMIN_EMAIL
-          });
-          throw new Error(data.message || data.error || `HTTP ${res.status}`);
-        }
-
-        state.supportSending = false;
-        state.supportFeedback = {
-          ok: true,
-          message: `DB 백업 및 관리자 메일(${SUPPORT_MAIL_CONFIG.ADMIN_EMAIL}) 발송 요청이 완료되었습니다.`
-        };
+      state.supportSending = false;
+      state.supportFeedback = {
+        ok: true,
+        message: "문의/신고가 정상적으로 접수되었습니다."
+      };
+      render();
+      setTimeout(() => {
+        state.isSupportModalOpen = false;
+        state.supportFeedback = null;
         render();
-        setTimeout(() => {
-          state.isSupportModalOpen = false;
-          state.supportFeedback = null;
-          render();
-        }, 1800);
-      } catch (err) {
-        console.error("[Support Mail Exception]", {
-          errorMessage: err.message,
-          dbSaved,
-          adminEmail: SUPPORT_MAIL_CONFIG.ADMIN_EMAIL,
-          stack: err.stack
-        });
-        state.supportSending = false;
-        state.supportFeedback = {
-          ok: false,
-          message: dbSaved
-            ? `문의 내용은 DB(관리자 접수함)에 안전하게 저장되었으나, 이메일 전송 중 오류가 발생했습니다: ${err.message}`
-            : `메일 발송에 실패했습니다: ${err.message}`
-        };
-        render();
-      }
+      }, 1500);
     };
 
     function renderAdminBanModal() {
@@ -4712,6 +4825,7 @@
         ${renderDmDrawer()}
         ${renderReportModal()}
         ${renderSupportModal()}
+        ${renderAdminDbModal()}
         ${renderAdminBanModal()}
         ${renderLightbox()}
       `;

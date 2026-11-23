@@ -63,9 +63,12 @@ CREATE TABLE IF NOT EXISTS support_inquiries (
   title VARCHAR(255) NOT NULL,
   content TEXT NOT NULL,
   sender_info VARCHAR(255),
-  mail_status VARCHAR(32) NOT NULL DEFAULT 'pending',
+  status VARCHAR(32) NOT NULL DEFAULT '접수됨',
   created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
+
+ALTER TABLE support_inquiries
+  ADD COLUMN IF NOT EXISTS status VARCHAR(32) NOT NULL DEFAULT '접수됨';
 
 -- Query pattern used when loading room history for a specific user:
 -- SELECT m.*

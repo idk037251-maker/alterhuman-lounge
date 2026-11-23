@@ -1,11 +1,7 @@
 import http from "node:http";
-import { Resend } from "resend";
 
 const PORT = Number(process.env.PORT || 3001);
 const ADMIN_EMAIL = (process.env.ADMIN_EMAIL || "idk037251@gmail.com").trim();
-const RESEND_API_KEY = (process.env.RESEND_API_KEY || "").trim();
-// Resend 무료 플랜 테스트 시 반드시 허용된 발신자 주소(onboarding@resend.dev) 사용
-const FROM_EMAIL = (process.env.FROM_EMAIL || "숲톡 <onboarding@resend.dev>").trim();
 const LEGACY_NS = ["alter", "human"].join("");
 const CLOUD_DB_URL = `https://kvdb.io/UJi5qrxjVL5oMcMYSXCvLC/${LEGACY_NS}_cloud_inquiries_v1`;
 const ROOM_MEMBERS_DB_URL = `https://kvdb.io/UJi5qrxjVL5oMcMYSXCvLC/${LEGACY_NS}_cloud_room_members_v1`;
@@ -31,16 +27,46 @@ async function ensureReactionSchemaOnBoot() {
   }
 }
 
-const resend = RESEND_API_KEY ? new Resend(RESEND_API_KEY) : null;
-
 function sendJson(res, status, data) {
   res.writeHead(status, {
     "Content-Type": "application/json; charset=utf-8",
     "Access-Control-Allow-Origin": "*",
-    "Access-Control-Allow-Methods": "POST, GET, DELETE, OPTIONS",
-    "Access-Control-Allow-Headers": "Content-Type, Accept"
+    "Access-Control-Allow-Methods": "POST, GET, PATCH, DELETE, OPTIONS",
+    "Access-Control-Allow-Headers": "Content-Type, Accept, X-Admin-Email, X-Admin-User"
   });
   res.end(JSON.stringify(data));
+}
+
+const SUPER_ADMIN_ALLOWED = new Set(["idk037251@gmail.com", "idk037251", "loon", "우엉김밥"]);
+
+function isSuperAdminAuthorized(req, parsedUrl, body = {}) {
+  const candidates = [
+    req.headers["x-admin-email"],
+    req.headers["x-admin-user"],
+    parsedUrl?.searchParams?.get("adminEmail"),
+    parsedUrl?.searchParams?.get("adminUser"),
+    body?.adminEmail,
+    body?.adminUser
+  ]
+    .filter(Boolean)
+    .map((v) => String(v).trim().toLowerCase());
+  return candidates.some((c) => SUPER_ADMIN_ALLOWED.has(c));
+}
+
+async function getInquiriesFromDb() {
+  const getRes = await fetch(`${CLOUD_DB_URL}?_t=${Date.now()}`, { cache: "no-store" });
+  if (!getRes.ok) return [];
+  const parsed = await getRes.json().catch(() => []);
+  return Array.isArray(parsed) ? parsed : [];
+}
+
+async function saveInquiriesToDb(list) {
+  const putRes = await fetch(CLOUD_DB_URL, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(list)
+  });
+  return putRes.ok;
 }
 
 function readJsonBody(req) {
@@ -120,44 +146,6 @@ async function backupInquiryToDb(inquiry) {
   }
 }
 
-async function sendViaResendSdk(inquiry) {
-  if (!RESEND_API_KEY || !resend) {
-    const err = new Error("RESEND_API_KEY 환경변수가 설정되지 않았습니다.");
-    err.code = "MISSING_ENV_RESEND_API_KEY";
-    throw err;
-  }
-
-  const textBody = [
-    `[숲톡 비공개 문의/신고]`,
-    `- 접수 번호: ${inquiry.id}`,
-    `- 접수 시각: ${inquiry.createdAt}`,
-    `- 문의 유형: ${inquiry.category}`,
-    `- 보낸 사용자: ${inquiry.senderInfo}`,
-    `- 답변 이메일: ${inquiry.replyEmail || "미입력"}`,
-    `- 제목: ${inquiry.title}`,
-    ``,
-    `[상세 내용]`,
-    inquiry.content
-  ].join("\n");
-
-  const { data, error } = await resend.emails.send({
-    from: FROM_EMAIL,
-    to: [ADMIN_EMAIL],
-    ...(inquiry.replyEmail ? { replyTo: inquiry.replyEmail } : {}),
-    subject: `[숲톡 ${inquiry.category}] ${inquiry.title}`,
-    text: textBody
-  });
-
-  if (error) {
-    const sdkErr = new Error(error.message || "Resend SDK 발송 실패");
-    sdkErr.name = error.name || "ResendError";
-    sdkErr.statusCode = error.statusCode;
-    throw sdkErr;
-  }
-
-  return data;
-}
-
 const server = http.createServer((req, res) => {
   if (req.method === "OPTIONS") {
     return sendJson(res, 200, { ok: true });
@@ -167,8 +155,7 @@ const server = http.createServer((req, res) => {
     return sendJson(res, 200, {
       ok: true,
       adminEmail: ADMIN_EMAIL,
-      fromEmail: FROM_EMAIL,
-      resendConfigured: !!RESEND_API_KEY,
+      mode: "db-only-inbox",
       serverTimeMs: Date.now(),
       serverUtc: new Date().toISOString()
     });
@@ -394,15 +381,57 @@ const server = http.createServer((req, res) => {
     return;
   }
 
-  if (req.method === "POST" && req.url === "/api/support") {
-    let raw = "";
-    req.on("data", (chunk) => {
-      raw += chunk;
-      if (raw.length > 100000) req.destroy();
-    });
-    req.on("end", async () => {
+  // 최고 관리자(idk037251@gmail.com) 전용 DB 저장소 조회/상태변경/삭제 API (비권한 접근 시 403 Forbidden)
+  if (req.method === "GET" && parsedUrl.pathname === "/api/admin/inquiries") {
+    if (!isSuperAdminAuthorized(req, parsedUrl)) {
+      return sendJson(res, 403, { ok: false, error: "403 Forbidden: 최고 관리자(idk037251@gmail.com) 권한이 필요합니다." });
+    }
+    (async () => {
       try {
-        const body = JSON.parse(raw || "{}");
+        const list = await getInquiriesFromDb();
+        const sorted = list
+          .filter((x) => x && x.id)
+          .map((x) => ({ ...x, status: x.status === "처리 완료" ? "처리 완료" : "접수됨" }))
+          .sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime());
+        return sendJson(res, 200, { ok: true, inquiries: sorted });
+      } catch (err) {
+        return sendJson(res, 500, { ok: false, error: err.message });
+      }
+    })();
+    return;
+  }
+
+  const adminInqMatch = parsedUrl.pathname.match(/^\/api\/admin\/inquiries\/([^/]+)$/);
+  if (adminInqMatch && (req.method === "PATCH" || req.method === "DELETE")) {
+    const targetId = decodeURIComponent(adminInqMatch[1]);
+    readJsonBody(req)
+      .then(async (body) => {
+        if (!isSuperAdminAuthorized(req, parsedUrl, body)) {
+          return sendJson(res, 403, { ok: false, error: "403 Forbidden: 최고 관리자(idk037251@gmail.com) 권한이 필요합니다." });
+        }
+        const list = await getInquiriesFromDb();
+        if (req.method === "DELETE") {
+          const filtered = list.filter((x) => x && String(x.id) !== String(targetId));
+          await saveInquiriesToDb(filtered);
+          return sendJson(res, 200, { ok: true, deletedId: targetId, inquiries: filtered });
+        }
+        const updated = list.map((x) => {
+          if (x && String(x.id) === String(targetId)) {
+            const nextStatus = body.status || (x.status === "처리 완료" ? "접수됨" : "처리 완료");
+            return { ...x, status: nextStatus, updatedAt: new Date().toISOString() };
+          }
+          return x;
+        });
+        await saveInquiriesToDb(updated);
+        return sendJson(res, 200, { ok: true, id: targetId, inquiries: updated });
+      })
+      .catch((err) => sendJson(res, 500, { ok: false, error: err.message }));
+    return;
+  }
+
+  if (req.method === "POST" && parsedUrl.pathname === "/api/support") {
+    readJsonBody(req)
+      .then(async (body) => {
         const title = String(body.title || "").trim();
         const content = String(body.content || "").trim();
         if (!title || !content) {
@@ -417,40 +446,25 @@ const server = http.createServer((req, res) => {
           content,
           senderInfo: String(body.senderInfo || "방문자"),
           createdAt: body.createdAt || new Date().toISOString(),
-          mailStatus: "pending"
+          status: body.status === "처리 완료" ? "처리 완료" : "접수됨"
         };
 
-        // 1. 안전장치: 메일 발송 전에 DB 백업을 무조건 먼저 실행
+        // 외부 이메일 발송 없이 오직 DB(관리자 접수함)에만 안전하게 영구 저장
         const dbSaved = await backupInquiryToDb(inquiry);
-
-        // 2. Resend SDK(HTTPS 포트 443)로 실제 메일 발송
-        const mailResult = await sendViaResendSdk(inquiry);
-        console.log(`[Support Mail Sent] id=${mailResult?.id} to=${ADMIN_EMAIL} inquiryId=${inquiry.id}`);
-
         return sendJson(res, 200, {
           ok: true,
-          id: mailResult?.id,
           inquiryId: inquiry.id,
-          dbSaved
+          dbSaved,
+          message: "문의/신고가 정상적으로 접수되었습니다."
         });
-      } catch (err) {
-        // 실패 시 정확한 원인(인증 실패, 환경변수 누락, 도메인 제한 등)을 서버 로그에 상세 출력
-        console.error("[Support Mail Error]", {
-          code: err.code || err.name || "UNKNOWN_ERROR",
-          statusCode: err.statusCode || null,
-          message: err.message,
-          adminEmail: ADMIN_EMAIL,
-          fromEmail: FROM_EMAIL,
-          hasResendKey: !!RESEND_API_KEY,
-          stack: err.stack
-        });
+      })
+      .catch((err) => {
+        console.error("[Support DB Save Error]", err);
         return sendJson(res, 500, {
           ok: false,
-          error: err.message || "메일 발송 중 서버 오류가 발생했습니다.",
-          code: err.code || err.name || "MAIL_SEND_FAILED"
+          error: "문의/신고 DB 저장 중 오류가 발생했습니다."
         });
-      }
-    });
+      });
     return;
   }
 
@@ -459,6 +473,6 @@ const server = http.createServer((req, res) => {
 
 server.listen(PORT, () => {
   console.log(`[숲톡 Server] Listening on port ${PORT}`);
-  console.log(`[숲톡 Server] Recipient: ${ADMIN_EMAIL}, From: ${FROM_EMAIL}, Resend Key: ${RESEND_API_KEY ? "SET" : "MISSING"}`);
+  console.log(`[숲톡 Server] Super Admin DB Inbox: ${ADMIN_EMAIL}`);
   ensureReactionSchemaOnBoot();
 });
