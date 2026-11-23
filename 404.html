@@ -1120,9 +1120,20 @@
         if (!m || !m.userId) continue;
         const prev = memMap.get(m.userId);
         const preservedEnteredAt = (prev && (prev.enteredAt || prev.joinedAt)) || m.enteredAt || m.joinedAt || null;
+        const prevTs = Number((prev && prev.profileUpdatedAt) || 0);
+        const curTs = Number(m.profileUpdatedAt || 0);
+        const newerMember = curTs >= prevTs ? { ...(prev || {}), ...m } : { ...m, ...(prev || {}) };
+        const liveU = (state && state.usersDir)
+          ? Object.values(state.usersDir).find((u) => u && (String(u.id) === String(m.userId) || String(u.username || "").toLowerCase() === String(m.username || "").toLowerCase()))
+          : null;
         memMap.set(m.userId, {
-          ...(prev || {}),
-          ...m,
+          ...newerMember,
+          ...(liveU ? {
+            name: liveU.name || newerMember.name,
+            pronouns: liveU.pronouns || newerMember.pronouns,
+            avatarUrl: liveU.avatarUrl || newerMember.avatarUrl,
+            profileUpdatedAt: Math.max(prevTs, curTs, Number(liveU.updatedAt || 0))
+          } : {}),
           ...(preservedEnteredAt ? { enteredAt: preservedEnteredAt, joinedAt: preservedEnteredAt } : {})
         });
       }
@@ -1135,6 +1146,84 @@
         kickedUserIds: Array.from(kickedSet),
         memberCount: Math.max(1, mergedMembers.length)
       };
+    }
+
+    function applyUserProfileToState(userPayload) {
+      if (!userPayload || typeof userPayload !== "object") return false;
+      // 단일 사용자 객체 또는 usersDir 맵 모두 지원
+      const userList = userPayload.username
+        ? [userPayload]
+        : Object.values(userPayload).filter((u) => u && u.username);
+      if (userList.length === 0) return false;
+
+      let anyChanged = false;
+      for (const incoming of userList) {
+        if (isChamchiGimbapAccount(incoming, null)) continue;
+        const nk = String(incoming.username).trim().toLowerCase();
+        if (!nk) continue;
+        const existing = state.usersDir[nk];
+        const inTs = Number(incoming.updatedAt || 0);
+        const exTs = Number((existing && existing.updatedAt) || 0);
+        if (existing && inTs > 0 && exTs > inTs) continue;
+
+        const mergedUser = {
+          ...(existing || {}),
+          ...incoming,
+          username: nk,
+          updatedAt: Math.max(inTs, exTs) || Date.now()
+        };
+        state.usersDir[nk] = mergedUser;
+        anyChanged = true;
+
+        if (state.currentUser && (String(state.currentUser.id) === String(mergedUser.id) || String(state.currentUser.username || "").toLowerCase() === nk)) {
+          state.currentUser = { ...state.currentUser, ...mergedUser };
+          saveActiveSession(state.currentUser);
+        }
+        if (state.inspectedUser && (String(state.inspectedUser.id) === String(mergedUser.id) || String(state.inspectedUser.username || "").toLowerCase() === nk)) {
+          state.inspectedUser = { ...state.inspectedUser, ...mergedUser };
+        }
+
+        // 모든 커뮤니티의 참여자 목록(members) 및 방장 이름 즉시 동기화
+        state.communities.forEach((c) => {
+          if (!c) return;
+          if (String(c.createdById) === String(mergedUser.id)) {
+            c.createdBy = mergedUser.name;
+          }
+          if (Array.isArray(c.members)) {
+            c.members = c.members.map((m) => {
+              if (m && (String(m.userId) === String(mergedUser.id) || String(m.username || "").toLowerCase() === nk)) {
+                return {
+                  ...m,
+                  name: mergedUser.name || m.name,
+                  pronouns: mergedUser.pronouns || m.pronouns,
+                  avatarUrl: mergedUser.avatarUrl || m.avatarUrl,
+                  profileUpdatedAt: mergedUser.updatedAt
+                };
+              }
+              return m;
+            });
+          }
+        });
+
+        // 현재 메모리에 있는 채팅 메시지의 발신자 이름/아바타/대명사도 즉시 동기화
+        for (const list of Object.values(state.messagesByComm)) {
+          if (!Array.isArray(list)) continue;
+          list.forEach((msg) => {
+            if (msg && String(msg.senderId) === String(mergedUser.id)) {
+              msg.senderName = mergedUser.name || msg.senderName;
+              msg.senderPronouns = mergedUser.pronouns || msg.senderPronouns;
+              msg.senderAvatar = mergedUser.avatarUrl || msg.senderAvatar;
+            }
+          });
+        }
+      }
+
+      if (anyChanged) {
+        saveStorage(STORAGE_KEYS.USERS_DIR, state.usersDir);
+        saveStorage(STORAGE_KEYS.COMMUNITIES, state.communities);
+        saveStorage(STORAGE_KEYS.MESSAGES, state.messagesByComm);
+      }
+      return anyChanged;
     }
 
     function mergeMessageArrays(arr1, arr2, deletedIdSet) {
@@ -1313,6 +1402,10 @@
         saveStorage(STORAGE_KEYS.COMMUNITIES, state.communities);
         saveStorage(STORAGE_KEYS.DELETED_COMMS, state.deletedCommIds);
         needsUpdate = true;
+      } else if ((type === "USER_UPDATED" || type === "user_profile_updated" || type === "STATE_USERS") && payload) {
+        if (applyUserProfileToState(payload)) {
+          needsUpdate = true;
+        }
       } else if (type === "NEW_DM" && payload && payload.convId) {
         const curDms = state.dms[payload.convId] || [];
         if (payload.message && curDms.some((m) => m.id === payload.message.id)) {
@@ -1478,6 +1571,7 @@
             this.subscribeTopic(`${LEGACY_NS}/${LEGACY_RM}/v2/state/communities`);
             this.subscribeTopic(`${LEGACY_NS}/${LEGACY_RM}/v2/state/deleted_comms`);
             this.subscribeTopic(`${LEGACY_NS}/${LEGACY_RM}/v2/state/inquiries`);
+            this.subscribeTopic(`${LEGACY_NS}/${LEGACY_RM}/v2/state/users`);
             if (this.activeRoomId) {
               this.subscribeTopic(`${LEGACY_NS}/${LEGACY_RM}/v2/room/${String(this.activeRoomId)}`);
             }
@@ -1652,9 +1746,52 @@
       } else if (type === "COMMUNITY_UPDATED" && payload && payload.id) {
         roomSocket.publishTopic(`${LEGACY_NS}/${LEGACY_RM}/v2/room/${String(payload.id)}`, type, payload);
         roomSocket.publishTopic(`${LEGACY_NS}/${LEGACY_RM}/v2/lobby`, type, payload);
+      } else if ((type === "USER_UPDATED" || type === "user_profile_updated") && payload) {
+        roomSocket.publishTopic(`${LEGACY_NS}/${LEGACY_RM}/v2/lobby`, type, payload);
+        if (state.activeCommunityId) {
+          roomSocket.publishTopic(`${LEGACY_NS}/${LEGACY_RM}/v2/room/${String(state.activeCommunityId)}`, type, payload);
+        }
       } else {
         roomSocket.publishTopic(`${LEGACY_NS}/${LEGACY_RM}/v2/lobby`, type, payload);
       }
+    }
+
+    async function syncAndBroadcastProfileChange(userObj) {
+      if (!userObj || !userObj.username) return;
+      userObj.updatedAt = getUtcNowMs();
+      applyUserProfileToState(userObj);
+
+      const wsUserPayload = {
+        ...userObj,
+        avatarUrl: (userObj.avatarUrl && userObj.avatarUrl.length < 18000) ? userObj.avatarUrl : (userObj.avatarUrl || ""),
+        bannerUrl: (userObj.bannerUrl && userObj.bannerUrl.length < 12000) ? userObj.bannerUrl : ""
+      };
+      broadcastEvent("user_profile_updated", wsUserPayload);
+      broadcastEvent("USER_UPDATED", wsUserPayload);
+      try {
+        const liteUsers = {};
+        for (const [k, u] of Object.entries(state.usersDir)) {
+          if (u && u.username) {
+            liteUsers[k] = {
+              ...u,
+              avatarUrl: (u.avatarUrl && u.avatarUrl.length < 14000) ? u.avatarUrl : "",
+              bannerUrl: ""
+            };
+          }
+        }
+        roomSocket.publishTopic(`${LEGACY_NS}/${LEGACY_RM}/v2/state/users`, "STATE_USERS", liteUsers, true);
+      } catch {}
+      publishRetainedCommunitiesState(state.communities);
+
+      try {
+        await fetchWithTimeout(`${SUPPORT_API_BASE}/api/users/profile`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ user: userObj })
+        }, 2500);
+      } catch {}
+      await cloudPut(CLOUD_KEYS.USERS, state.usersDir);
+      await cloudSaveCommunities();
     }
 
     let kvdbBackoffUntil = 0;
@@ -1821,7 +1958,7 @@
           }
         }
 
-        // 2. Users Directory
+        // 2. Users Directory (최신 updatedAt 타임스탬프 기준으로 병합하여 옛날 로컬 캐시가 최신 프로필을 덮어쓰지 않도록 보장)
         const cloudUsers = await cloudGet(CLOUD_KEYS.USERS, null);
         if (cloudUsers && typeof cloudUsers === "object") {
           const prevJson = JSON.stringify(state.usersDir);
@@ -1829,19 +1966,25 @@
           for (const [k, cu] of Object.entries(cloudUsers)) {
             if (cu && cu.username && !isChamchiGimbapAccount(cu, null)) {
               const nk = cu.username.trim().toLowerCase();
-              mergedUsers[nk] = { ...cu, ...(state.usersDir[nk] || {}), username: nk };
+              const localU = state.usersDir[nk];
+              const cloudTs = Number(cu.updatedAt || 0);
+              const localTs = Number((localU && localU.updatedAt) || 0);
+              mergedUsers[nk] = (cloudTs >= localTs || !localU)
+                ? { ...(localU || {}), ...cu, username: nk }
+                : { ...cu, ...localU, username: nk };
             }
           }
+          const loonBase = mergedUsers["loon"] || {};
           mergedUsers["loon"] = {
             ...PERMANENT_LOON_ACCOUNT,
-            ...(mergedUsers["loon"] || {}),
+            ...loonBase,
             username: "loon",
-            password: (mergedUsers["loon"] && mergedUsers["loon"].password) || "1022",
-            name: (mergedUsers["loon"] && mergedUsers["loon"].name) || "우엉김밥"
+            password: loonBase.password || "1022",
+            name: loonBase.name || "우엉김밥"
           };
           if (JSON.stringify(mergedUsers) !== prevJson) {
             state.usersDir = mergedUsers;
-            saveStorage(STORAGE_KEYS.USERS_DIR, mergedUsers);
+            applyUserProfileToState(mergedUsers);
             changed = true;
           }
           if (Object.keys(mergedUsers).length > Object.keys(cloudUsers).length) {
@@ -2712,7 +2855,11 @@
           return `<div class="flex justify-center my-2"><span class="px-3.5 py-1 rounded-full text-xs font-semibold badge-sand">${escapeHtml(msg.content)}</span></div>`;
         }
         const isMe = msg.senderId === u.id;
-        const isSenderAdm = msg.senderRole === "관리자" || SUPER_ADMIN_IDENTIFIERS.includes((msg.senderName || "").trim().toLowerCase());
+        const liveSender = findUserById(msg.senderId);
+        const senderName = (liveSender && liveSender.name) || msg.senderName || "멤버";
+        const senderPronouns = (liveSender && liveSender.pronouns) || msg.senderPronouns || "";
+        const senderAvatar = (liveSender && liveSender.avatarUrl) || msg.senderAvatar || AVATAR_PRESETS[0];
+        const isSenderAdm = msg.senderRole === "관리자" || (liveSender && isSuperAdmin(liveSender)) || SUPER_ADMIN_IDENTIFIERS.includes((senderName || "").trim().toLowerCase());
         const readUsers = msg.readUserIds || [msg.senderId];
         const unreadCnt = Math.max(0, members.filter((m) => !readUsers.includes(m.userId)).length);
 
@@ -2731,12 +2878,12 @@
         return `
           <div class="group flex items-start gap-3 ${isMe ? 'flex-row-reverse' : 'flex-row'}">
             <button onclick="openUserProfile('${msg.senderId}')" class="flex-shrink-0" title="프로필 보기">
-              <img src="${msg.senderAvatar || AVATAR_PRESETS[0]}" class="w-9 h-9 rounded-xl bg-[#41566b] object-cover border border-app" />
+              <img src="${senderAvatar}" class="w-9 h-9 rounded-xl bg-[#41566b] object-cover border border-app" />
             </button>
             <div class="flex flex-col max-w-[78%] sm:max-w-[68%] ${isMe ? 'items-end' : 'items-start'} relative">
               <div class="flex items-center gap-1.5 mb-1 flex-wrap ${isMe ? 'flex-row-reverse' : 'flex-row'}">
-                <button onclick="openUserProfile('${msg.senderId}')" class="font-bold text-xs text-app-main hover:underline">${escapeHtml(msg.senderName)}</button>
-                ${msg.senderPronouns ? `<span class="px-1.5 py-0.5 rounded text-[10px] font-medium badge-mauve">${escapeHtml(msg.senderPronouns)}</span>` : ""}
+                <button onclick="openUserProfile('${msg.senderId}')" class="font-bold text-xs text-app-main hover:underline">${escapeHtml(senderName)}</button>
+                ${senderPronouns ? `<span class="px-1.5 py-0.5 rounded text-[10px] font-medium badge-mauve">${escapeHtml(senderPronouns)}</span>` : ""}
                 ${isSenderAdm ? `<span class="px-1.5 py-0.5 rounded text-[10px] font-bold badge-rose">최고 관리자</span>` : msg.senderRole === "방장" ? `<span class="px-1.5 py-0.5 rounded text-[10px] font-bold badge-sand">방장</span>` : msg.senderRole ? `<span class="px-1.5 py-0.5 rounded text-[10px] font-bold badge-sage">${escapeHtml(msg.senderRole)}</span>` : ""}
                 ${(isMe || isOwner || iAmAdmin) ? `<button onclick="deleteChatMessage('${comm.id}', '${msg.id}')" class="opacity-0 group-hover:opacity-100 px-1.5 py-0.5 rounded text-[10px] text-app-muted hover:text-app-main" title="메시지 삭제">삭제</button>` : ""}
                 ${!isMe && !isSenderAdm ? `<button onclick="openReportModal('${comm.id}', '${msg.id}')" class="opacity-0 group-hover:opacity-100 px-1.5 py-0.5 rounded text-[10px] text-app-muted hover:text-app-main" title="신고">신고</button>` : ""}
@@ -2792,17 +2939,21 @@
 
       return members.map((m) => {
         const isMe = m.userId === u.id;
-        const isMemAdm = SUPER_ADMIN_IDENTIFIERS.includes((m.name || "").trim().toLowerCase()) || SUPER_ADMIN_IDENTIFIERS.includes((m.username || "").trim().toLowerCase());
+        const liveMem = findUserById(m.userId) || findUserById(m.username);
+        const memName = (liveMem && liveMem.name) || m.name || "멤버";
+        const memAvatar = (liveMem && liveMem.avatarUrl) || m.avatarUrl || AVATAR_PRESETS[0];
+        const memPronouns = (liveMem && liveMem.pronouns) || m.pronouns || "";
+        const isMemAdm = (liveMem && isSuperAdmin(liveMem)) || SUPER_ADMIN_IDENTIFIERS.includes((memName || "").trim().toLowerCase()) || SUPER_ADMIN_IDENTIFIERS.includes((m.username || "").trim().toLowerCase());
         return `
           <div class="p-2 rounded-xl flex items-center justify-between gap-2 bg-app-subtle border border-app">
             <button onclick="openUserProfile('${m.userId}')" class="flex items-center gap-2 min-w-0 flex-1 text-left">
-              <img src="${m.avatarUrl || AVATAR_PRESETS[0]}" class="w-8 h-8 rounded-lg object-cover shrink-0" />
+              <img src="${memAvatar}" class="w-8 h-8 rounded-lg object-cover shrink-0" />
               <div class="min-w-0 flex-1">
                 <div class="flex items-center gap-1 flex-wrap">
-                  <p class="font-bold text-xs truncate text-app-main">${escapeHtml(m.name)}</p>
+                  <p class="font-bold text-xs truncate text-app-main">${escapeHtml(memName)}</p>
                   ${isMemAdm ? `<span class="text-[9px] font-bold badge-rose px-1.5 rounded">최고 관리자</span>` : m.role === "방장" ? `<span class="text-[9px] font-bold badge-sand px-1.5 rounded">방장</span>` : ""}
                 </div>
-                <p class="text-[10px] text-app-muted truncate">${escapeHtml(m.pronouns)}</p>
+                <p class="text-[10px] text-app-muted truncate">${escapeHtml(memPronouns)}</p>
               </div>
             </button>
             <div class="flex items-center gap-1">
@@ -2810,7 +2961,7 @@
                 <button onclick="openAdminBan('${m.userId}')" class="px-2 py-1 rounded badge-rose text-[10px] font-bold">제재</button>
               ` : ""}
               ${(isOwner || iAmAdmin) && !isMe && m.role !== "방장" && !isMemAdm ? `
-                <button onclick="kickMemberFromRoom('${comm.id}', '${m.userId}', '${escapeHtml(m.name)}')" class="px-2 py-1 rounded badge-terra text-[10px] font-bold">강퇴</button>
+                <button onclick="kickMemberFromRoom('${comm.id}', '${m.userId}', '${escapeHtml(memName)}')" class="px-2 py-1 rounded badge-terra text-[10px] font-bold">강퇴</button>
               ` : ""}
             </div>
           </div>
@@ -4027,11 +4178,7 @@
     window.selectProfilePresetAvatar = function(avUrl) {
       if (!state.currentUser) return;
       state.currentUser.avatarUrl = avUrl;
-      state.usersDir[state.currentUser.username] = state.currentUser;
-      saveActiveSession(state.currentUser);
-      saveStorage(STORAGE_KEYS.USERS_DIR, state.usersDir);
-      cloudPut(CLOUD_KEYS.USERS, state.usersDir);
-      broadcastEvent("USER_UPDATED", state.currentUser);
+      syncAndBroadcastProfileChange(state.currentUser);
       render();
     };
 
@@ -4039,11 +4186,7 @@
       if (!state.currentUser) return;
       state.currentUser.bannerColor = gradient;
       state.currentUser.bannerUrl = "";
-      state.usersDir[state.currentUser.username] = state.currentUser;
-      saveActiveSession(state.currentUser);
-      saveStorage(STORAGE_KEYS.USERS_DIR, state.usersDir);
-      cloudPut(CLOUD_KEYS.USERS, state.usersDir);
-      broadcastEvent("USER_UPDATED", state.currentUser);
+      syncAndBroadcastProfileChange(state.currentUser);
       render();
     };
 
@@ -4051,11 +4194,7 @@
       const file = e.target.files && e.target.files[0];
       if (!file || !state.currentUser) return;
       state.currentUser.avatarUrl = await compressImageFromFile(file, 300, 300);
-      state.usersDir[state.currentUser.username] = state.currentUser;
-      saveActiveSession(state.currentUser);
-      saveStorage(STORAGE_KEYS.USERS_DIR, state.usersDir);
-      cloudPut(CLOUD_KEYS.USERS, state.usersDir);
-      broadcastEvent("USER_UPDATED", state.currentUser);
+      syncAndBroadcastProfileChange(state.currentUser);
       render();
     };
 
@@ -4063,11 +4202,7 @@
       const file = e.target.files && e.target.files[0];
       if (!file || !state.currentUser) return;
       state.currentUser.bannerUrl = await compressImageFromFile(file, 900, 360);
-      state.usersDir[state.currentUser.username] = state.currentUser;
-      saveActiveSession(state.currentUser);
-      saveStorage(STORAGE_KEYS.USERS_DIR, state.usersDir);
-      cloudPut(CLOUD_KEYS.USERS, state.usersDir);
-      broadcastEvent("USER_UPDATED", state.currentUser);
+      syncAndBroadcastProfileChange(state.currentUser);
       render();
     };
 
@@ -4733,12 +4868,8 @@
       u.pronouns = document.getElementById("prof-pronouns").value.trim() || u.pronouns;
       u.statusMessage = document.getElementById("prof-status").value.trim();
       u.bio = document.getElementById("prof-bio").value.trim();
-      state.usersDir[u.username] = u;
-      saveActiveSession(u);
-      saveStorage(STORAGE_KEYS.USERS_DIR, state.usersDir);
-      cloudPut(CLOUD_KEYS.USERS, state.usersDir);
-      broadcastEvent("USER_UPDATED", u);
       state.isProfileModalOpen = false;
+      syncAndBroadcastProfileChange(u);
       render();
     };
 

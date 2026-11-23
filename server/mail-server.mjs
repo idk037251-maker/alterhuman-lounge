@@ -3,7 +3,9 @@ import http from "node:http";
 const PORT = Number(process.env.PORT || 3001);
 const ADMIN_EMAIL = (process.env.ADMIN_EMAIL || "idk037251@gmail.com").trim();
 const LEGACY_NS = ["alter", "human"].join("");
+const LEGACY_RM = ["lou", "nge"].join("");
 const CLOUD_DB_URL = `https://kvdb.io/UJi5qrxjVL5oMcMYSXCvLC/${LEGACY_NS}_cloud_inquiries_v1`;
+const USERS_DB_URL = `https://kvdb.io/UJi5qrxjVL5oMcMYSXCvLC/${LEGACY_NS}_${LEGACY_RM}_users_v2`;
 const ROOM_MEMBERS_DB_URL = `https://kvdb.io/UJi5qrxjVL5oMcMYSXCvLC/${LEGACY_NS}_cloud_room_members_v1`;
 const ROOM_MSG_DB_PREFIX = `https://kvdb.io/UJi5qrxjVL5oMcMYSXCvLC/${LEGACY_NS}_room_msgs_`;
 const COMMUNITIES_DB_URL = `https://kvdb.io/UJi5qrxjVL5oMcMYSXCvLC/${LEGACY_NS}_cloud_communities_v1`;
@@ -163,25 +165,113 @@ const server = http.createServer((req, res) => {
 
   const parsedUrl = new URL(req.url || "/", `http://${req.headers.host || "localhost"}`);
 
-  // 공용 커뮤니티 목록 조회 (모든 계정에 동일한 전체 공개 커뮤니티 반환)
+  // 공용 커뮤니티 목록 조회 (참여자 목록 조회 시 최신 사용자(User) DB 실시간 조인/참조)
   if (req.method === "GET" && parsedUrl.pathname === "/api/communities") {
     (async () => {
       try {
-        const [commsRes, delRes] = await Promise.all([
+        const [commsRes, delRes, usersRes] = await Promise.all([
           fetch(`${COMMUNITIES_DB_URL}?_t=${Date.now()}`, { cache: "no-store" }),
-          fetch(`${DELETED_COMMS_DB_URL}?_t=${Date.now()}`, { cache: "no-store" })
+          fetch(`${DELETED_COMMS_DB_URL}?_t=${Date.now()}`, { cache: "no-store" }),
+          fetch(`${USERS_DB_URL}?_t=${Date.now()}`, { cache: "no-store" })
         ]);
         const rawComms = commsRes.ok ? await commsRes.json().catch(() => []) : [];
         const rawDeleted = delRes.ok ? await delRes.json().catch(() => []) : [];
+        const rawUsers = usersRes.ok ? await usersRes.json().catch(() => ({})) : {};
+        const usersById = new Map();
+        if (rawUsers && typeof rawUsers === "object") {
+          for (const u of Object.values(rawUsers)) {
+            if (u && u.id) usersById.set(String(u.id), u);
+            if (u && u.username) usersById.set(String(u.username).toLowerCase(), u);
+          }
+        }
         const deletedSet = new Set((Array.isArray(rawDeleted) ? rawDeleted : []).map(String));
-        const communities = (Array.isArray(rawComms) ? rawComms : []).filter(
-          (c) => c && c.id && !deletedSet.has(String(c.id))
-        );
+        const communities = (Array.isArray(rawComms) ? rawComms : [])
+          .filter((c) => c && c.id && !deletedSet.has(String(c.id)))
+          .map((c) => ({
+            ...c,
+            members: (Array.isArray(c.members) ? c.members : []).map((m) => {
+              const liveU = usersById.get(String(m.userId)) || usersById.get(String(m.username || "").toLowerCase());
+              return liveU
+                ? {
+                    ...m,
+                    name: liveU.name || m.name,
+                    pronouns: liveU.pronouns || m.pronouns,
+                    avatarUrl: liveU.avatarUrl || m.avatarUrl
+                  }
+                : m;
+            })
+          }));
         return sendJson(res, 200, { ok: true, communities });
       } catch (err) {
         return sendJson(res, 500, { ok: false, error: err.message });
       }
     })();
+    return;
+  }
+
+  // 사용자 프로필 수정 및 전체 커뮤니티 참여자 스냅샷 실시간 동기화 API
+  if (req.method === "POST" && parsedUrl.pathname === "/api/users/profile") {
+    readJsonBody(req)
+      .then(async (body) => {
+        const user = body && body.user ? body.user : body;
+        if (!user || !user.username) {
+          return sendJson(res, 400, { ok: false, error: "사용자 정보가 필요합니다." });
+        }
+        const nk = String(user.username).trim().toLowerCase();
+        const updatedUser = { ...user, username: nk, updatedAt: Number(user.updatedAt || Date.now()) };
+
+        const usersRes = await fetch(`${USERS_DB_URL}?_t=${Date.now()}`, { cache: "no-store" });
+        const rawUsers = usersRes.ok ? await usersRes.json().catch(() => ({})) : {};
+        const nextUsers = (rawUsers && typeof rawUsers === "object") ? { ...rawUsers, [nk]: updatedUser } : { [nk]: updatedUser };
+        await fetch(USERS_DB_URL, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(nextUsers)
+        });
+
+        // 커뮤니티 참여자 목록(members) 내 스냅샷도 최신 프로필로 즉시 동기화
+        const commsRes = await fetch(`${COMMUNITIES_DB_URL}?_t=${Date.now()}`, { cache: "no-store" });
+        const rawComms = commsRes.ok ? await commsRes.json().catch(() => []) : [];
+        if (Array.isArray(rawComms) && rawComms.length > 0) {
+          let commsChanged = false;
+          const nextComms = rawComms.map((c) => {
+            if (!c) return c;
+            let memberUpdated = false;
+            const nextMembers = (Array.isArray(c.members) ? c.members : []).map((m) => {
+              if (m && (String(m.userId) === String(updatedUser.id) || String(m.username || "").toLowerCase() === nk)) {
+                memberUpdated = true;
+                return {
+                  ...m,
+                  name: updatedUser.name || m.name,
+                  pronouns: updatedUser.pronouns || m.pronouns,
+                  avatarUrl: updatedUser.avatarUrl || m.avatarUrl,
+                  profileUpdatedAt: updatedUser.updatedAt
+                };
+              }
+              return m;
+            });
+            if (memberUpdated || String(c.createdById) === String(updatedUser.id)) {
+              commsChanged = true;
+              return {
+                ...c,
+                ...(String(c.createdById) === String(updatedUser.id) ? { createdBy: updatedUser.name } : {}),
+                members: nextMembers
+              };
+            }
+            return c;
+          });
+          if (commsChanged) {
+            await fetch(COMMUNITIES_DB_URL, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify(nextComms)
+            });
+          }
+        }
+
+        return sendJson(res, 200, { ok: true, user: updatedUser });
+      })
+      .catch((err) => sendJson(res, 500, { ok: false, error: err.message }));
     return;
   }
 
