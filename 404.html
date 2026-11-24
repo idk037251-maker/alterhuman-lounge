@@ -2293,11 +2293,11 @@
                 <div class="text-xs font-bold text-[#ced9e6] uppercase tracking-wider mb-2">
                   실시간 프로필 미리보기
                 </div>
-                <div class="rounded-2xl overflow-hidden bg-[#1d222b] border border-white/15 shadow-md">
-                  <div class="h-20 w-full bg-cover bg-center" style="background: ${state.signupBannerUrl ? `url(${state.signupBannerUrl}) center/cover no-repeat` : state.signupBannerColor}"></div>
-                  <div class="px-5 pb-5 pt-0 relative">
-                    <div class="relative -mt-8 mb-2.5 inline-block">
-                      <img src="${state.signupAvatar}" class="w-16 h-16 rounded-xl border-4 border-[#1d222b] bg-[#334457] object-cover" />
+                <div class="rounded-2xl bg-[#1d222b] border border-white/15 shadow-md">
+                  <div class="h-20 w-full rounded-t-2xl relative z-0 bg-cover bg-center" style="background: ${state.signupBannerUrl ? `url(${state.signupBannerUrl}) center/cover no-repeat` : state.signupBannerColor}"></div>
+                  <div class="px-5 pb-5 pt-0 relative z-10">
+                    <div class="relative z-10 -mt-8 mb-2.5 inline-block">
+                      <img src="${state.signupAvatar}" class="w-16 h-16 aspect-square rounded-xl border-4 border-[#1d222b] bg-[#334457] object-cover block shadow-md" />
                     </div>
                     <div class="flex flex-wrap items-center gap-1.5">
                       <h3 id="signup-preview-name" class="font-bold text-base text-white">${escapeHtml(state.signupName || state.signupUsername || "내 이름")}</h3>
@@ -3278,13 +3278,13 @@
             </div>
 
             <div class="p-4">
-              <div class="rounded-xl overflow-hidden bg-app-subtle border border-app">
-                <div class="h-20 w-full relative" style="background: ${u.bannerUrl ? `url(${u.bannerUrl}) center/cover` : (u.bannerColor || BANNER_PRESETS[0].gradient)}">
-                  <button onclick="toggleDrawer(false); state.isProfileModalOpen = true; render()" class="absolute top-2 right-2 px-2.5 py-1 rounded bg-black/60 text-white text-[11px] font-semibold">프로필 편집</button>
+              <div class="rounded-xl bg-app-subtle border border-app">
+                <div class="h-20 w-full rounded-t-xl relative z-0" style="background: ${u.bannerUrl ? `url(${u.bannerUrl}) center/cover` : (u.bannerColor || BANNER_PRESETS[0].gradient)}">
+                  <button type="button" onclick="toggleDrawer(false); state.isProfileModalOpen = true; render()" class="absolute top-2 right-2 z-20 px-2.5 py-1 rounded bg-black/60 text-white text-[11px] font-semibold">프로필 편집</button>
                 </div>
-                <div class="px-4 pb-4 relative">
-                  <div class="flex items-end justify-between -mt-8 mb-2">
-                    <img src="${u.avatarUrl}" class="w-16 h-16 rounded-xl border-4 border-[var(--app-subtle)] bg-[#41566b] object-cover" />
+                <div class="px-4 pb-4 relative z-10">
+                  <div class="flex items-end justify-between -mt-8 mb-2 relative z-10">
+                    <img src="${u.avatarUrl}" class="w-16 h-16 aspect-square rounded-xl border-4 border-[var(--app-subtle)] bg-[#41566b] object-cover shrink-0 shadow-md block relative z-10" />
                     <span class="px-2.5 py-1 rounded text-[11px] font-medium badge-sage truncate max-w-[150px]">${escapeHtml(u.statusMessage)}</span>
                   </div>
                   <div class="flex items-center gap-1.5">
@@ -3474,12 +3474,12 @@
       return `
         <div onclick="state.inspectedUser = null; render()" class="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-5 bg-black/65">
           <div onclick="event.stopPropagation()" class="w-full max-w-xl max-h-[90vh] bg-app-surface rounded-2xl shadow-2xl border border-app flex flex-col overflow-hidden">
-            <div class="relative h-32 w-full" style="background: ${target.bannerUrl ? `url(${target.bannerUrl}) center/cover` : (target.bannerColor || BANNER_PRESETS[0].gradient)}">
-              <button onclick="state.inspectedUser = null; render()" class="absolute top-3 right-3 px-2.5 py-1 rounded bg-black/55 text-white text-xs">✕</button>
+            <div class="relative z-0 h-32 w-full shrink-0" style="background: ${target.bannerUrl ? `url(${target.bannerUrl}) center/cover` : (target.bannerColor || BANNER_PRESETS[0].gradient)}">
+              <button type="button" onclick="state.inspectedUser = null; render()" class="absolute top-3 right-3 z-20 px-2.5 py-1 rounded bg-black/55 text-white text-xs">✕</button>
             </div>
-            <div class="px-6 pb-4 relative border-b border-app">
-              <div class="flex justify-between items-end -mt-12 mb-3">
-                <img src="${target.avatarUrl || AVATAR_PRESETS[0]}" class="w-20 h-20 rounded-xl object-cover bg-[#41566b] border-4 border-[var(--app-surface)]" />
+            <div class="px-6 pb-4 relative z-10 border-b border-app">
+              <div class="flex flex-wrap justify-between items-end gap-2 -mt-10 mb-3 relative z-10">
+                <img src="${target.avatarUrl || AVATAR_PRESETS[0]}" class="w-20 h-20 aspect-square rounded-2xl object-cover bg-[#41566b] border-4 border-[var(--app-surface)] shrink-0 shadow-md block relative z-10" />
                 <div class="flex items-center gap-2">
                   ${isMe ? `
                     <button onclick="state.inspectedUser = null; state.isProfileModalOpen = true; render()" class="px-4 py-2 rounded-lg badge-ash text-xs font-bold">내 프로필 & 아바타 수정</button>
@@ -3569,25 +3569,27 @@
               <button onclick="state.isProfileModalOpen = false; render()">✕</button>
             </div>
             <form onsubmit="handleSaveProfile(event)" class="p-6 overflow-y-auto space-y-5">
-              <div class="rounded-2xl overflow-hidden bg-app-subtle border border-app">
-                <div class="h-24 w-full relative" style="background: ${u.bannerUrl ? `url(${u.bannerUrl}) center/cover` : (u.bannerColor || BANNER_PRESETS[0].gradient)}">
-                  <div class="absolute top-2.5 right-2.5 flex gap-1.5">
-                    <label class="px-2.5 py-1 rounded-md bg-black/65 text-white text-[11px] font-semibold cursor-pointer hover:bg-black/80">
+              <div class="rounded-2xl bg-app-subtle border border-app">
+                <div class="h-28 w-full rounded-t-2xl relative z-0" style="background: ${u.bannerUrl ? `url(${u.bannerUrl}) center/cover` : (u.bannerColor || BANNER_PRESETS[0].gradient)}">
+                  <div class="absolute top-2.5 right-2.5 z-20 flex flex-wrap justify-end gap-1.5">
+                    <label class="px-2.5 py-1 rounded-md bg-black/65 text-white text-[11px] font-semibold cursor-pointer hover:bg-black/80 shadow-xs">
                       갤러리에서 내 프로필 사진 업로드
                       <input type="file" accept="image/*" onchange="handleProfileAvatarUpload(event)" class="hidden" />
                     </label>
-                    <label class="px-2.5 py-1 rounded-md bg-black/65 text-white text-[11px] font-semibold cursor-pointer hover:bg-black/80">
+                    <label class="px-2.5 py-1 rounded-md bg-black/65 text-white text-[11px] font-semibold cursor-pointer hover:bg-black/80 shadow-xs">
                       갤러리에서 배경 사진 업로드
                       <input type="file" accept="image/*" onchange="handleProfileBannerUpload(event)" class="hidden" />
                     </label>
                   </div>
                 </div>
-                <div class="px-5 pb-4 flex items-end justify-between -mt-10">
-                  <div class="flex items-end gap-3">
-                    <img src="${u.avatarUrl || AVATAR_PRESETS[0]}" class="w-20 h-20 rounded-2xl object-cover border-4 border-[var(--app-subtle)] bg-[#41566b] shadow-md" />
-                    <div class="pb-1">
-                      <div class="font-bold text-sm text-app-main">${escapeHtml(u.name)}</div>
-                      <div class="text-[11px] text-app-muted">${escapeHtml(u.pronouns)}</div>
+                <div class="px-5 pb-4 pt-2 flex flex-wrap items-end justify-between gap-3 relative z-10">
+                  <div class="flex items-end gap-3.5 min-w-0">
+                    <div class="-mt-12 relative z-10 shrink-0">
+                      <img src="${u.avatarUrl || AVATAR_PRESETS[0]}" class="w-20 h-20 aspect-square rounded-2xl object-cover border-4 border-[var(--app-subtle)] bg-[#41566b] shadow-md block relative z-10" />
+                    </div>
+                    <div class="pb-0.5 min-w-0">
+                      <div class="font-bold text-sm sm:text-base text-app-main truncate">${escapeHtml(u.name)}</div>
+                      <div class="text-[11px] sm:text-xs text-app-muted truncate mt-0.5">${escapeHtml(u.pronouns)}</div>
                     </div>
                   </div>
                 </div>
