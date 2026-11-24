@@ -17,13 +17,16 @@ CREATE TABLE IF NOT EXISTS communities (
 CREATE TABLE IF NOT EXISTS room_members (
   community_id VARCHAR(128) NOT NULL,
   user_id VARCHAR(128) NOT NULL,
+  role VARCHAR(32) NOT NULL DEFAULT 'member', -- 'owner' | 'sub_owner' | 'member'
   joined_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (community_id, user_id)
 );
 
--- Migration for existing deployments without joined_at
+-- Migration for existing deployments without joined_at or role
 ALTER TABLE room_members
   ADD COLUMN IF NOT EXISTS joined_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP;
+ALTER TABLE room_members
+  ADD COLUMN IF NOT EXISTS role VARCHAR(32) NOT NULL DEFAULT 'member';
 
 CREATE TABLE IF NOT EXISTS messages (
   id VARCHAR(128) PRIMARY KEY,
@@ -33,12 +36,18 @@ CREATE TABLE IF NOT EXISTS messages (
   content TEXT,
   attachment_url TEXT,
   is_system BOOLEAN NOT NULL DEFAULT FALSE,
+  is_hidden BOOLEAN NOT NULL DEFAULT FALSE,
+  hidden_updated_at BIGINT NOT NULL DEFAULT 0,
   reactions JSONB NOT NULL DEFAULT '[]'::jsonb,
   reactions_updated_at BIGINT NOT NULL DEFAULT 0,
   created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
 -- Auto-migration for existing messages table on deployment servers
+ALTER TABLE messages
+  ADD COLUMN IF NOT EXISTS is_hidden BOOLEAN NOT NULL DEFAULT FALSE;
+ALTER TABLE messages
+  ADD COLUMN IF NOT EXISTS hidden_updated_at BIGINT NOT NULL DEFAULT 0;
 ALTER TABLE messages
   ADD COLUMN IF NOT EXISTS reactions JSONB NOT NULL DEFAULT '[]'::jsonb;
 ALTER TABLE messages

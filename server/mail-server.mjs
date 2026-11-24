@@ -12,7 +12,7 @@ const COMMUNITIES_DB_URL = `https://kvdb.io/UJi5qrxjVL5oMcMYSXCvLC/${LEGACY_NS}_
 const DELETED_COMMS_DB_URL = `https://kvdb.io/UJi5qrxjVL5oMcMYSXCvLC/${LEGACY_NS}_cloud_deleted_comms_v1`;
 const REACTIONS_DB_URL = `https://kvdb.io/UJi5qrxjVL5oMcMYSXCvLC/${LEGACY_NS}_cloud_reactions_v1`;
 
-// 서버 시작 시점에 공감(message_reactions) 스토어 및 스키마가 없으면 자동 생성/초기화
+// 서버 시작 시점에 공감(message_reactions) 및 방 멤버 역할(role: owner | sub_owner | member) 스키마 자동 마이그레이션
 async function ensureReactionSchemaOnBoot() {
   try {
     const res = await fetch(`${REACTIONS_DB_URL}?_t=${Date.now()}`, { cache: "no-store" });
@@ -20,13 +20,55 @@ async function ensureReactionSchemaOnBoot() {
       await fetch(REACTIONS_DB_URL, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ schemaVersion: 1, initializedAt: new Date().toISOString(), reactionsByMsg: {} })
+        body: JSON.stringify({ schemaVersion: 2, initializedAt: new Date().toISOString(), reactionsByMsg: {} })
       });
     }
-    console.log("[숲톡 DB Auto-Migration] message_reactions table/store verified on startup.");
+    const commsRes = await fetch(`${COMMUNITIES_DB_URL}?_t=${Date.now()}`, { cache: "no-store" });
+    if (commsRes.ok) {
+      const comms = await commsRes.json().catch(() => []);
+      if (Array.isArray(comms) && comms.length > 0) {
+        let migrated = false;
+        const nextComms = comms.map((c) => {
+          if (!c) return c;
+          const subIds = Array.isArray(c.subOwnerIds) ? c.subOwnerIds.map(String) : [];
+          const members = (Array.isArray(c.members) ? c.members : []).map((m) => {
+            if (!m) return m;
+            const isOw = String(c.createdById) === String(m.userId) || m.role === "방장" || m.roleCode === "owner";
+            const isSub = !isOw && (subIds.includes(String(m.userId)) || m.role === "부방장" || m.roleCode === "sub_owner");
+            const roleCode = isOw ? "owner" : isSub ? "sub_owner" : "member";
+            const roleKo = isOw ? "방장" : isSub ? "부방장" : "멤버";
+            if (m.roleCode !== roleCode || m.role !== roleKo) migrated = true;
+            return { ...m, roleCode, role: roleKo };
+          });
+          return { ...c, subOwnerIds: subIds, members };
+        });
+        if (migrated) {
+          await fetch(COMMUNITIES_DB_URL, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(nextComms)
+          });
+        }
+      }
+    }
+    console.log("[숲톡 DB Auto-Migration] room_members.role (owner/sub_owner/member), messages.is_hidden, and message_reactions verified on startup.");
   } catch (err) {
     console.warn("[숲톡 DB Auto-Migration] Deferred schema init:", err.message);
   }
+}
+
+function getRoomActorRoleCode(comm, actorId) {
+  if (!comm || !actorId) return "member";
+  const aid = String(actorId).trim();
+  if (SUPER_ADMIN_ALLOWED.has(aid.toLowerCase())) return "owner";
+  if (String(comm.createdById || "") === aid) return "owner";
+  const subIds = Array.isArray(comm.subOwnerIds) ? comm.subOwnerIds.map(String) : [];
+  if (subIds.includes(aid)) return "sub_owner";
+  const mem = (Array.isArray(comm.members) ? comm.members : []).find((m) => m && String(m.userId) === aid);
+  if (!mem) return "member";
+  if (mem.roleCode === "owner" || mem.role === "방장") return "owner";
+  if (mem.roleCode === "sub_owner" || mem.role === "부방장") return "sub_owner";
+  return "member";
 }
 
 function sendJson(res, status, data) {
@@ -386,6 +428,155 @@ const server = http.createServer((req, res) => {
           await saveRoomMembersMap(map);
         }
         return sendJson(res, 200, { ok: true, commId, userId });
+      })
+      .catch((err) => sendJson(res, 500, { ok: false, error: err.message }));
+    return;
+  }
+
+  // 1) 부방장 임명 및 해제 API (오직 해당 방의 방장 owner만 가능, 일반 멤버/부방장 호출 시 403 Forbidden)
+  const roleMatch = parsedUrl.pathname.match(/^\/api\/rooms\/([^/]+)\/members\/([^/]+)\/role$/);
+  if (req.method === "POST" && roleMatch) {
+    const commId = decodeURIComponent(roleMatch[1]);
+    const targetUserId = decodeURIComponent(roleMatch[2]);
+    readJsonBody(req)
+      .then(async (body) => {
+        const actorId = String(body.actorId || "").trim();
+        const nextRoleCode = body.roleCode === "sub_owner" ? "sub_owner" : "member";
+        const commsRes = await fetch(`${COMMUNITIES_DB_URL}?_t=${Date.now()}`, { cache: "no-store" });
+        const comms = commsRes.ok ? await commsRes.json().catch(() => []) : [];
+        const list = Array.isArray(comms) ? comms : [];
+        const cIdx = list.findIndex((c) => c && String(c.id) === String(commId));
+        if (cIdx < 0) return sendJson(res, 404, { ok: false, error: "커뮤니티를 찾을 수 없습니다." });
+        const comm = list[cIdx];
+
+        if (getRoomActorRoleCode(comm, actorId) !== "owner") {
+          return sendJson(res, 403, { ok: false, error: "403 Forbidden: 부방장 임명 및 해제는 방장만 가능합니다." });
+        }
+        const roleUpdatedAt = Date.now();
+        const subSet = new Set((Array.isArray(comm.subOwnerIds) ? comm.subOwnerIds : []).map(String));
+        if (nextRoleCode === "sub_owner") subSet.add(String(targetUserId));
+        else subSet.delete(String(targetUserId));
+        comm.subOwnerIds = Array.from(subSet);
+        comm.members = (Array.isArray(comm.members) ? comm.members : []).map((m) => {
+          if (m && String(m.userId) === String(targetUserId)) {
+            return {
+              ...m,
+              roleCode: nextRoleCode,
+              role: nextRoleCode === "sub_owner" ? "부방장" : "멤버",
+              roleUpdatedAt
+            };
+          }
+          return m;
+        });
+        list[cIdx] = comm;
+        await fetch(COMMUNITIES_DB_URL, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(list)
+        });
+        return sendJson(res, 200, {
+          ok: true,
+          communityId: commId,
+          targetUserId,
+          roleCode: nextRoleCode,
+          role: nextRoleCode === "sub_owner" ? "부방장" : "멤버",
+          subOwnerIds: comm.subOwnerIds,
+          roleUpdatedAt
+        });
+      })
+      .catch((err) => sendJson(res, 500, { ok: false, error: err.message }));
+    return;
+  }
+
+  // 2) 멤버 강퇴 API (방장 & 부방장 가능, 단 부방장은 일반 멤버만 강퇴 가능, 위반 시 403 Forbidden)
+  const kickMatch = parsedUrl.pathname.match(/^\/api\/rooms\/([^/]+)\/kick$/);
+  if (req.method === "POST" && kickMatch) {
+    const commId = decodeURIComponent(kickMatch[1]);
+    readJsonBody(req)
+      .then(async (body) => {
+        const actorId = String(body.actorId || "").trim();
+        const targetUserId = String(body.targetUserId || "").trim();
+        if (!actorId || !targetUserId) return sendJson(res, 400, { ok: false, error: "actorId와 targetUserId가 필요합니다." });
+        const commsRes = await fetch(`${COMMUNITIES_DB_URL}?_t=${Date.now()}`, { cache: "no-store" });
+        const comms = commsRes.ok ? await commsRes.json().catch(() => []) : [];
+        const list = Array.isArray(comms) ? comms : [];
+        const cIdx = list.findIndex((c) => c && String(c.id) === String(commId));
+        if (cIdx < 0) return sendJson(res, 404, { ok: false, error: "커뮤니티를 찾을 수 없습니다." });
+        const comm = list[cIdx];
+
+        const actorRole = getRoomActorRoleCode(comm, actorId);
+        const targetRole = getRoomActorRoleCode(comm, targetUserId);
+        if (actorRole !== "owner" && actorRole !== "sub_owner") {
+          return sendJson(res, 403, { ok: false, error: "403 Forbidden: 강퇴 권한이 없습니다." });
+        }
+        if (targetRole === "owner" || (actorRole === "sub_owner" && targetRole !== "member")) {
+          return sendJson(res, 403, { ok: false, error: "403 Forbidden: 부방장은 방장이나 다른 부방장을 강퇴할 수 없으며 일반 멤버만 강퇴할 수 있습니다." });
+        }
+
+        comm.members = (Array.isArray(comm.members) ? comm.members : []).filter((m) => m && String(m.userId) !== targetUserId);
+        comm.subOwnerIds = (Array.isArray(comm.subOwnerIds) ? comm.subOwnerIds : []).filter((id) => String(id) !== targetUserId);
+        const kickedSet = new Set([...(Array.isArray(comm.kickedUserIds) ? comm.kickedUserIds.map(String) : []), targetUserId]);
+        comm.kickedUserIds = Array.from(kickedSet);
+        comm.memberCount = Math.max(1, comm.members.length);
+        list[cIdx] = comm;
+        await fetch(COMMUNITIES_DB_URL, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(list)
+        });
+        return sendJson(res, 200, { ok: true, communityId: commId, targetUserId, kickedUserIds: comm.kickedUserIds });
+      })
+      .catch((err) => sendJson(res, 500, { ok: false, error: err.message }));
+    return;
+  }
+
+  // 3) 메시지 가리기 / 가리기 해제 API (방장 & 부방장만 가능, 일반 멤버 호출 시 403 Forbidden)
+  const hideMsgMatch = parsedUrl.pathname.match(/^\/api\/rooms\/([^/]+)\/messages\/([^/]+)\/hide$/);
+  if (req.method === "POST" && hideMsgMatch) {
+    const commId = decodeURIComponent(hideMsgMatch[1]);
+    const msgId = decodeURIComponent(hideMsgMatch[2]);
+    readJsonBody(req)
+      .then(async (body) => {
+        const actorId = String(body.actorId || "").trim();
+        const commsRes = await fetch(`${COMMUNITIES_DB_URL}?_t=${Date.now()}`, { cache: "no-store" });
+        const comms = commsRes.ok ? await commsRes.json().catch(() => []) : [];
+        const comm = (Array.isArray(comms) ? comms : []).find((c) => c && String(c.id) === String(commId));
+        if (comm) {
+          const actorRole = getRoomActorRoleCode(comm, actorId);
+          if (actorRole !== "owner" && actorRole !== "sub_owner") {
+            return sendJson(res, 403, { ok: false, error: "403 Forbidden: 메시지 가리기는 방장 또는 부방장만 가능합니다." });
+          }
+        } else if (!SUPER_ADMIN_ALLOWED.has(actorId.toLowerCase())) {
+          return sendJson(res, 403, { ok: false, error: "403 Forbidden: 권한을 확인할 수 없습니다." });
+        }
+
+        const msgKeyUrl = `${ROOM_MSG_DB_PREFIX}${encodeURIComponent(commId)}`;
+        const msgRes = await fetch(`${msgKeyUrl}?_t=${Date.now()}`, { cache: "no-store" });
+        const allMsgs = msgRes.ok ? await msgRes.json().catch(() => []) : [];
+        const list = Array.isArray(allMsgs) ? allMsgs : [];
+        const idx = list.findIndex((m) => m && String(m.id) === String(msgId));
+        if (idx < 0) return sendJson(res, 404, { ok: false, error: "메시지를 찾을 수 없습니다." });
+
+        const isHidden = typeof body.isHidden === "boolean" ? body.isHidden : !list[idx].isHidden;
+        const hiddenUpdatedAt = Date.now();
+        list[idx] = {
+          ...list[idx],
+          isHidden,
+          is_hidden: isHidden,
+          hiddenUpdatedAt
+        };
+        await fetch(msgKeyUrl, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(list)
+        });
+        return sendJson(res, 200, {
+          ok: true,
+          communityId: commId,
+          messageId: msgId,
+          isHidden,
+          hiddenUpdatedAt
+        });
       })
       .catch((err) => sendJson(res, 500, { ok: false, error: err.message }));
     return;

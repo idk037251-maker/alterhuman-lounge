@@ -1120,8 +1120,49 @@
     // ============================================================================
     const bcChannel = typeof BroadcastChannel !== "undefined" ? new BroadcastChannel(`${LEGACY_NS}_${LEGACY_RM}_realtime_v2`) : null;
 
+    function getUserRoomRoleCode(comm, userId) {
+      if (!comm || !userId) return "member";
+      const uid = String(userId);
+      if (String(comm.createdById || "") === uid) return "owner";
+      const subIds = Array.isArray(comm.subOwnerIds) ? comm.subOwnerIds.map(String) : [];
+      if (subIds.includes(uid)) return "sub_owner";
+      const mem = (Array.isArray(comm.members) ? comm.members : []).find((m) => m && String(m.userId) === uid);
+      if (!mem) return "member";
+      if (mem.roleCode === "owner" || mem.role === "방장") return "owner";
+      if (mem.roleCode === "sub_owner" || mem.role === "부방장") return "sub_owner";
+      return "member";
+    }
+
+    function canUserModerateMessages(comm, user) {
+      if (!comm || !user) return false;
+      if (isSuperAdmin(user)) return true;
+      const role = getUserRoomRoleCode(comm, user.id);
+      return role === "owner" || role === "sub_owner";
+    }
+
+    function canUserKickTarget(comm, actorUser, targetMember) {
+      if (!comm || !actorUser || !targetMember) return false;
+      if (String(actorUser.id) === String(targetMember.userId)) return false;
+      const liveTarget = findUserById(targetMember.userId) || targetMember;
+      if (isSuperAdmin(liveTarget)) return false;
+      const actorRole = isSuperAdmin(actorUser) ? "owner" : getUserRoomRoleCode(comm, actorUser.id);
+      const targetRole = getUserRoomRoleCode(comm, targetMember.userId);
+      if (targetRole === "owner") return false;
+      if (actorRole === "owner") return true;
+      if (actorRole === "sub_owner" && targetRole === "member") return true;
+      return false;
+    }
+
     function mergeCommunityObjects(c1, c2) {
       const memMap = new Map();
+      const c1RoleTs = Number(c1.roleUpdatedAt || 0);
+      const c2RoleTs = Number(c2.roleUpdatedAt || 0);
+      const activeSubIds = c2RoleTs >= c1RoleTs
+        ? (Array.isArray(c2.subOwnerIds) ? c2.subOwnerIds.map(String) : (Array.isArray(c1.subOwnerIds) ? c1.subOwnerIds.map(String) : []))
+        : (Array.isArray(c1.subOwnerIds) ? c1.subOwnerIds.map(String) : []);
+      const subSet = new Set(activeSubIds);
+      const ownerId = String(c2.createdById || c1.createdById || "");
+
       for (const m of [...(c1.members || []), ...(c2.members || [])]) {
         if (!m || !m.userId) continue;
         const prev = memMap.get(m.userId);
@@ -1129,11 +1170,24 @@
         const prevTs = Number((prev && prev.profileUpdatedAt) || 0);
         const curTs = Number(m.profileUpdatedAt || 0);
         const newerMember = curTs >= prevTs ? { ...(prev || {}), ...m } : { ...m, ...(prev || {}) };
+
+        const prevRoleTs = Number((prev && prev.roleUpdatedAt) || 0);
+        const curRoleTs = Number(m.roleUpdatedAt || 0);
+        const roleWinner = curRoleTs >= prevRoleTs ? m : (prev || m);
+        const isOw = String(m.userId) === ownerId || roleWinner.roleCode === "owner" || roleWinner.role === "방장";
+        const isSub = !isOw && (subSet.has(String(m.userId)) || (curRoleTs > Math.max(c1RoleTs, c2RoleTs) && (roleWinner.roleCode === "sub_owner" || roleWinner.role === "부방장")));
+        if (isSub) subSet.add(String(m.userId));
+        const roleCode = isOw ? "owner" : isSub ? "sub_owner" : "member";
+        const roleKo = isOw ? "방장" : isSub ? "부방장" : "멤버";
+
         const liveU = (state && state.usersDir)
           ? Object.values(state.usersDir).find((u) => u && (String(u.id) === String(m.userId) || String(u.username || "").toLowerCase() === String(m.username || "").toLowerCase()))
           : null;
         memMap.set(m.userId, {
           ...newerMember,
+          roleCode,
+          role: roleKo,
+          roleUpdatedAt: Math.max(prevRoleTs, curRoleTs),
           ...(liveU ? {
             name: liveU.name || newerMember.name,
             pronouns: liveU.pronouns || newerMember.pronouns,
@@ -1148,6 +1202,8 @@
       return {
         ...c1,
         ...c2,
+        subOwnerIds: Array.from(subSet).filter((id) => !kickedSet.has(id)),
+        roleUpdatedAt: Math.max(c1RoleTs, c2RoleTs),
         members: mergedMembers,
         kickedUserIds: Array.from(kickedSet),
         memberCount: Math.max(1, mergedMembers.length)
@@ -1243,10 +1299,18 @@
           const prevReactTs = Number(prev.reactionsUpdatedAt || 0);
           const nextReactTs = Number(m.reactionsUpdatedAt || 0);
           const useIncomingReact = nextReactTs >= prevReactTs && Array.isArray(m.reactions);
+          const prevHideTs = Number(prev.hiddenUpdatedAt || 0);
+          const nextHideTs = Number(m.hiddenUpdatedAt || 0);
+          const resolvedHidden = nextHideTs >= prevHideTs
+            ? !!(m.isHidden || m.is_hidden)
+            : !!(prev.isHidden || prev.is_hidden);
           map.set(m.id, {
             ...prev,
             ...m,
             readUserIds: Array.from(readSet),
+            isHidden: resolvedHidden,
+            is_hidden: resolvedHidden,
+            hiddenUpdatedAt: Math.max(prevHideTs, nextHideTs),
             reactions: useIncomingReact ? m.reactions : (prev.reactions || []),
             reactionsUpdatedAt: Math.max(prevReactTs, nextReactTs),
             ...(prev._liveReceived || m._liveReceived ? { _liveReceived: true } : {})
@@ -1350,6 +1414,75 @@
             state.messagesByComm[cid] = curList;
             saveStorage(STORAGE_KEYS.MESSAGES, state.messagesByComm);
             needsUpdate = true;
+          }
+        }
+      } else if ((type === "message_hidden" || type === "MESSAGE_HIDDEN_UPDATED") && payload && payload.communityId && payload.messageId) {
+        const cid = String(payload.communityId);
+        const mid = String(payload.messageId);
+        const curList = state.messagesByComm[cid] || [];
+        const idx = curList.findIndex((m) => String(m.id) === mid);
+        if (idx >= 0) {
+          const incomingTs = Number(payload.hiddenUpdatedAt || Date.now());
+          const curTs = Number(curList[idx].hiddenUpdatedAt || 0);
+          if (incomingTs >= curTs) {
+            const isHidden = !!payload.isHidden;
+            curList[idx] = {
+              ...curList[idx],
+              isHidden,
+              is_hidden: isHidden,
+              hiddenUpdatedAt: incomingTs
+            };
+            state.messagesByComm[cid] = curList;
+            saveStorage(STORAGE_KEYS.MESSAGES, state.messagesByComm);
+            needsUpdate = true;
+          }
+        }
+      } else if (type === "MEMBER_ROLE_UPDATED" && payload && payload.communityId && payload.targetUserId) {
+        const cid = String(payload.communityId);
+        const tid = String(payload.targetUserId);
+        const comm = state.communities.find((c) => String(c.id) === cid);
+        if (comm) {
+          const roleUpdatedAt = Number(payload.roleUpdatedAt || Date.now());
+          comm.roleUpdatedAt = Math.max(Number(comm.roleUpdatedAt || 0), roleUpdatedAt);
+          if (Array.isArray(payload.subOwnerIds)) {
+            comm.subOwnerIds = payload.subOwnerIds.map(String);
+          }
+          comm.members = (comm.members || []).map((m) => {
+            if (m && String(m.userId) === tid) {
+              return {
+                ...m,
+                roleCode: payload.roleCode || "member",
+                role: payload.role || (payload.roleCode === "sub_owner" ? "부방장" : "멤버"),
+                roleUpdatedAt
+              };
+            }
+            return m;
+          });
+          saveStorage(STORAGE_KEYS.COMMUNITIES, state.communities);
+          needsUpdate = true;
+        }
+      } else if (type === "MEMBER_KICKED" && payload && payload.communityId && payload.targetUserId) {
+        const cid = String(payload.communityId);
+        const tid = String(payload.targetUserId);
+        const comm = state.communities.find((c) => String(c.id) === cid);
+        if (comm) {
+          comm.members = (comm.members || []).filter((m) => m && String(m.userId) !== tid);
+          comm.subOwnerIds = (comm.subOwnerIds || []).filter((id) => String(id) !== tid);
+          if (!Array.isArray(comm.kickedUserIds)) comm.kickedUserIds = [];
+          if (!comm.kickedUserIds.map(String).includes(tid)) comm.kickedUserIds.push(tid);
+          comm.memberCount = Math.max(1, comm.members.length);
+          saveStorage(STORAGE_KEYS.COMMUNITIES, state.communities);
+          needsUpdate = true;
+        }
+        if (state.currentUser && String(state.currentUser.id) === tid) {
+          state.joinedCommunityIds = state.joinedCommunityIds.filter((id) => String(id) !== cid);
+          saveStorage(STORAGE_KEYS.JOINED, state.joinedCommunityIds);
+          if (String(state.activeCommunityId || "") === cid) {
+            roomSocket.leaveRoom(cid);
+            state.activeCommunityId = null;
+            render();
+            setTimeout(() => alert("관리자에 의해 채팅방에서 퇴장되었습니다."), 30);
+            return;
           }
         }
       } else if (type === "MESSAGE_DELETED" && payload) {
@@ -1751,8 +1884,11 @@
         try { bcChannel.postMessage({ type, payload, eventId, t: Date.now() }); } catch (e) {}
       }
       // 방 단위 메시지/삭제/읽음 이벤트는 해당 방 토픽으로만 브로드캐스팅, 커뮤니티 목록/DM/유저는 로비 토픽으로 브로드캐스팅
-      if ((type === "NEW_MESSAGE" || type === "MESSAGE_DELETED" || type === "ROOM_READ_ACK" || type === "MESSAGE_REACTION_UPDATED" || type === "reaction_updated" || type === "toggle_reaction") && payload && payload.communityId) {
+      if ((type === "NEW_MESSAGE" || type === "MESSAGE_DELETED" || type === "ROOM_READ_ACK" || type === "MESSAGE_REACTION_UPDATED" || type === "reaction_updated" || type === "toggle_reaction" || type === "message_hidden" || type === "MESSAGE_HIDDEN_UPDATED") && payload && payload.communityId) {
         roomSocket.publishTopic(`${LEGACY_NS}/${LEGACY_RM}/v2/room/${String(payload.communityId)}`, type, payload);
+      } else if ((type === "MEMBER_ROLE_UPDATED" || type === "MEMBER_KICKED") && payload && payload.communityId) {
+        roomSocket.publishTopic(`${LEGACY_NS}/${LEGACY_RM}/v2/room/${String(payload.communityId)}`, type, payload);
+        roomSocket.publishTopic(`${LEGACY_NS}/${LEGACY_RM}/v2/lobby`, type, payload);
       } else if (type === "COMMUNITY_UPDATED" && payload && payload.id) {
         roomSocket.publishTopic(`${LEGACY_NS}/${LEGACY_RM}/v2/room/${String(payload.id)}`, type, payload);
         roomSocket.publishTopic(`${LEGACY_NS}/${LEGACY_RM}/v2/lobby`, type, payload);
@@ -2887,16 +3023,21 @@
           return `<div class="flex justify-center my-2"><span class="px-3.5 py-1 rounded-full text-xs font-semibold badge-sand">${escapeHtml(msg.content)}</span></div>`;
         }
         const isMe = msg.senderId === u.id;
+        const canModerate = canUserModerateMessages(comm, u);
         const liveSender = findUserById(msg.senderId);
         const senderName = (liveSender && liveSender.name) || msg.senderName || "멤버";
         const senderPronouns = (liveSender && liveSender.pronouns) || msg.senderPronouns || "";
         const senderAvatar = (liveSender && liveSender.avatarUrl) || msg.senderAvatar || AVATAR_PRESETS[0];
         const isSenderAdm = msg.senderRole === "관리자" || (liveSender && isSuperAdmin(liveSender)) || SUPER_ADMIN_IDENTIFIERS.includes((senderName || "").trim().toLowerCase());
+        const senderRoomRoleCode = getUserRoomRoleCode(comm, msg.senderId);
+        const isMsgHidden = !!(msg.isHidden || msg.is_hidden);
         const readUsers = msg.readUserIds || [msg.senderId];
         const unreadCnt = Math.max(0, members.filter((m) => !readUsers.includes(m.userId)).length);
 
-        const textHtml = msg.content ? `<div class="whitespace-pre-wrap break-words">${escapeHtml(msg.content)}</div>` : "";
-        const imgHtml = msg.attachmentUrl ? `<div class="${msg.content ? 'mt-2' : ''}"><img src="${msg.attachmentUrl}" onclick="event.stopPropagation(); state.lightboxImage = '${msg.attachmentUrl}'; render()" class="rounded-xl max-w-[240px] max-h-56 object-cover cursor-pointer border border-white/20" /></div>` : "";
+        const textHtml = isMsgHidden
+          ? `<div class="italic text-xs opacity-80 flex items-center gap-1.5"><span>🚫</span><span>관리자에 의해 가려진 메시지입니다.</span></div>`
+          : (msg.content ? `<div class="whitespace-pre-wrap break-words">${escapeHtml(msg.content)}</div>` : "");
+        const imgHtml = (!isMsgHidden && msg.attachmentUrl) ? `<div class="${msg.content ? 'mt-2' : ''}"><img src="${msg.attachmentUrl}" onclick="event.stopPropagation(); state.lightboxImage = '${msg.attachmentUrl}'; render()" class="rounded-xl max-w-[240px] max-h-56 object-cover cursor-pointer border border-white/20" /></div>` : "";
         const reactions = Array.isArray(msg.reactions) ? msg.reactions.filter((r) => r && Array.isArray(r.userIds) && r.userIds.length > 0) : [];
         const isPickerOpen = state.activeReactionPickerMsgId === msg.id;
         const reactionPalette = [
@@ -2916,18 +3057,24 @@
               <div class="flex items-center gap-1.5 mb-1 flex-wrap ${isMe ? 'flex-row-reverse' : 'flex-row'}">
                 <button onclick="openUserProfile('${msg.senderId}')" class="font-bold text-xs text-app-main hover:underline">${escapeHtml(senderName)}</button>
                 ${senderPronouns ? `<span class="px-1.5 py-0.5 rounded text-[10px] font-medium badge-mauve">${escapeHtml(senderPronouns)}</span>` : ""}
-                ${isSenderAdm ? `<span class="px-1.5 py-0.5 rounded text-[10px] font-bold badge-rose">최고 관리자</span>` : msg.senderRole === "방장" ? `<span class="px-1.5 py-0.5 rounded text-[10px] font-bold badge-sand">방장</span>` : msg.senderRole ? `<span class="px-1.5 py-0.5 rounded text-[10px] font-bold badge-sage">${escapeHtml(msg.senderRole)}</span>` : ""}
+                ${isSenderAdm ? `<span class="px-1.5 py-0.5 rounded text-[10px] font-bold badge-rose">최고 관리자</span>` : (senderRoomRoleCode === "owner" || msg.senderRole === "방장") ? `<span class="px-1.5 py-0.5 rounded text-[10px] font-bold badge-sand">방장</span>` : (senderRoomRoleCode === "sub_owner" || msg.senderRole === "부방장") ? `<span class="px-1.5 py-0.5 rounded text-[10px] font-bold badge-mint">부방장</span>` : msg.senderRole ? `<span class="px-1.5 py-0.5 rounded text-[10px] font-bold badge-sage">${escapeHtml(msg.senderRole)}</span>` : ""}
+                ${canModerate ? `<button type="button" onmousedown="event.preventDefault()" onclick="toggleHideChatMessage('${comm.id}', '${msg.id}', event)" class="px-1.5 py-0.5 rounded text-[10px] font-semibold ${isMsgHidden ? 'badge-sage' : 'badge-sand'} hover:opacity-90 transition" title="${isMsgHidden ? '가려진 메시지 복구' : '부적절한 메시지 가리기'}">${isMsgHidden ? '가리기 해제' : '메시지 가리기'}</button>` : ""}
                 ${(isMe || isOwner || iAmAdmin) ? `<button onclick="deleteChatMessage('${comm.id}', '${msg.id}')" class="opacity-0 group-hover:opacity-100 px-1.5 py-0.5 rounded text-[10px] text-app-muted hover:text-app-main" title="메시지 삭제">삭제</button>` : ""}
                 ${!isMe && !isSenderAdm ? `<button onclick="openReportModal('${comm.id}', '${msg.id}')" class="opacity-0 group-hover:opacity-100 px-1.5 py-0.5 rounded text-[10px] text-app-muted hover:text-app-main" title="신고">신고</button>` : ""}
               </div>
 
               ${isPickerOpen ? `
-                <div onclick="event.stopPropagation()" onmousedown="event.preventDefault()" class="mb-1.5 px-2 py-1 rounded-full bg-app-surface border border-app shadow-lg flex items-center gap-1 z-20">
+                <div onclick="event.stopPropagation()" onmousedown="event.preventDefault()" class="mb-1.5 px-2.5 py-1 rounded-full bg-app-surface border border-app shadow-lg flex flex-wrap items-center gap-1 z-20">
                   ${reactionPalette.map((item) => `
                     <button type="button" onmousedown="event.preventDefault()" onclick="toggleMessageReaction('${comm.id}', '${msg.id}', '${item.emoji}', event)" title="${item.label}" class="w-8 h-8 sm:w-7 sm:h-7 rounded-full hover:bg-app-subtle active:scale-95 flex items-center justify-center text-base transition">
                       ${item.emoji}
                     </button>
                   `).join("")}
+                  ${canModerate ? `
+                    <button type="button" onmousedown="event.preventDefault()" onclick="toggleHideChatMessage('${comm.id}', '${msg.id}', event)" class="ml-1 px-2.5 py-1 rounded-full text-[11px] font-bold ${isMsgHidden ? 'badge-sage' : 'badge-sand'} transition">
+                      ${isMsgHidden ? "가리기 해제" : "메시지 가리기"}
+                    </button>
+                  ` : ""}
                 </div>
               ` : ""}
 
@@ -2976,6 +3123,9 @@
         const memAvatar = (liveMem && liveMem.avatarUrl) || m.avatarUrl || AVATAR_PRESETS[0];
         const memPronouns = (liveMem && liveMem.pronouns) || m.pronouns || "";
         const isMemAdm = (liveMem && isSuperAdmin(liveMem)) || SUPER_ADMIN_IDENTIFIERS.includes((memName || "").trim().toLowerCase()) || SUPER_ADMIN_IDENTIFIERS.includes((m.username || "").trim().toLowerCase());
+        const memRoleCode = getUserRoomRoleCode(comm, m.userId);
+        const canAppointSubOwner = (isOwner || iAmAdmin) && !isMe && memRoleCode !== "owner";
+        const canKick = canUserKickTarget(comm, u, m);
         return `
           <div class="p-2 rounded-xl flex items-center justify-between gap-2 bg-app-subtle border border-app">
             <button onclick="openUserProfile('${m.userId}')" class="flex items-center gap-2 min-w-0 flex-1 text-left">
@@ -2983,17 +3133,22 @@
               <div class="min-w-0 flex-1">
                 <div class="flex items-center gap-1 flex-wrap">
                   <p class="font-bold text-xs truncate text-app-main">${escapeHtml(memName)}</p>
-                  ${isMemAdm ? `<span class="text-[9px] font-bold badge-rose px-1.5 rounded">최고 관리자</span>` : m.role === "방장" ? `<span class="text-[9px] font-bold badge-sand px-1.5 rounded">방장</span>` : ""}
+                  ${isMemAdm ? `<span class="text-[9px] font-bold badge-rose px-1.5 rounded">최고 관리자</span>` : memRoleCode === "owner" ? `<span class="text-[9px] font-bold badge-sand px-1.5 rounded">방장</span>` : memRoleCode === "sub_owner" ? `<span class="text-[9px] font-bold badge-mint px-1.5 rounded">부방장</span>` : ""}
                 </div>
                 <p class="text-[10px] text-app-muted truncate">${escapeHtml(memPronouns)}</p>
               </div>
             </button>
-            <div class="flex items-center gap-1">
-              ${iAmAdmin && !isMe && !isMemAdm ? `
-                <button onclick="openAdminBan('${m.userId}')" class="px-2 py-1 rounded badge-rose text-[10px] font-bold">제재</button>
+            <div class="flex items-center flex-wrap justify-end gap-1 shrink-0">
+              ${canAppointSubOwner ? `
+                <button type="button" onclick="toggleSubOwnerRole('${comm.id}', '${m.userId}', '${escapeHtml(memName)}')" class="px-2 py-1 rounded ${memRoleCode === 'sub_owner' ? 'badge-ash' : 'badge-mint'} text-[10px] font-bold transition">
+                  ${memRoleCode === "sub_owner" ? "부방장 해제" : "부방장 임명"}
+                </button>
               ` : ""}
-              ${(isOwner || iAmAdmin) && !isMe && m.role !== "방장" && !isMemAdm ? `
-                <button onclick="kickMemberFromRoom('${comm.id}', '${m.userId}', '${escapeHtml(memName)}')" class="px-2 py-1 rounded badge-terra text-[10px] font-bold">강퇴</button>
+              ${iAmAdmin && !isMe && !isMemAdm ? `
+                <button type="button" onclick="openAdminBan('${m.userId}')" class="px-2 py-1 rounded badge-rose text-[10px] font-bold">제재</button>
+              ` : ""}
+              ${canKick ? `
+                <button type="button" onclick="kickMemberFromRoom('${comm.id}', '${m.userId}', '${escapeHtml(memName)}')" class="px-2 py-1 rounded badge-terra text-[10px] font-bold">강퇴</button>
               ` : ""}
             </div>
           </div>
@@ -4514,7 +4669,9 @@
       const pendingImg = state.chatPendingImage;
       if (!text && !pendingImg) return;
 
-      const isOwner = comm.createdById === u.id || comm.createdBy === u.name;
+      const myRoleCode = getUserRoomRoleCode(comm, u.id);
+      const isOwner = myRoleCode === "owner";
+      const isSubOwner = myRoleCode === "sub_owner";
       const nowUtcMs = getUtcNowMs();
       const newMsg = {
         id: "msg-" + nowUtcMs + "-" + Math.random().toString(36).slice(2, 6),
@@ -4524,7 +4681,7 @@
         senderName: u.name,
         senderPronouns: u.pronouns,
         senderAvatar: u.avatarUrl,
-        senderRole: isSuperAdmin(u) ? "관리자" : isOwner ? "방장" : "멤버",
+        senderRole: isSuperAdmin(u) ? "관리자" : isOwner ? "방장" : isSubOwner ? "부방장" : "멤버",
         content: filterProfanity(text),
         timestamp: formatKoreanTime(),
         createdAt: new Date(nowUtcMs).toISOString(),
@@ -4700,31 +4857,180 @@
       await cloudPut(CLOUD_KEYS.MESSAGES, state.messagesByComm);
     };
 
-    window.kickMemberFromRoom = async function(commId, targetUserId, targetName) {
-      if (!confirm(`${targetName} 님을 이 커뮤니티에서 강퇴하시겠습니까?`)) return;
-      const comm = state.communities.find((c) => c.id === commId);
-      if (!comm) return;
-      comm.members = (comm.members || []).filter((m) => m.userId !== targetUserId);
-      if (!comm.kickedUserIds) comm.kickedUserIds = [];
-      comm.kickedUserIds.push(targetUserId);
+    window.toggleSubOwnerRole = async function(commId, targetUserId, targetName) {
+      const comm = state.communities.find((c) => String(c.id) === String(commId));
+      const u = state.currentUser;
+      if (!comm || !u) return;
+      const isOwner = getUserRoomRoleCode(comm, u.id) === "owner";
+      if (!isOwner && !isSuperAdmin(u)) {
+        alert("403 Forbidden: 부방장 임명 및 해제는 방장만 가능합니다.");
+        return;
+      }
+      const tid = String(targetUserId);
+      const currentRole = getUserRoomRoleCode(comm, tid);
+      if (currentRole === "owner") return;
+      const nextRoleCode = currentRole === "sub_owner" ? "member" : "sub_owner";
+      const nextRoleKo = nextRoleCode === "sub_owner" ? "부방장" : "멤버";
+      const roleUpdatedAt = getUtcNowMs();
+
+      const subSet = new Set((Array.isArray(comm.subOwnerIds) ? comm.subOwnerIds : []).map(String));
+      if (nextRoleCode === "sub_owner") subSet.add(tid);
+      else subSet.delete(tid);
+      comm.subOwnerIds = Array.from(subSet);
+      comm.roleUpdatedAt = roleUpdatedAt;
+      comm.members = (comm.members || []).map((m) => {
+        if (m && String(m.userId) === tid) {
+          return { ...m, roleCode: nextRoleCode, role: nextRoleKo, roleUpdatedAt };
+        }
+        return m;
+      });
+
       const sysMsg = {
-        id: "sys-" + Date.now(),
-        communityId: commId,
-        channelId: state.activeChannelId,
+        id: "sys-" + roleUpdatedAt + "-" + Math.random().toString(36).slice(2, 5),
+        communityId: String(commId),
+        channelId: state.activeChannelId || "general",
         senderId: "system",
         senderName: "시스템",
-        content: `${targetName} 님이 커뮤니티에서 내보내졌습니다.`,
+        content: nextRoleCode === "sub_owner"
+          ? `${targetName}님이 부방장으로 임명되었습니다.`
+          : `${targetName}님의 부방장 권한이 해제되었습니다.`,
         timestamp: formatKoreanTime(),
-        createdAt: new Date().toISOString(),
-        isSystem: true
+        createdAt: new Date(roleUpdatedAt).toISOString(),
+        isSystem: true,
+        _liveReceived: true
       };
       if (!state.messagesByComm[commId]) state.messagesByComm[commId] = [];
       state.messagesByComm[commId].push(sysMsg);
       saveStorage(STORAGE_KEYS.COMMUNITIES, state.communities);
       saveStorage(STORAGE_KEYS.MESSAGES, state.messagesByComm);
-      broadcastEvent("COMMUNITY_UPDATED", comm);
+
+      if (!updateChatRoomStreamInPlace(true)) render();
+
+      broadcastEvent("MEMBER_ROLE_UPDATED", {
+        communityId: String(commId),
+        targetUserId: tid,
+        roleCode: nextRoleCode,
+        role: nextRoleKo,
+        subOwnerIds: comm.subOwnerIds,
+        roleUpdatedAt
+      });
+      broadcastEvent("COMMUNITY_UPDATED", toLightweightCommForWs(comm));
       broadcastEvent("NEW_MESSAGE", sysMsg);
-      render();
+
+      try {
+        await fetchWithTimeout(`${SUPPORT_API_BASE}/api/rooms/${encodeURIComponent(String(commId))}/members/${encodeURIComponent(tid)}/role`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ actorId: u.id, roleCode: nextRoleCode })
+        }, 2500);
+      } catch {}
+      await cloudSaveCommunities();
+      await cloudSaveRoomMessages(commId, state.messagesByComm[commId]);
+    };
+
+    window.toggleHideChatMessage = async function(commId, msgId, event) {
+      if (event) {
+        event.preventDefault();
+        event.stopPropagation();
+      }
+      const comm = state.communities.find((c) => String(c.id) === String(commId));
+      const u = state.currentUser;
+      if (!comm || !u) return;
+      if (!canUserModerateMessages(comm, u)) {
+        alert("403 Forbidden: 메시지 가리기는 방장 또는 부방장만 가능합니다.");
+        return;
+      }
+      const cid = String(commId);
+      const mid = String(msgId);
+      const list = state.messagesByComm[cid] || [];
+      const idx = list.findIndex((m) => m && String(m.id) === mid);
+      if (idx < 0) return;
+
+      const nextHidden = !(list[idx].isHidden || list[idx].is_hidden);
+      const hiddenUpdatedAt = getUtcNowMs();
+      list[idx] = {
+        ...list[idx],
+        isHidden: nextHidden,
+        is_hidden: nextHidden,
+        hiddenUpdatedAt
+      };
+      state.messagesByComm[cid] = list;
+      state.activeReactionPickerMsgId = null;
+      saveStorage(STORAGE_KEYS.MESSAGES, state.messagesByComm);
+      if (!updateChatRoomStreamInPlace(false)) safeReactiveRender(false);
+
+      const hidePayload = {
+        communityId: cid,
+        messageId: mid,
+        isHidden: nextHidden,
+        hiddenUpdatedAt
+      };
+      broadcastEvent("message_hidden", hidePayload);
+      broadcastEvent("MESSAGE_HIDDEN_UPDATED", hidePayload);
+
+      try {
+        await fetchWithTimeout(`${SUPPORT_API_BASE}/api/rooms/${encodeURIComponent(cid)}/messages/${encodeURIComponent(mid)}/hide`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ actorId: u.id, isHidden: nextHidden })
+        }, 2500);
+      } catch {}
+      await cloudSaveRoomMessages(cid, state.messagesByComm[cid]);
+    };
+
+    window.kickMemberFromRoom = async function(commId, targetUserId, targetName) {
+      const comm = state.communities.find((c) => String(c.id) === String(commId));
+      const u = state.currentUser;
+      if (!comm || !u) return;
+      const targetMem = (comm.members || []).find((m) => m && String(m.userId) === String(targetUserId)) || { userId: targetUserId };
+      if (!canUserKickTarget(comm, u, targetMem)) {
+        alert("403 Forbidden: 해당 멤버를 강퇴할 권한이 없습니다. (부방장은 일반 멤버만 강퇴할 수 있습니다)");
+        return;
+      }
+      if (!confirm(`${targetName} 님을 이 커뮤니티에서 강퇴하시겠습니까?`)) return;
+      const tid = String(targetUserId);
+      comm.members = (comm.members || []).filter((m) => String(m.userId) !== tid);
+      comm.subOwnerIds = (comm.subOwnerIds || []).filter((id) => String(id) !== tid);
+      if (!comm.kickedUserIds) comm.kickedUserIds = [];
+      if (!comm.kickedUserIds.map(String).includes(tid)) comm.kickedUserIds.push(tid);
+      comm.memberCount = Math.max(1, comm.members.length);
+
+      const nowMs = getUtcNowMs();
+      const sysMsg = {
+        id: "sys-" + nowMs,
+        communityId: String(commId),
+        channelId: state.activeChannelId || "general",
+        senderId: "system",
+        senderName: "시스템",
+        content: `${targetName}님이 관리자에 의해 퇴장되었습니다.`,
+        timestamp: formatKoreanTime(),
+        createdAt: new Date(nowMs).toISOString(),
+        isSystem: true,
+        _liveReceived: true
+      };
+      if (!state.messagesByComm[commId]) state.messagesByComm[commId] = [];
+      state.messagesByComm[commId].push(sysMsg);
+      saveStorage(STORAGE_KEYS.COMMUNITIES, state.communities);
+      saveStorage(STORAGE_KEYS.MESSAGES, state.messagesByComm);
+
+      if (!updateChatRoomStreamInPlace(true)) render();
+
+      broadcastEvent("MEMBER_KICKED", {
+        communityId: String(commId),
+        targetUserId: tid,
+        targetName,
+        kickedById: u.id
+      });
+      broadcastEvent("COMMUNITY_UPDATED", toLightweightCommForWs(comm));
+      broadcastEvent("NEW_MESSAGE", sysMsg);
+
+      try {
+        await fetchWithTimeout(`${SUPPORT_API_BASE}/api/rooms/${encodeURIComponent(String(commId))}/kick`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ actorId: u.id, targetUserId: tid })
+        }, 2500);
+      } catch {}
       await cloudSaveCommunities();
       await cloudSaveRoomMessages(commId, state.messagesByComm[commId]);
     };
