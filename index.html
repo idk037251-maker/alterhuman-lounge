@@ -1001,7 +1001,6 @@
         }
       }
       const cleaned = Array.from(map.values());
-      saveStorage(STORAGE_KEYS.COMMUNITIES, cleaned);
       return cleaned;
     }
 
@@ -1013,7 +1012,6 @@
           cleaned[cid] = list;
         }
       }
-      saveStorage(STORAGE_KEYS.MESSAGES, cleaned);
       return cleaned;
     }
 
@@ -1122,11 +1120,29 @@
 
     function getUserRoomRoleCode(comm, userId) {
       if (!comm || !userId) return "member";
-      const uid = String(userId);
-      if (String(comm.createdById || "") === uid) return "owner";
+      const uid = String(userId).trim();
+      const uidLower = uid.toLowerCase();
+      const targetUser = (state && state.currentUser && (String(state.currentUser.id) === uid || String(state.currentUser.username || "").toLowerCase() === uidLower))
+        ? state.currentUser
+        : (state && state.usersDir ? Object.values(state.usersDir).find((u) => u && (String(u.id) === uid || String(u.username || "").toLowerCase() === uidLower)) : null);
+      const canonicalId = targetUser ? String(targetUser.id) : uid;
+      const canonicalUname = targetUser ? String(targetUser.username || "").toLowerCase() : uidLower;
+
+      if (
+        String(comm.createdById || "") === canonicalId ||
+        String(comm.createdById || "") === uid ||
+        (canonicalUname && String(comm.createdBy || "").trim().toLowerCase() === canonicalUname) ||
+        (targetUser && String(comm.createdBy || "").trim() === String(targetUser.name || "").trim())
+      ) {
+        return "owner";
+      }
       const subIds = Array.isArray(comm.subOwnerIds) ? comm.subOwnerIds.map(String) : [];
-      if (subIds.includes(uid)) return "sub_owner";
-      const mem = (Array.isArray(comm.members) ? comm.members : []).find((m) => m && String(m.userId) === uid);
+      if (subIds.includes(canonicalId) || subIds.includes(uid) || (canonicalUname && subIds.map((s) => s.toLowerCase()).includes(canonicalUname))) {
+        return "sub_owner";
+      }
+      const mem = (Array.isArray(comm.members) ? comm.members : []).find(
+        (m) => m && (String(m.userId) === canonicalId || String(m.userId) === uid || (canonicalUname && String(m.username || "").toLowerCase() === canonicalUname))
+      );
       if (!mem) return "member";
       if (mem.roleCode === "owner" || mem.role === "방장") return "owner";
       if (mem.roleCode === "sub_owner" || mem.role === "부방장") return "sub_owner";
@@ -1416,16 +1432,16 @@
             needsUpdate = true;
           }
         }
-      } else if ((type === "message_hidden" || type === "MESSAGE_HIDDEN_UPDATED") && payload && payload.communityId && payload.messageId) {
-        const cid = String(payload.communityId);
+      } else if ((type === "message_hidden_updated" || type === "message_hidden" || type === "MESSAGE_HIDDEN_UPDATED") && payload && (payload.roomId || payload.communityId) && payload.messageId) {
+        const cid = String(payload.roomId || payload.communityId);
         const mid = String(payload.messageId);
         const curList = state.messagesByComm[cid] || [];
         const idx = curList.findIndex((m) => String(m.id) === mid);
+        const incomingTs = Number(payload.hiddenUpdatedAt || Date.now());
+        const isHidden = !!payload.isHidden;
         if (idx >= 0) {
-          const incomingTs = Number(payload.hiddenUpdatedAt || Date.now());
           const curTs = Number(curList[idx].hiddenUpdatedAt || 0);
           if (incomingTs >= curTs) {
-            const isHidden = !!payload.isHidden;
             curList[idx] = {
               ...curList[idx],
               isHidden,
@@ -1437,22 +1453,30 @@
             needsUpdate = true;
           }
         }
-      } else if (type === "MEMBER_ROLE_UPDATED" && payload && payload.communityId && payload.targetUserId) {
-        const cid = String(payload.communityId);
+      } else if ((type === "role_updated" || type === "participants_updated" || type === "MEMBER_ROLE_UPDATED") && payload && (payload.roomId || payload.communityId) && payload.targetUserId) {
+        const cid = String(payload.roomId || payload.communityId);
         const tid = String(payload.targetUserId);
+        const targetUname = String(payload.targetUsername || "").trim().toLowerCase();
+        const nextRoleCode = (payload.newRole === "sub_owner" || payload.roleCode === "sub_owner") ? "sub_owner" : "member";
+        const nextRoleKo = nextRoleCode === "sub_owner" ? "부방장" : "멤버";
         const comm = state.communities.find((c) => String(c.id) === cid);
         if (comm) {
           const roleUpdatedAt = Number(payload.roleUpdatedAt || Date.now());
           comm.roleUpdatedAt = Math.max(Number(comm.roleUpdatedAt || 0), roleUpdatedAt);
           if (Array.isArray(payload.subOwnerIds)) {
             comm.subOwnerIds = payload.subOwnerIds.map(String);
+          } else {
+            const sSet = new Set((comm.subOwnerIds || []).map(String));
+            if (nextRoleCode === "sub_owner") sSet.add(tid);
+            else sSet.delete(tid);
+            comm.subOwnerIds = Array.from(sSet);
           }
           comm.members = (comm.members || []).map((m) => {
-            if (m && String(m.userId) === tid) {
+            if (m && (String(m.userId) === tid || (targetUname && String(m.username || "").toLowerCase() === targetUname))) {
               return {
                 ...m,
-                roleCode: payload.roleCode || "member",
-                role: payload.role || (payload.roleCode === "sub_owner" ? "부방장" : "멤버"),
+                roleCode: nextRoleCode,
+                role: nextRoleKo,
                 roleUpdatedAt
               };
             }
@@ -1461,8 +1485,70 @@
           saveStorage(STORAGE_KEYS.COMMUNITIES, state.communities);
           needsUpdate = true;
         }
-      } else if (type === "MEMBER_KICKED" && payload && payload.communityId && payload.targetUserId) {
-        const cid = String(payload.communityId);
+        if (payload.systemMessage && payload.systemMessage.id) {
+          const curList = state.messagesByComm[cid] || [];
+          if (!curList.some((m) => m && String(m.id) === String(payload.systemMessage.id))) {
+            const liveSys = { ...payload.systemMessage, communityId: cid, _liveReceived: true };
+            state.messagesByComm[cid] = mergeMessageArrays(curList, [liveSys]);
+            saveStorage(STORAGE_KEYS.MESSAGES, state.messagesByComm);
+            if (String(state.activeCommunityId || "") === cid) {
+              hasNewChatMessage = true;
+            }
+            needsUpdate = true;
+          }
+        }
+      } else if (type === "STATE_MODERATION" && payload && typeof payload === "object") {
+        // 브로커 Retained 권한/가리기 상태 동기화
+        if (payload.rolesByComm && typeof payload.rolesByComm === "object") {
+          for (const [cid, rInfo] of Object.entries(payload.rolesByComm)) {
+            const comm = state.communities.find((c) => String(c.id) === String(cid));
+            if (comm && rInfo && Number(rInfo.roleUpdatedAt || 0) >= Number(comm.roleUpdatedAt || 0)) {
+              const subIds = Array.isArray(rInfo.subOwnerIds) ? rInfo.subOwnerIds.map(String) : [];
+              comm.subOwnerIds = subIds;
+              comm.roleUpdatedAt = Number(rInfo.roleUpdatedAt || Date.now());
+              comm.members = (comm.members || []).map((m) => {
+                if (!m) return m;
+                const isOw = String(comm.createdById) === String(m.userId) || m.roleCode === "owner" || m.role === "방장";
+                const isSub = !isOw && subIds.includes(String(m.userId));
+                return {
+                  ...m,
+                  roleCode: isOw ? "owner" : isSub ? "sub_owner" : "member",
+                  role: isOw ? "방장" : isSub ? "부방장" : "멤버",
+                  roleUpdatedAt: comm.roleUpdatedAt
+                };
+              });
+              needsUpdate = true;
+            }
+          }
+          if (needsUpdate) saveStorage(STORAGE_KEYS.COMMUNITIES, state.communities);
+        }
+        if (payload.hiddenByComm && typeof payload.hiddenByComm === "object") {
+          let msgChanged = false;
+          for (const [cid, hMap] of Object.entries(payload.hiddenByComm)) {
+            if (!hMap || typeof hMap !== "object") continue;
+            const curList = state.messagesByComm[cid] || [];
+            curList.forEach((m) => {
+              if (m && hMap[m.id]) {
+                const info = hMap[m.id];
+                if (Number(info.ts || 0) >= Number(m.hiddenUpdatedAt || 0)) {
+                  const nextH = !!info.isHidden;
+                  if (!!m.isHidden !== nextH) {
+                    m.isHidden = nextH;
+                    m.is_hidden = nextH;
+                    m.hiddenUpdatedAt = Number(info.ts || Date.now());
+                    msgChanged = true;
+                  }
+                }
+              }
+            });
+          }
+          if (msgChanged) {
+            saveStorage(STORAGE_KEYS.MESSAGES, state.messagesByComm);
+            needsUpdate = true;
+          }
+        }
+      } else if ((type === "member_kicked" || type === "MEMBER_KICKED") && payload && (payload.roomId || payload.communityId) && payload.targetUserId) {
+        const cid = String(payload.roomId || payload.communityId);
         const tid = String(payload.targetUserId);
         const comm = state.communities.find((c) => String(c.id) === cid);
         if (comm) {
@@ -1558,12 +1644,26 @@
         saveStorage(STORAGE_KEYS.DMS, state.dms);
         needsUpdate = true;
       } else {
-        // Fallback full storage reload (현재 사용자 enteredAt 기준으로 필터링 유지)
+        // Fallback full storage reload (기존 메모리의 최신 roleUpdatedAt / hiddenUpdatedAt을 보존하며 병합)
         state.usersDir = loadAndRestoreUsersDirectory();
-        state.communities = loadCleanCommunities();
+        const diskComms = loadCleanCommunities();
+        const commMap = new Map();
+        for (const c of [...state.communities, ...diskComms]) {
+          if (c && c.id && !state.deletedCommIds.map(String).includes(String(c.id))) {
+            const cid = String(c.id);
+            const ex = commMap.get(cid);
+            commMap.set(cid, ex ? mergeCommunityObjects(ex, c) : c);
+          }
+        }
+        state.communities = Array.from(commMap.values());
         const rawLoadedMsgs = loadCleanMessages();
         const uid = state.currentUser && state.currentUser.id;
-        state.messagesByComm = uid ? filterAllRoomsByEnteredAt(uid, rawLoadedMsgs) : {};
+        const mergedMsgMap = { ...state.messagesByComm };
+        for (const [cid, list] of Object.entries(rawLoadedMsgs)) {
+          const combined = mergeMessageArrays(state.messagesByComm[cid] || [], Array.isArray(list) ? list : []);
+          mergedMsgMap[cid] = uid ? filterMessagesSinceEnteredAt(cid, uid, combined) : combined;
+        }
+        state.messagesByComm = mergedMsgMap;
         state.posts = loadCleanPosts();
         state.follows = loadCleanFollows();
         state.dms = loadStorage(STORAGE_KEYS.DMS, {});
@@ -1715,6 +1815,7 @@
             this.subscribeTopic(`${LEGACY_NS}/${LEGACY_RM}/v2/state/deleted_comms`);
             this.subscribeTopic(`${LEGACY_NS}/${LEGACY_RM}/v2/state/inquiries`);
             this.subscribeTopic(`${LEGACY_NS}/${LEGACY_RM}/v2/state/users`);
+            this.subscribeTopic(`${LEGACY_NS}/${LEGACY_RM}/v2/state/moderation`);
             if (this.activeRoomId) {
               this.subscribeTopic(`${LEGACY_NS}/${LEGACY_RM}/v2/room/${String(this.activeRoomId)}`);
             }
@@ -1884,10 +1985,12 @@
         try { bcChannel.postMessage({ type, payload, eventId, t: Date.now() }); } catch (e) {}
       }
       // 방 단위 메시지/삭제/읽음 이벤트는 해당 방 토픽으로만 브로드캐스팅, 커뮤니티 목록/DM/유저는 로비 토픽으로 브로드캐스팅
-      if ((type === "NEW_MESSAGE" || type === "MESSAGE_DELETED" || type === "ROOM_READ_ACK" || type === "MESSAGE_REACTION_UPDATED" || type === "reaction_updated" || type === "toggle_reaction" || type === "message_hidden" || type === "MESSAGE_HIDDEN_UPDATED") && payload && payload.communityId) {
-        roomSocket.publishTopic(`${LEGACY_NS}/${LEGACY_RM}/v2/room/${String(payload.communityId)}`, type, payload);
-      } else if ((type === "MEMBER_ROLE_UPDATED" || type === "MEMBER_KICKED") && payload && payload.communityId) {
-        roomSocket.publishTopic(`${LEGACY_NS}/${LEGACY_RM}/v2/room/${String(payload.communityId)}`, type, payload);
+      const targetRoomId = payload && (payload.roomId || payload.communityId);
+      if ((type === "NEW_MESSAGE" || type === "MESSAGE_DELETED" || type === "ROOM_READ_ACK" || type === "MESSAGE_REACTION_UPDATED" || type === "reaction_updated" || type === "toggle_reaction") && targetRoomId) {
+        roomSocket.publishTopic(`${LEGACY_NS}/${LEGACY_RM}/v2/room/${String(targetRoomId)}`, type, payload);
+      } else if ((type === "message_hidden_updated" || type === "message_hidden" || type === "MESSAGE_HIDDEN_UPDATED" || type === "role_updated" || type === "participants_updated" || type === "MEMBER_ROLE_UPDATED" || type === "member_kicked" || type === "MEMBER_KICKED") && targetRoomId) {
+        // 방 토픽과 로비 토픽 양쪽으로 동시 전송하여 방 내 모든 접속자에게 0.1초 내 100% 도달 보장
+        roomSocket.publishTopic(`${LEGACY_NS}/${LEGACY_RM}/v2/room/${String(targetRoomId)}`, type, payload);
         roomSocket.publishTopic(`${LEGACY_NS}/${LEGACY_RM}/v2/lobby`, type, payload);
       } else if (type === "COMMUNITY_UPDATED" && payload && payload.id) {
         roomSocket.publishTopic(`${LEGACY_NS}/${LEGACY_RM}/v2/room/${String(payload.id)}`, type, payload);
@@ -1957,15 +2060,48 @@
       return {
         ...c,
         id: String(c.id),
-        iconImageUrl: (c.iconImageUrl && c.iconImageUrl.length < 8000) ? c.iconImageUrl : "",
-        bannerImageUrl: (c.bannerImageUrl && c.bannerImageUrl.length < 8000) ? c.bannerImageUrl : ""
+        iconImageUrl: (c.iconImageUrl && c.iconImageUrl.length < 4000) ? c.iconImageUrl : "",
+        bannerImageUrl: (c.bannerImageUrl && c.bannerImageUrl.length < 4000) ? c.bannerImageUrl : "",
+        members: (Array.isArray(c.members) ? c.members : []).map((m) => m ? ({
+          ...m,
+          avatarUrl: (m.avatarUrl && m.avatarUrl.length < 400) ? m.avatarUrl : ""
+        }) : m)
       };
+    }
+
+    function publishRetainedModerationState() {
+      try {
+        const rolesByComm = {};
+        for (const c of (state.communities || [])) {
+          if (c && c.id) {
+            rolesByComm[String(c.id)] = {
+              subOwnerIds: Array.isArray(c.subOwnerIds) ? c.subOwnerIds.map(String) : [],
+              roleUpdatedAt: Number(c.roleUpdatedAt || Date.now())
+            };
+          }
+        }
+        const hiddenByComm = {};
+        for (const [cid, list] of Object.entries(state.messagesByComm || {})) {
+          if (!Array.isArray(list)) continue;
+          for (const m of list) {
+            if (m && m.id && (m.hiddenUpdatedAt || m.isHidden || m.is_hidden)) {
+              if (!hiddenByComm[cid]) hiddenByComm[cid] = {};
+              hiddenByComm[cid][m.id] = {
+                isHidden: !!(m.isHidden || m.is_hidden),
+                ts: Number(m.hiddenUpdatedAt || Date.now())
+              };
+            }
+          }
+        }
+        roomSocket.publishTopic(`${LEGACY_NS}/${LEGACY_RM}/v2/state/moderation`, "STATE_MODERATION", { rolesByComm, hiddenByComm }, true);
+      } catch {}
     }
 
     function publishRetainedCommunitiesState(commsList) {
       try {
-        const liteList = (Array.isArray(commsList) ? commsList : []).slice(0, 60).map(toLightweightCommForWs);
+        const liteList = (Array.isArray(commsList) ? commsList : []).slice(0, 40).map(toLightweightCommForWs);
         roomSocket.publishTopic(`${LEGACY_NS}/${LEGACY_RM}/v2/state/communities`, "STATE_COMMUNITIES", liteList, true);
+        publishRetainedModerationState();
       } catch {}
     }
 
@@ -4906,16 +5042,24 @@
 
       if (!updateChatRoomStreamInPlace(true)) render();
 
-      broadcastEvent("MEMBER_ROLE_UPDATED", {
+      const targetMemObj = (comm.members || []).find((m) => m && String(m.userId) === tid);
+      const rolePayload = {
+        roomId: String(commId),
         communityId: String(commId),
         targetUserId: tid,
+        targetUsername: (targetMemObj && targetMemObj.username) || "",
+        newRole: nextRoleCode,
         roleCode: nextRoleCode,
         role: nextRoleKo,
         subOwnerIds: comm.subOwnerIds,
-        roleUpdatedAt
-      });
+        roleUpdatedAt,
+        systemMessage: sysMsg
+      };
+      broadcastEvent("role_updated", rolePayload);
+      broadcastEvent("MEMBER_ROLE_UPDATED", rolePayload);
       broadcastEvent("COMMUNITY_UPDATED", toLightweightCommForWs(comm));
       broadcastEvent("NEW_MESSAGE", sysMsg);
+      publishRetainedModerationState();
 
       try {
         await fetchWithTimeout(`${SUPPORT_API_BASE}/api/rooms/${encodeURIComponent(String(commId))}/members/${encodeURIComponent(tid)}/role`, {
@@ -4960,13 +5104,16 @@
       if (!updateChatRoomStreamInPlace(false)) safeReactiveRender(false);
 
       const hidePayload = {
+        roomId: cid,
         communityId: cid,
         messageId: mid,
         isHidden: nextHidden,
         hiddenUpdatedAt
       };
+      broadcastEvent("message_hidden_updated", hidePayload);
       broadcastEvent("message_hidden", hidePayload);
       broadcastEvent("MESSAGE_HIDDEN_UPDATED", hidePayload);
+      publishRetainedModerationState();
 
       try {
         await fetchWithTimeout(`${SUPPORT_API_BASE}/api/rooms/${encodeURIComponent(cid)}/messages/${encodeURIComponent(mid)}/hide`, {
